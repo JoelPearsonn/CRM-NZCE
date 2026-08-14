@@ -13,7 +13,37 @@ export type DuplicateMatch = {
   match: "email" | "company";
 };
 
-export type ActionState = { error?: string; duplicate?: DuplicateMatch };
+export type CustomerDraft = {
+  companyName: string;
+  tradingName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  industry: string;
+  addressLine1: string;
+  city: string;
+  postcode: string;
+};
+
+export type ActionState = {
+  error?: string;
+  duplicate?: DuplicateMatch;
+  draft?: CustomerDraft;
+};
+
+function draftFrom(formData: FormData): CustomerDraft {
+  return {
+    companyName: str(formData.get("companyName")),
+    tradingName: str(formData.get("tradingName")),
+    contactName: str(formData.get("contactName")),
+    email: str(formData.get("email")),
+    phone: str(formData.get("phone")),
+    industry: str(formData.get("industry")),
+    addressLine1: str(formData.get("addressLine1")),
+    city: str(formData.get("city")),
+    postcode: str(formData.get("postcode")),
+  };
+}
 
 function refreshCustomer(id: string) {
   revalidatePath("/");
@@ -31,12 +61,13 @@ export async function saveCustomer(
   const email = str(formData.get("email"));
   const phone = optionalStr(formData.get("phone"));
 
-  if (!companyName) return { error: "Company name is required." };
-  if (!contactName) return { error: "A named contact is required." };
+  const draft = draftFrom(formData);
+  if (!companyName) return { error: "Company name is required.", draft };
+  if (!contactName) return { error: "A named contact is required.", draft };
   if (!email && !phone) {
-    return { error: "Add an email or a phone — at least one contact method." };
+    return { error: "Add an email or a phone — at least one contact method.", draft };
   }
-  if (email && !isEmail(email)) return { error: "Enter a valid email address." };
+  if (email && !isEmail(email)) return { error: "Enter a valid email address.", draft };
 
   const data = {
     companyName,
@@ -76,6 +107,7 @@ export async function saveCustomer(
     if (clash) {
       const match = email && clash.email.toLowerCase() === email.toLowerCase() ? "email" : "company";
       return {
+        draft,
         duplicate: {
           id: clash.id,
           companyName: clash.companyName,

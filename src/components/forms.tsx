@@ -28,8 +28,13 @@ const empty: CustomerState = {};
 
 export function CustomerForm({ customer }: { customer?: Customer }) {
   const [state, action, pending] = useActionState(saveCustomer, empty);
+  const draft = state.draft;
   return (
-    <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">
+    <form
+      key={state.duplicate ? "duplicate" : customer?.id ?? "new"}
+      action={action}
+      className="card grid gap-4 p-5 md:grid-cols-2"
+    >
       {customer ? <input type="hidden" name="id" value={customer.id} /> : null}
       <div className="md:col-span-2">
         <ErrorBanner message={state.error} />
@@ -54,31 +59,45 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         ) : null}
       </div>
       <Field label="Company name" name="companyName">
-        <input id="companyName" name="companyName" required defaultValue={customer?.companyName} />
+        <input
+          id="companyName"
+          name="companyName"
+          required
+          defaultValue={draft?.companyName ?? customer?.companyName}
+        />
       </Field>
       <Field label="Trading as" name="tradingName">
-        <input id="tradingName" name="tradingName" defaultValue={customer?.tradingName ?? ""} />
+        <input id="tradingName" name="tradingName" defaultValue={draft?.tradingName ?? customer?.tradingName ?? ""} />
       </Field>
       <Field label="Contact name" name="contactName">
-        <input id="contactName" name="contactName" required defaultValue={customer?.contactName} />
+        <input
+          id="contactName"
+          name="contactName"
+          required
+          defaultValue={draft?.contactName ?? customer?.contactName}
+        />
       </Field>
       <Field label="Email" name="email" hint="Email or phone — at least one is required.">
-        <input id="email" name="email" type="email" defaultValue={customer?.email} />
+        <input id="email" name="email" type="email" defaultValue={draft?.email ?? customer?.email} />
       </Field>
       <Field label="Phone" name="phone">
-        <input id="phone" name="phone" defaultValue={customer?.phone ?? ""} />
+        <input id="phone" name="phone" defaultValue={draft?.phone ?? customer?.phone ?? ""} />
       </Field>
       <Field label="Industry" name="industry">
-        <input id="industry" name="industry" defaultValue={customer?.industry ?? ""} />
+        <input id="industry" name="industry" defaultValue={draft?.industry ?? customer?.industry ?? ""} />
       </Field>
       <Field label="Address" name="addressLine1">
-        <input id="addressLine1" name="addressLine1" defaultValue={customer?.addressLine1 ?? ""} />
+        <input
+          id="addressLine1"
+          name="addressLine1"
+          defaultValue={draft?.addressLine1 ?? customer?.addressLine1 ?? ""}
+        />
       </Field>
       <Field label="City" name="city">
-        <input id="city" name="city" defaultValue={customer?.city ?? ""} />
+        <input id="city" name="city" defaultValue={draft?.city ?? customer?.city ?? ""} />
       </Field>
       <Field label="Postcode" name="postcode">
-        <input id="postcode" name="postcode" defaultValue={customer?.postcode ?? ""} />
+        <input id="postcode" name="postcode" defaultValue={draft?.postcode ?? customer?.postcode ?? ""} />
       </Field>
       <div className="md:col-span-2 flex justify-end">
         <button className="btn btn-primary" disabled={pending}>

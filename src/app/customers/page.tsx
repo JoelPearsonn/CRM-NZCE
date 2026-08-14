@@ -127,6 +127,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
           if (loa) params.set("loa", loa);
           if (objection) params.set("objection", objection);
           if (salesperson) params.set("salesperson", salesperson);
+          if (showArchived) params.set("archived", "1");
           const current = params.toString() ? `/customers?${params}` : "/customers";
           const active = view.href === current;
           return (
