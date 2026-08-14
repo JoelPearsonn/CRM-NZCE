@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { EmptyState, LoaPill, ObjectionPill, PageHeader, RenewalCell, StagePill } from "@/components/ui";
+import { EmptyState, LoaPill, ObjectionPill, PageHeader, RenewalCell, SortLink, StagePill } from "@/components/ui";
 import { LOA_STATUSES, OBJECTION_STATUSES } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 import { siteCount } from "@/lib/sites";
+import { sortDir, sortHref } from "@/lib/sort";
 import { getWorkingAsId } from "@/lib/working-as";
 
 export default async function CustomersPage({ searchParams }: SearchPageProps) {
@@ -14,10 +15,14 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
   const loa = typeof query.loa === "string" ? query.loa : "";
   const objection = typeof query.objection === "string" ? query.objection : "";
   const salesperson = typeof query.salesperson === "string" ? query.salesperson : "";
+  const showArchived = query.archived === "1";
+  const sort = query.sort === "renewal" || query.sort === "remaining" ? query.sort : "company";
+  const dir = sortDir(typeof query.dir === "string" ? query.dir : "");
   const workingAsId = await getWorkingAsId();
 
-  const [customers, agents] = await Promise.all([
+  const [customers, agents, archivedCount] = await Promise.all([
     prisma.customer.findMany({
+      where: showArchived ? { archivedAt: { not: null } } : { archivedAt: null },
       include: {
         meters: { include: { salesperson: true }, orderBy: { renewalDate: "asc" } },
         leads: { orderBy: { updatedAt: "desc" }, take: 1 },
@@ -26,6 +31,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
       orderBy: { companyName: "asc" },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    prisma.customer.count({ where: { archivedAt: { not: null } } }),
   ]);
 
   const now = new Date();
@@ -59,6 +65,25 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
     return true;
   });
 
+  filtered.sort((a, b) => {
+    let cmp = 0;
+    if (sort === "company") cmp = a.companyName.localeCompare(b.companyName);
+    if (sort === "renewal") {
+      const left = a.meters.find((meter) => meter.renewalDate)?.renewalDate?.getTime() ?? Number.POSITIVE_INFINITY;
+      const right = b.meters.find((meter) => meter.renewalDate)?.renewalDate?.getTime() ?? Number.POSITIVE_INFINITY;
+      cmp = left - right;
+    }
+    if (sort === "remaining") cmp = financeTotals(a.deals).remaining - financeTotals(b.deals).remaining;
+    return dir === "desc" ? -cmp : cmp;
+  });
+
+  const listParams = new URLSearchParams();
+  if (renewal) listParams.set("renewal", renewal);
+  if (loa) listParams.set("loa", loa);
+  if (objection) listParams.set("objection", objection);
+  if (salesperson) listParams.set("salesperson", salesperson);
+  if (showArchived) listParams.set("archived", "1");
+
   const views = [
     { href: "/customers", label: "All" },
     { href: "/customers?renewal=30", label: "Renewing 30d" },
@@ -68,6 +93,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
     ...(workingAsId
       ? [{ href: `/customers?salesperson=${workingAsId}`, label: "My book" }]
       : []),
+    { href: "/customers?archived=1", label: `Archived${archivedCount ? ` · ${archivedCount}` : ""}` },
   ];
 
   return (
@@ -78,6 +104,12 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
         description="Businesses on the NZCE desk. Filter the book, or import a CSV. Finance lives on each record."
         actions={
           <>
+            <a href="/api/export/customers" className="btn btn-ghost">
+              Export customers
+            </a>
+            <a href="/api/export/meters" className="btn btn-ghost">
+              Export meters
+            </a>
             <Link href="/import" className="btn btn-ghost">
               Import CSV
             </Link>
@@ -186,15 +218,39 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
           <table className="desk-table">
             <thead>
               <tr>
-                <th>Company</th>
+                <th>
+                  <SortLink
+                    href={sortHref("/customers", listParams, "company", sort, dir)}
+                    active={sort === "company"}
+                    dir={dir}
+                  >
+                    Company
+                  </SortLink>
+                </th>
                 <th>Contact</th>
                 <th>Sites</th>
-                <th>Next renewal</th>
+                <th>
+                  <SortLink
+                    href={sortHref("/customers", listParams, "renewal", sort, dir)}
+                    active={sort === "renewal"}
+                    dir={dir}
+                  >
+                    Next renewal
+                  </SortLink>
+                </th>
                 <th>LOA / objection</th>
                 <th>Latest lead</th>
                 <th>Due</th>
                 <th>Paid</th>
-                <th>Remaining</th>
+                <th>
+                  <SortLink
+                    href={sortHref("/customers", listParams, "remaining", sort, dir)}
+                    active={sort === "remaining"}
+                    dir={dir}
+                  >
+                    Remaining
+                  </SortLink>
+                </th>
                 <th>Added</th>
               </tr>
             </thead>
@@ -212,6 +268,9 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                       <Link href={`/customers/${customer.id}`} className="font-medium">
                         {customer.companyName}
                       </Link>
+                      {customer.archivedAt ? (
+                        <div className="text-[0.7rem] text-warn">Archived</div>
+                      ) : null}
                       <div className="text-[0.7rem] text-muted">
                         {[customer.city, customer.postcode].filter(Boolean).join(" · ")}
                       </div>

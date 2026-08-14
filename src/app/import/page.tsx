@@ -11,6 +11,15 @@ export default function ImportPage() {
         description="CSV only — not monday.com. Preview the rows, then commit. Existing records are updated by MPAN or MPRN; nothing is deleted."
         actions={
           <>
+            <a href="/api/export/customers" className="btn btn-ghost">
+              Export customers
+            </a>
+            <a href="/api/export/meters" className="btn btn-ghost">
+              Export meters
+            </a>
+            <a href="/api/export/deals" className="btn btn-ghost">
+              Export deals
+            </a>
             <a href="/api/import/template" className="btn btn-ghost">
               Download template
             </a>

@@ -198,6 +198,25 @@ export function RenewalCell({ date }: { date: Date | null | undefined }) {
   );
 }
 
+export function SortLink({
+  href,
+  active,
+  dir,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  children: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className={active ? "text-ink" : undefined}>
+      {children}
+      {active ? <span className="text-brass-dark"> {dir === "asc" ? "↑" : "↓"}</span> : null}
+    </Link>
+  );
+}
+
 export function Section({
   title,
   action,

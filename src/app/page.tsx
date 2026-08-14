@@ -21,12 +21,12 @@ export default async function DashboardPage() {
   const [renewals, objections, leads, deals, openLeadCount, customerCount, meterCount] =
     await Promise.all([
     prisma.meter.findMany({
-      where: { renewalDate: { lte: horizon } },
+      where: { renewalDate: { lte: horizon }, customer: { archivedAt: null } },
       include: { customer: true, salesperson: true },
       orderBy: { renewalDate: "asc" },
     }),
     prisma.meter.findMany({
-      where: { objectionStatus: "IN_OBJECTION" },
+      where: { objectionStatus: "IN_OBJECTION", customer: { archivedAt: null } },
       include: { customer: true, salesperson: true },
       orderBy: { objectionRaisedOn: "asc" },
     }),
@@ -36,8 +36,8 @@ export default async function DashboardPage() {
     }),
     prisma.deal.findMany(),
     prisma.lead.count({ where: { stage: { in: [...OPEN_LEAD_STAGES] } } }),
-    prisma.customer.count(),
-    prisma.meter.count(),
+    prisma.customer.count({ where: { archivedAt: null } }),
+    prisma.meter.count({ where: { customer: { archivedAt: null } } }),
   ]);
 
   const leadCounts = Object.fromEntries(leads.map((row) => [row.stage, row._count._all]));

@@ -27,7 +27,7 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
   horizon.setDate(horizon.getDate() + days);
 
   const meters = await prisma.meter.findMany({
-    where: { renewalDate: { lte: horizon } },
+    where: { renewalDate: { lte: horizon }, customer: { archivedAt: null } },
     include: {
       customer: { include: { deals: true } },
       salesperson: true,

@@ -36,6 +36,7 @@ model Customer {
   city         String?
   postcode     String?
   industry     String?
+  archivedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -94,10 +95,11 @@ model Lead {
   customerId String
   title      String
   stage      String   @default("NEW")
-  source     String?
-  notes      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  source         String?
+  notes          String?
+  outcomeReason  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   allocations     LeadAllocation[]

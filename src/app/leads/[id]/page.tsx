@@ -50,7 +50,17 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <Section title="Move stage">
           <div className="p-4">
-            <StageSelect leadId={lead.id} stage={lead.stage} />
+            <StageSelect
+              leadId={lead.id}
+              stage={lead.stage}
+              outcomeReason={lead.outcomeReason}
+            />
+            {lead.outcomeReason ? (
+              <p className="mt-2 text-sm">
+                {lead.stage === "LOST" ? "Lost" : lead.stage === "SOLD" ? "Won" : "Reason"}:{" "}
+                {lead.outcomeReason}
+              </p>
+            ) : null}
             <p className="mt-2 text-xs text-muted">
               Stages live in <code>src/lib/constants.ts</code> if you need to rename the process.
             </p>

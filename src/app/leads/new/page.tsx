@@ -7,7 +7,10 @@ export default async function NewLeadPage({ searchParams }: SearchPageProps) {
   const query = await searchParams;
   const customerId = typeof query.customerId === "string" ? query.customerId : undefined;
   const [customers, agents] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { companyName: "asc" } }),
+    prisma.customer.findMany({
+      where: { archivedAt: null },
+      orderBy: { companyName: "asc" },
+    }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
   ]);
 

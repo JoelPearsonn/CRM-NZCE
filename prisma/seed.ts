@@ -275,6 +275,8 @@ async function main() {
     await ensureDemoInbox();
     await ensureDemoReconciliations();
     await ensureRenewalReminderTasks();
+    await ensureDemoOutcomes();
+    await ensureDemoArchive();
     console.log("Desk already seeded — skipping (demo extras checked).");
     return;
   }
@@ -736,6 +738,7 @@ async function main() {
       stage: "SOLD",
       source: "Existing book",
       notes: "Three-site book sold onto E.ON / British Gas 12-month.",
+      outcomeReason: "Incumbent beat on a 12-month E.ON / British Gas.",
       allocations: { create: [{ agentId: james.id }] },
     },
   });
@@ -756,6 +759,7 @@ async function main() {
       stage: "SOLD",
       source: "Existing book",
       notes: "Four supplies across Brighton and Hove.",
+      outcomeReason: "Governors signed the EDF dual-fuel basket.",
       allocations: { create: [{ agentId: priya.id }, { agentId: helen.id }] },
     },
   });
@@ -769,6 +773,17 @@ async function main() {
       allocations: { create: [{ agentId: tom.id }] },
     },
   });
+  await prisma.lead.create({
+    data: {
+      customerId: bakery.id,
+      title: "Night-shift site enquiry",
+      stage: "LOST",
+      source: "Cold call",
+      notes: "Second site — they stayed with the incumbent.",
+      outcomeReason: "Stayed with incumbent on price.",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
   const merseyLead = await prisma.lead.create({
     data: {
       customerId: mersey.id,
@@ -776,6 +791,7 @@ async function main() {
       stage: "SOLD",
       source: "Referral",
       notes: "Two HH MPANs onto SmartestEnergy.",
+      outcomeReason: "HH book sold onto SmartestEnergy.",
       allocations: { create: [{ agentId: tom.id }] },
     },
   });
@@ -1029,8 +1045,61 @@ async function main() {
   await ensureDemoInbox();
   await ensureDemoReconciliations();
   await ensureRenewalReminderTasks();
+  await ensureDemoOutcomes();
+  await ensureDemoArchive();
 
   console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
+}
+
+async function ensureDemoOutcomes() {
+  const sold = await prisma.lead.findMany({ where: { stage: "SOLD", outcomeReason: null } });
+  const reasons: Record<string, string> = {
+    "Care group dual-fuel renewal": "Incumbent beat on a 12-month E.ON / British Gas.",
+    "Hotel group 2026 renewal": "Governors signed the EDF dual-fuel basket.",
+    "HH warehouse book": "HH book sold onto SmartestEnergy.",
+  };
+  for (const lead of sold) {
+    const reason = reasons[lead.title] ?? "Won on price and start date.";
+    await prisma.lead.update({ where: { id: lead.id }, data: { outcomeReason: reason } });
+  }
+
+  const lost = await prisma.lead.findFirst({ where: { stage: "LOST" } });
+  if (lost) {
+    if (!lost.outcomeReason) {
+      await prisma.lead.update({
+        where: { id: lost.id },
+        data: { outcomeReason: "Stayed with incumbent on price." },
+      });
+    }
+    return;
+  }
+  const bakery = await prisma.customer.findFirst({
+    where: { companyName: { contains: "Bakery" } },
+  });
+  const tom = await prisma.agent.findUnique({ where: { email: "tom.brennan@nzce.co.uk" } });
+  if (!bakery || !tom) return;
+  await prisma.lead.create({
+    data: {
+      customerId: bakery.id,
+      title: "Night-shift site enquiry",
+      stage: "LOST",
+      source: "Cold call",
+      notes: "Second site — they stayed with the incumbent.",
+      outcomeReason: "Stayed with incumbent on price.",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+}
+
+async function ensureDemoArchive() {
+  const parish = await prisma.customer.findFirst({
+    where: { companyName: { contains: "Parish" } },
+  });
+  if (!parish || parish.archivedAt) return;
+  await prisma.customer.update({
+    where: { id: parish.id },
+    data: { archivedAt: daysFromNow(-1) },
+  });
 }
 
 async function ensureDemoReconciliations() {

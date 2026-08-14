@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useActionState, useState } from "react";
 import type { Agent, Customer, Deal, Lead, Meter, TenderResponse } from "@prisma/client";
 import { saveAgent, type ActionState as AgentState } from "@/app/actions/agents";
 import { saveCustomer, type ActionState as CustomerState } from "@/app/actions/customers";
@@ -32,6 +33,25 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       {customer ? <input type="hidden" name="id" value={customer.id} /> : null}
       <div className="md:col-span-2">
         <ErrorBanner message={state.error} />
+        {state.duplicate ? (
+          <div className="border border-warn/40 bg-warn-soft px-3 py-3 text-sm">
+            <p className="font-medium text-ink">
+              This {state.duplicate.match === "email" ? "email" : "company name"} is already on the
+              book.
+            </p>
+            <p className="mt-1 text-muted">
+              {state.duplicate.companyName}
+              {state.duplicate.email ? ` · ${state.duplicate.email}` : ""}
+            </p>
+            <p className="mt-2">
+              <Link href={`/customers/${state.duplicate.id}`} className="font-semibold text-brass-dark">
+                Open the existing record
+              </Link>
+              {" — "}or add this as a second record if you are sure.
+            </p>
+            <input type="hidden" name="confirmDuplicate" value="1" />
+          </div>
+        ) : null}
       </div>
       <Field label="Company name" name="companyName">
         <input id="companyName" name="companyName" required defaultValue={customer?.companyName} />
@@ -62,7 +82,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       </Field>
       <div className="md:col-span-2 flex justify-end">
         <button className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : customer ? "Save customer" : "Add customer"}
+          {pending ? "Saving…" : customer ? "Save customer" : state.duplicate ? "Add anyway" : "Add customer"}
         </button>
       </div>
     </form>
@@ -266,6 +286,8 @@ export function LeadForm({
   presetCustomerId?: string;
 }) {
   const [state, action, pending] = useActionState(saveLead, empty as LeadState);
+  const [stage, setStage] = useState(lead?.stage ?? "NEW");
+  const needsReason = stage === "SOLD" || stage === "LOST";
   return (
     <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">
       {lead ? <input type="hidden" name="id" value={lead.id} /> : null}
@@ -288,7 +310,12 @@ export function LeadForm({
         </select>
       </Field>
       <Field label="Stage" name="stage">
-        <select id="stage" name="stage" defaultValue={lead?.stage ?? "NEW"}>
+        <select
+          id="stage"
+          name="stage"
+          value={stage}
+          onChange={(event) => setStage(event.target.value)}
+        >
           {LEAD_STAGES.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -296,6 +323,20 @@ export function LeadForm({
           ))}
         </select>
       </Field>
+      {needsReason ? (
+        <Field
+          label={stage === "SOLD" ? "Won reason" : "Lost reason"}
+          name="outcomeReason"
+          hint="Required when a lead is sold or lost."
+        >
+          <input
+            id="outcomeReason"
+            name="outcomeReason"
+            required
+            defaultValue={lead?.outcomeReason ?? ""}
+          />
+        </Field>
+      ) : null}
       <div className="md:col-span-2">
         <Field label="Title" name="title">
           <input id="title" name="title" required defaultValue={lead?.title} />

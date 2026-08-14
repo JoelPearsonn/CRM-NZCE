@@ -16,6 +16,7 @@ import {
   Section,
   StagePill,
 } from "@/components/ui";
+import { archiveCustomer } from "@/app/actions/customers";
 import { toggleTask } from "@/app/actions/desk";
 import { isTenderLeadStage } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
@@ -86,9 +87,21 @@ export default async function CustomerDetailPage({
             <Link href={`/customers/${customer.id}/print`} className="btn btn-ghost">
               Print summary
             </Link>
+            <form action={archiveCustomer}>
+              <input type="hidden" name="id" value={customer.id} />
+              <button className="btn btn-ghost">
+                {customer.archivedAt ? "Restore to book" : "Archive"}
+              </button>
+            </form>
           </>
         }
       />
+      {customer.archivedAt ? (
+        <p className="mb-4 border border-warn/40 bg-warn-soft px-3 py-2 text-sm">
+          This record is archived. It is hidden from the default book — not deleted. Restore to put
+          it back on the lists.
+        </p>
+      ) : null}
 
       <div className="mb-6">
         <FinanceSnapshot

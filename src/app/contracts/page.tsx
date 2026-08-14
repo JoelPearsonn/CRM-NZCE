@@ -1,14 +1,31 @@
 import Link from "next/link";
-import { DealStatusPill, EmptyState, FuelPill, PageHeader, RenewalCell } from "@/components/ui";
+import { DealStatusPill, EmptyState, FuelPill, PageHeader, RenewalCell, SortLink } from "@/components/ui";
 import { dealRemaining } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
+import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { sortDir, sortHref } from "@/lib/sort";
 
-export default async function ContractsPage() {
+export default async function ContractsPage({ searchParams }: SearchPageProps) {
+  const query = await searchParams;
+  const sort = query.sort === "remaining" ? "remaining" : "due";
+  const dir = sortDir(typeof query.dir === "string" ? query.dir : "");
   const deals = await prisma.deal.findMany({
     include: { customer: true, salesperson: true, meter: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { renewalDate: "asc" }],
   });
+  const sorted = [...deals].sort((a, b) => {
+    let cmp = 0;
+    if (sort === "due") {
+      const left = a.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
+      const right = b.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
+      cmp = left - right;
+    } else {
+      cmp = dealRemaining(a) - dealRemaining(b);
+    }
+    return dir === "desc" ? -cmp : cmp;
+  });
+  const listParams = new URLSearchParams();
 
   return (
     <div>
@@ -17,9 +34,14 @@ export default async function ContractsPage() {
         title="Contracts"
         description="Book-wide view of the same deal records that live on each customer. Edit finance on the customer record or here."
         actions={
-          <Link href="/contracts/new" className="btn btn-primary">
-            Record deal
-          </Link>
+          <>
+            <a href="/api/export/deals" className="btn btn-ghost">
+              Export deals
+            </a>
+            <Link href="/contracts/new" className="btn btn-primary">
+              Record deal
+            </Link>
+          </>
         }
       />
       {deals.length === 0 ? (
@@ -40,16 +62,32 @@ export default async function ContractsPage() {
                 <th>Status</th>
                 <th>Term</th>
                 <th>Renewal</th>
-                <th>Due date</th>
+                <th>
+                  <SortLink
+                    href={sortHref("/contracts", listParams, "due", sort, dir)}
+                    active={sort === "due"}
+                    dir={dir}
+                  >
+                    Due date
+                  </SortLink>
+                </th>
                 <th>Amount due</th>
                 <th>Est. commission</th>
                 <th>Actual paid</th>
-                <th>Remaining</th>
+                <th>
+                  <SortLink
+                    href={sortHref("/contracts", listParams, "remaining", sort, dir)}
+                    active={sort === "remaining"}
+                    dir={dir}
+                  >
+                    Remaining
+                  </SortLink>
+                </th>
                 <th>Sales</th>
               </tr>
             </thead>
             <tbody>
-              {deals.map((deal) => (
+              {sorted.map((deal) => (
                 <tr key={deal.id}>
                   <td>
                     <Link href={`/customers/${deal.customerId}`} className="font-medium">

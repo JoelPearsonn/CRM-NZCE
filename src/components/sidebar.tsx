@@ -12,6 +12,7 @@ const links = [
   { href: "/contracts", label: "Contracts", hint: "Sold book" },
   { href: "/finance", label: "Finance", hint: "Cashflow & profit" },
   { href: "/agents", label: "Agents", hint: "Allocation" },
+  { href: "/help", label: "How to use", hint: "Plain English" },
 ];
 
 export function Sidebar() {

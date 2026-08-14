@@ -82,6 +82,26 @@ export const UK_SUPPLIERS = [
   "Opus Energy",
 ] as const;
 
+export const CSV_DEAL_HEADERS = [
+  "companyName",
+  "email",
+  "supplier",
+  "fuelType",
+  "status",
+  "siteName",
+  "mpan",
+  "mprn",
+  "contractStart",
+  "contractEnd",
+  "renewalDate",
+  "dueDate",
+  "amountDue",
+  "estimatedCommission",
+  "actualPaid",
+  "salespersonEmail",
+  "agentEmails",
+] as const;
+
 export const CSV_IMPORT_HEADERS = [
   "companyName",
   "tradingName",

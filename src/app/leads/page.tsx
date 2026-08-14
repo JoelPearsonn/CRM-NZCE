@@ -13,6 +13,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
 
   const [leads, agents] = await Promise.all([
     prisma.lead.findMany({
+      where: { customer: { archivedAt: null } },
       include: {
         customer: true,
         allocations: { include: { agent: true } },
@@ -127,6 +128,11 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
                           {lead.customer.companyName}
                         </Link>
                         <p className="mt-0.5 text-xs text-muted">{lead.title}</p>
+                        {lead.outcomeReason && (lead.stage === "SOLD" || lead.stage === "LOST") ? (
+                          <p className="mt-1 text-[0.7rem] text-ink">
+                            {lead.stage === "SOLD" ? "Won" : "Lost"}: {lead.outcomeReason}
+                          </p>
+                        ) : null}
                         {isTenderLeadStage(lead.stage) ? (
                           <Link
                             href={`/customers/${lead.customerId}?leadId=${lead.id}#tenders`}
@@ -136,7 +142,11 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
                           </Link>
                         ) : null}
                         <div className="mt-2">
-                          <StageSelect leadId={lead.id} stage={lead.stage} />
+                          <StageSelect
+                            leadId={lead.id}
+                            stage={lead.stage}
+                            outcomeReason={lead.outcomeReason}
+                          />
                         </div>
                         <div className="mt-2 border-t border-rule pt-2">
                           <p className="mb-1 text-[0.65rem] font-semibold tracking-[0.08em] text-muted uppercase">

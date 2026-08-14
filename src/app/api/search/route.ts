@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     want("customer")
       ? prisma.customer.findMany({
           where: {
+            archivedAt: null,
             OR: [
               { companyName: contains },
               { tradingName: contains },
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
     want("meter")
       ? prisma.meter.findMany({
           where: {
+            customer: { archivedAt: null },
             OR: [
               { mpan: contains },
               { mprn: contains },
@@ -50,6 +52,7 @@ export async function GET(request: Request) {
     want("lead")
       ? prisma.lead.findMany({
           where: {
+            customer: { archivedAt: null },
             OR: [{ title: contains }, { notes: contains }, { customer: { companyName: contains } }],
           },
           include: { customer: true },
@@ -59,6 +62,7 @@ export async function GET(request: Request) {
     want("deal")
       ? prisma.deal.findMany({
           where: {
+            customer: { archivedAt: null },
             OR: [{ supplier: contains }, { notes: contains }, { customer: { companyName: contains } }],
           },
           include: { customer: true },

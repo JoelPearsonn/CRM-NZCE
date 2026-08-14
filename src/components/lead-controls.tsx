@@ -1,12 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import type { Agent } from "@prisma/client";
 import { allocateLeadAgents, updateLeadStage } from "@/app/actions/leads";
 import { LEAD_STAGES } from "@/lib/constants";
 
-export function StageSelect({ leadId, stage }: { leadId: string; stage: string }) {
+export function StageSelect({
+  leadId,
+  stage,
+  outcomeReason,
+}: {
+  leadId: string;
+  stage: string;
+  outcomeReason?: string | null;
+}) {
+  const [next, setNext] = useState(stage);
+  const needsReason = next === "SOLD" || next === "LOST";
+
   return (
-    <form action={updateLeadStage}>
+    <form action={updateLeadStage} className="grid gap-1.5">
       <input type="hidden" name="id" value={leadId} />
       <label className="sr-only" htmlFor={`stage-${leadId}`}>
         Stage
@@ -14,8 +26,14 @@ export function StageSelect({ leadId, stage }: { leadId: string; stage: string }
       <select
         id={`stage-${leadId}`}
         name="stage"
-        defaultValue={stage}
-        onChange={(event) => event.currentTarget.form?.requestSubmit()}
+        value={next}
+        onChange={(event) => {
+          const value = event.target.value;
+          setNext(value);
+          if (value !== "SOLD" && value !== "LOST") {
+            event.currentTarget.form?.requestSubmit();
+          }
+        }}
         className="w-full border border-rule bg-card px-2 py-1 text-xs"
       >
         {LEAD_STAGES.map((item) => (
@@ -24,6 +42,22 @@ export function StageSelect({ leadId, stage }: { leadId: string; stage: string }
           </option>
         ))}
       </select>
+      {needsReason ? (
+        <>
+          <label className="sr-only" htmlFor={`reason-${leadId}`}>
+            {next === "SOLD" ? "Won reason" : "Lost reason"}
+          </label>
+          <input
+            id={`reason-${leadId}`}
+            name="outcomeReason"
+            required
+            defaultValue={outcomeReason ?? ""}
+            placeholder={next === "SOLD" ? "Why was this won?" : "Why was this lost?"}
+            className="w-full border border-rule bg-card px-2 py-1 text-xs"
+          />
+          <button className="btn btn-brass px-2 py-1 text-[0.7rem]">Save stage</button>
+        </>
+      ) : null}
     </form>
   );
 }

@@ -24,12 +24,16 @@ export async function saveLead(
   const customerId = str(formData.get("customerId"));
   const title = str(formData.get("title"));
   const stage = str(formData.get("stage")) || "NEW";
+  const outcomeReason = optionalStr(formData.get("outcomeReason"));
   const agentIds = agentIdsFrom(formData);
 
   if (!customerId) return { error: "Choose a customer." };
   if (!title) return { error: "Give the lead a title." };
   if (!LEAD_STAGES.some((item) => item.value === stage)) {
     return { error: "Choose a valid pipeline stage." };
+  }
+  if ((stage === "SOLD" || stage === "LOST") && !outcomeReason) {
+    return { error: stage === "SOLD" ? "Say why this was won." : "Say why this was lost." };
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
@@ -41,6 +45,7 @@ export async function saveLead(
     stage,
     source: optionalStr(formData.get("source")),
     notes: optionalStr(formData.get("notes")),
+    outcomeReason: stage === "SOLD" || stage === "LOST" ? outcomeReason : null,
   };
 
   if (id) {
@@ -92,17 +97,22 @@ export async function saveLead(
 export async function updateLeadStage(formData: FormData) {
   const id = str(formData.get("id"));
   const stage = str(formData.get("stage"));
+  const outcomeReason = optionalStr(formData.get("outcomeReason"));
   if (!id || !LEAD_STAGES.some((item) => item.value === stage)) return;
+  if ((stage === "SOLD" || stage === "LOST") && !outcomeReason) return;
 
   const lead = await prisma.lead.update({
     where: { id },
-    data: { stage },
+    data: {
+      stage,
+      outcomeReason: stage === "SOLD" || stage === "LOST" ? outcomeReason : null,
+    },
     include: { customer: true },
   });
   await logActivity(
     lead.customerId,
     "LEAD_STAGE_CHANGED",
-    `${lead.title} moved to ${labelFor(LEAD_STAGES, stage)}.`,
+    `${lead.title} moved to ${labelFor(LEAD_STAGES, stage)}${outcomeReason ? ` — ${outcomeReason}` : ""}.`,
   );
   revalidatePath("/");
   revalidatePath("/leads");
