@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function FinancePage() {
   const deals = await prisma.deal.findMany({
-    include: { customer: true, salesperson: true },
+    include: { customer: true, salesperson: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
   });
 
@@ -25,6 +25,8 @@ export default async function FinancePage() {
     customerName: deal.customer.companyName,
     salespersonName: deal.salesperson?.name ?? null,
     supplier: deal.supplier,
+    agentIds: deal.allocations.map((row) => row.agentId),
+    agentNames: deal.allocations.map((row) => row.agent.name),
     amountDue: deal.amountDue,
     estimatedCommission: deal.estimatedCommission,
     actualPaid: deal.actualPaid,
@@ -146,6 +148,9 @@ export default async function FinancePage() {
             </Section>
 
             <Section title="By salesperson">
+              <p className="border-b border-rule px-4 py-2 text-xs text-muted">
+                Two agents on a deal split estimated and actual 50/50. Book totals stay whole.
+              </p>
               <HorizonBars rows={byAgent} valueKey="due" />
               <table className="desk-table">
                 <thead>
@@ -256,7 +261,14 @@ export default async function FinancePage() {
                         {gbp(remaining)}
                       </td>
                       <td>{gbp(deal.estimatedCommission)}</td>
-                      <td>{deal.salesperson?.name ?? "—"}</td>
+                      <td>
+                        {deal.allocations.length
+                          ? deal.allocations.map((row) => row.agent.name).join(" · ")
+                          : (deal.salesperson?.name ?? "—")}
+                        {deal.allocations.length === 2 ? (
+                          <div className="text-[0.7rem] text-muted">50/50</div>
+                        ) : null}
+                      </td>
                     </tr>
                   );
                 })}

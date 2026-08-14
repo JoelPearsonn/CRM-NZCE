@@ -24,11 +24,22 @@ export async function saveDeal(
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return { error: "Customer not found." };
 
+  const agentIds = formData
+    .getAll("agentIds")
+    .map((value) => String(value))
+    .filter(Boolean);
+  const leadId = optionalStr(formData.get("leadId"));
+  if (leadId && agentIds.length === 0) {
+    const leadAgents = await prisma.leadAllocation.findMany({ where: { leadId } });
+    agentIds.push(...leadAgents.map((row) => row.agentId));
+  }
+  const salespersonId = optionalStr(formData.get("salespersonId")) || agentIds[0] || null;
+
   const data = {
     customerId,
     meterId: optionalStr(formData.get("meterId")),
-    leadId: optionalStr(formData.get("leadId")),
-    salespersonId: optionalStr(formData.get("salespersonId")),
+    leadId,
+    salespersonId,
     supplier,
     fuelType,
     contractStart: parseDate(formData.get("contractStart")),
@@ -45,7 +56,18 @@ export async function saveDeal(
   if (id) {
     const existing = await prisma.deal.findUnique({ where: { id } });
     if (!existing) return { error: "Contract not found." };
-    await prisma.deal.update({ where: { id }, data });
+    await prisma.deal.update({
+      where: { id },
+      data: {
+        ...data,
+        allocations: {
+          deleteMany: {},
+          create: uniqueIds(agentIds.length ? agentIds : salespersonId ? [salespersonId] : []).map(
+            (agentId) => ({ agentId }),
+          ),
+        },
+      },
+    });
     await logActivity(
       customerId,
       "DEAL_UPDATED",
@@ -55,10 +77,20 @@ export async function saveDeal(
     revalidatePath("/contracts");
     revalidatePath("/customers");
     revalidatePath(`/customers/${customerId}`);
+    revalidatePath("/finance");
     redirect(returnToCustomer(formData, customerId, id));
   }
 
-  const deal = await prisma.deal.create({ data });
+  const deal = await prisma.deal.create({
+    data: {
+      ...data,
+      allocations: {
+        create: uniqueIds(agentIds.length ? agentIds : salespersonId ? [salespersonId] : []).map(
+          (agentId) => ({ agentId }),
+        ),
+      },
+    },
+  });
   await logActivity(
     customerId,
     "DEAL_RECORDED",
@@ -68,7 +100,12 @@ export async function saveDeal(
   revalidatePath("/contracts");
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
+  revalidatePath("/finance");
   redirect(returnToCustomer(formData, customerId, deal.id));
+}
+
+function uniqueIds(ids: string[]) {
+  return [...new Set(ids.filter(Boolean))];
 }
 
 function returnToCustomer(formData: FormData, customerId: string, dealId: string) {

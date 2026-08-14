@@ -12,6 +12,8 @@ export type AnalyticsDeal = FinanceDeal & {
   customerName: string;
   salespersonName: string | null;
   supplier: string;
+  agentIds: string[];
+  agentNames: string[];
 };
 
 export type Bucket = {
@@ -83,11 +85,26 @@ export function groupByMonth(deals: AnalyticsDeal[]): Bucket[] {
 export function groupByAgent(deals: AnalyticsDeal[]): Bucket[] {
   const map = new Map<string, Bucket>();
   for (const deal of deals) {
-    const key = deal.salespersonId ?? "unassigned";
-    const label = deal.salespersonName ?? "Unassigned";
-    const bucket = map.get(key) ?? emptyBucket(key, label);
-    addDeal(bucket, deal);
-    map.set(key, bucket);
+    const agents =
+      deal.agentIds.length > 0
+        ? deal.agentIds.map((id, index) => ({
+            id,
+            name: deal.agentNames[index] ?? "Agent",
+          }))
+        : deal.salespersonId
+          ? [{ id: deal.salespersonId, name: deal.salespersonName ?? "Agent" }]
+          : [{ id: "unassigned", name: "Unassigned" }];
+    const share = agents.length;
+    const slice: FinanceDeal = {
+      amountDue: (deal.amountDue ?? 0) / share,
+      actualPaid: (deal.actualPaid ?? 0) / share,
+      estimatedCommission: (deal.estimatedCommission ?? 0) / share,
+    };
+    for (const agent of agents) {
+      const bucket = map.get(agent.id) ?? emptyBucket(agent.id, agent.name);
+      addDeal(bucket, slice);
+      map.set(agent.id, bucket);
+    }
   }
   return [...map.values()].sort((a, b) => b.due - a.due || b.estimated - a.estimated);
 }

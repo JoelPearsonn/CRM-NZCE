@@ -82,6 +82,29 @@ export const UK_SUPPLIERS = [
   "Opus Energy",
 ] as const;
 
+export const CSV_IMPORT_HEADERS = [
+  "companyName",
+  "tradingName",
+  "contactName",
+  "email",
+  "phone",
+  "industry",
+  "addressLine1",
+  "city",
+  "postcode",
+  "siteName",
+  "siteAddress",
+  "fuelType",
+  "mpan",
+  "mprn",
+  "electricEac",
+  "gasAq",
+  "supplier",
+  "settlement",
+  "loaStatus",
+  "salespersonEmail",
+] as const;
+
 export function labelFor(
   options: readonly { value: string; label: string }[],
   value: string | null | undefined,

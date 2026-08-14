@@ -95,4 +95,5 @@ export async function toggleTask(formData: FormData) {
     await logActivity(task.customerId, "TASK_COMPLETED", `Follow-up completed: ${task.title}.`);
   }
   refreshCustomer(task.customerId);
+  revalidatePath("/tasks");
 }

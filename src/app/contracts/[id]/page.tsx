@@ -9,7 +9,13 @@ export default async function DealDetailPage({ params }: IdPageProps) {
   const { id } = await params;
   const deal = await prisma.deal.findUnique({
     where: { id },
-    include: { customer: true, meter: true, lead: true, salesperson: true },
+    include: {
+      customer: true,
+      meter: true,
+      lead: true,
+      salesperson: true,
+      allocations: { include: { agent: true } },
+    },
   });
   if (!deal) notFound();
 
@@ -17,7 +23,14 @@ export default async function DealDetailPage({ params }: IdPageProps) {
     ["Supplier", deal.supplier],
     ["Fuel", null],
     ["Status", null],
-    ["Salesperson", deal.salesperson?.name ?? "—"],
+    [
+      "Sales agents",
+      deal.allocations.length
+        ? `${deal.allocations.map((row) => row.agent.name).join(" · ")}${
+            deal.allocations.length === 2 ? " · 50/50" : ""
+          }`
+        : (deal.salesperson?.name ?? "—"),
+    ],
     ["Contract start", formatDate(deal.contractStart)],
     ["Contract end", formatDate(deal.contractEnd)],
     ["Commission due", formatDate(deal.dueDate)],

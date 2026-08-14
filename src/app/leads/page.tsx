@@ -2,9 +2,14 @@ import Link from "next/link";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { EmptyState, PageHeader, StagePill } from "@/components/ui";
 import { isTenderLeadStage, LEAD_STAGES } from "@/lib/constants";
+import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
-export default async function LeadsPage() {
+export default async function LeadsPage({ searchParams }: SearchPageProps) {
+  const query = await searchParams;
+  const stage = typeof query.stage === "string" ? query.stage : "";
+  const agent = typeof query.agent === "string" ? query.agent : "";
+
   const [leads, agents] = await Promise.all([
     prisma.lead.findMany({
       include: {
@@ -16,12 +21,18 @@ export default async function LeadsPage() {
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
   ]);
 
+  const filtered = leads.filter((lead) => {
+    if (stage && lead.stage !== stage) return false;
+    if (agent && !lead.allocations.some((allocation) => allocation.agentId === agent)) return false;
+    return true;
+  });
+
   return (
     <div>
       <PageHeader
         kicker="Pipeline"
         title="Leads"
-        description="Move a card between stages or allocate one or more agents. Stages are a single list in the code if you need to rename them."
+        description="Filter by stage or agent. Move a card or allocate one or more people."
         actions={
           <Link href="/leads/new" className="btn btn-primary">
             Open lead
@@ -29,21 +40,76 @@ export default async function LeadsPage() {
         }
       />
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[
+          { href: "/leads", label: "All" },
+          { href: "/leads?stage=TENDERING", label: "Tendering" },
+          { href: "/leads?stage=LOA_REQUESTED", label: "LOA requested" },
+          { href: "/leads?stage=QUOTED", label: "Quoted" },
+          { href: "/leads?stage=SOLD", label: "Sold" },
+        ].map((view) => {
+          const current = stage ? `/leads?stage=${stage}` : "/leads";
+          const active = !agent && view.href === current;
+          return (
+            <Link
+              key={view.href}
+              href={view.href}
+              className={`btn text-[0.75rem] ${active ? "btn-brass" : "btn-ghost"}`}
+            >
+              {view.label}
+            </Link>
+          );
+        })}
+      </div>
+
+      <form className="card mb-4 grid gap-3 p-4 md:grid-cols-3" method="get">
+        <label className="field">
+          <span>Stage</span>
+          <select name="stage" defaultValue={stage}>
+            <option value="">All stages</option>
+            {LEAD_STAGES.map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>Agent</span>
+          <select name="agent" defaultValue={agent}>
+            <option value="">Anyone</option>
+            {agents.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-end gap-2">
+          <button className="btn btn-brass">Apply</button>
+          <Link href="/leads" className="btn btn-ghost">
+            Clear
+          </Link>
+        </div>
+      </form>
+
       {leads.length === 0 ? (
         <EmptyState
           title="Pipeline is empty"
-          body="Open a lead against a customer and put it on a stage."
+          body="Add a customer first, then open a lead against them. You do not need the demo seed."
           actionHref="/leads/new"
           actionLabel="Open lead"
+          secondaryHref="/customers/new"
+          secondaryLabel="Add customer first"
         />
       ) : (
         <div className="flex gap-3 overflow-x-auto pb-4">
-          {LEAD_STAGES.map((stage) => {
-            const column = leads.filter((lead) => lead.stage === stage.value);
+          {LEAD_STAGES.filter((item) => !stage || item.value === stage).map((item) => {
+            const column = filtered.filter((lead) => lead.stage === item.value);
             return (
-              <section key={stage.value} className="w-64 shrink-0">
+              <section key={item.value} className="w-64 shrink-0">
                 <div className="mb-2 flex items-center justify-between">
-                  <StagePill value={stage.value} />
+                  <StagePill value={item.value} />
                   <span className="text-xs text-muted">{column.length}</span>
                 </div>
                 <div className="space-y-2">

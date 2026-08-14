@@ -86,8 +86,11 @@ export function MeterForm({
       <div className="md:col-span-2">
         <ErrorBanner message={state.error} />
       </div>
-      <Field label="Site name" name="siteName">
-        <input id="siteName" name="siteName" defaultValue={meter?.siteName ?? ""} />
+      <Field label="Site name" name="siteName" hint="The building or trading site — first-class, not just a note.">
+        <input id="siteName" name="siteName" required defaultValue={meter?.siteName ?? ""} />
+      </Field>
+      <Field label="Site address" name="siteAddress">
+        <input id="siteAddress" name="siteAddress" defaultValue={meter?.siteAddress ?? ""} />
       </Field>
       <Field label="Fuel" name="fuelType">
         <select id="fuelType" name="fuelType" required defaultValue={meter?.fuelType ?? "ELECTRIC"}>
@@ -236,11 +239,6 @@ export function MeterForm({
         </select>
       </Field>
       <div className="md:col-span-2">
-        <Field label="Site address" name="siteAddress">
-          <input id="siteAddress" name="siteAddress" defaultValue={meter?.siteAddress ?? ""} />
-        </Field>
-      </div>
-      <div className="md:col-span-2">
         <Field label="Current rates" name="currentRates">
           <textarea id="currentRates" name="currentRates" rows={2} defaultValue={meter?.currentRates ?? ""} />
         </Field>
@@ -353,6 +351,7 @@ export function DealForm({
   returnTo,
   lockCustomer,
   embedded,
+  selectedAgentIds = [],
 }: {
   deal?: Deal;
   customers: Customer[];
@@ -363,6 +362,7 @@ export function DealForm({
   returnTo?: "customer" | "contract";
   lockCustomer?: boolean;
   embedded?: boolean;
+  selectedAgentIds?: string[];
 }) {
   const [state, action, pending] = useActionState(saveDeal, empty as DealState);
   const customerId = deal?.customerId ?? presetCustomerId ?? "";
@@ -436,16 +436,29 @@ export function DealForm({
           ))}
         </select>
       </Field>
-      <Field label="Salesperson" name="salespersonId">
-        <select id="salespersonId" name="salespersonId" defaultValue={deal?.salespersonId ?? ""}>
-          <option value="">Unassigned</option>
+      <div className="field">
+        <span className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+          Sales agents
+        </span>
+        <p className="text-xs text-muted">Two agents split estimated and actual 50/50 in finance.</p>
+        <div className="mt-1 grid gap-2 rounded-sm border border-rule bg-card p-3">
           {agents.map((agent) => (
-            <option key={agent.id} value={agent.id}>
+            <label key={agent.id} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="agentIds"
+                value={agent.id}
+                defaultChecked={
+                  selectedAgentIds.includes(agent.id) ||
+                  (!selectedAgentIds.length && deal?.salespersonId === agent.id)
+                }
+              />
               {agent.name}
-            </option>
+              <span className="text-muted">· {agent.role}</span>
+            </label>
           ))}
-        </select>
-      </Field>
+        </div>
+      </div>
       <Field label="Contract start" name="contractStart">
         <input id="contractStart" name="contractStart" type="date" defaultValue={toDateInput(deal?.contractStart)} />
       </Field>

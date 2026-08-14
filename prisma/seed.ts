@@ -41,6 +41,53 @@ async function ensureDemoLoa() {
   await seedHarbourViewSignedLoa();
 }
 
+async function ensureDemoDealSplits() {
+  const deals = await prisma.deal.findMany({
+    include: { lead: { include: { allocations: true } }, allocations: true },
+  });
+  for (const deal of deals) {
+    if (deal.allocations.length > 0) continue;
+    const ids = [
+      deal.salespersonId,
+      ...(deal.lead?.allocations.map((row) => row.agentId) ?? []),
+    ].filter((id): id is string => Boolean(id));
+    for (const agentId of [...new Set(ids)]) {
+      await prisma.dealAllocation.create({ data: { dealId: deal.id, agentId } });
+    }
+  }
+
+  const harbourDeal = await prisma.deal.findFirst({
+    where: { supplier: "EDF Energy", customer: { companyName: "Harbour View Hotels Ltd" } },
+  });
+  const priya = await prisma.agent.findUnique({ where: { email: "priya.shah@nzce.co.uk" } });
+  const helen = await prisma.agent.findUnique({ where: { email: "helen.crowe@nzce.co.uk" } });
+  if (harbourDeal && priya && helen) {
+    for (const agentId of [priya.id, helen.id]) {
+      const exists = await prisma.dealAllocation.findUnique({
+        where: { dealId_agentId: { dealId: harbourDeal.id, agentId } },
+      });
+      if (!exists) {
+        await prisma.dealAllocation.create({ data: { dealId: harbourDeal.id, agentId } });
+      }
+    }
+  }
+}
+
+async function ensureDemoInbox() {
+  const overdue = await prisma.task.findFirst({
+    where: { status: "OPEN", dueDate: { lt: new Date() } },
+  });
+  if (overdue) return;
+  const chase = await prisma.task.findFirst({
+    where: { title: { contains: "signed LOA" } },
+  });
+  if (!chase) return;
+  await prisma.task.update({
+    where: { id: chase.id },
+    data: { dueDate: daysFromNow(-2), status: "OPEN" },
+  });
+}
+
 async function seedHarbourViewSignedLoa() {
   const meter = await prisma.meter.findFirst({
     where: { mpan: "002160013300112233445" },
@@ -223,7 +270,9 @@ async function main() {
     await ensureDemoObjection();
     await ensureDemoTenders();
     await ensureDemoLoa();
-    console.log("Desk already seeded — skipping (objection, tender and LOA demos checked).");
+    await ensureDemoDealSplits();
+    await ensureDemoInbox();
+    console.log("Desk already seeded — skipping (demo extras checked).");
     return;
   }
 
@@ -810,7 +859,8 @@ async function main() {
       amountDue: 6800,
       estimatedCommission: 6800,
       actualPaid: 0,
-      notes: "Commission invoice with finance — due in a fortnight.",
+      notes: "Commission invoice with finance — due in a fortnight. Priya and Helen split 50/50.",
+      allocations: { create: [{ agentId: priya.id }, { agentId: helen.id }] },
     },
   });
   await prisma.deal.create({
@@ -972,6 +1022,8 @@ async function main() {
   await seedHarbourViewTenders();
   await seedOakfieldTenders();
   await seedHarbourViewSignedLoa();
+  await ensureDemoDealSplits();
+  await ensureDemoInbox();
 
   console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
 }

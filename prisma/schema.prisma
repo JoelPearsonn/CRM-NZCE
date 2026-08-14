@@ -18,6 +18,7 @@ model Agent {
   meters          Meter[]
   deals           Deal[]
   leadAllocations LeadAllocation[]
+  dealAllocations DealAllocation[]
   notes           CallNote[]
   tasks           Task[]
   activities      Activity[]
@@ -135,13 +136,23 @@ model Deal {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  meter       Meter?   @relation(fields: [meterId], references: [id], onDelete: SetNull)
-  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  salesperson Agent?   @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  meter       Meter?           @relation(fields: [meterId], references: [id], onDelete: SetNull)
+  lead        Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  salesperson Agent?           @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  allocations DealAllocation[]
 
   @@index([customerId])
   @@index([renewalDate])
+}
+
+model DealAllocation {
+  dealId  String
+  agentId String
+  deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  agent   Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, agentId])
 }
 
 model TenderResponse {

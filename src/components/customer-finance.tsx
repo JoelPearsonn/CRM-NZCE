@@ -5,6 +5,7 @@ import type { Agent, Deal, Lead, Meter } from "@prisma/client";
 import { reconcileDeal, type ActionState } from "@/app/actions/deals";
 import { DealForm } from "@/components/forms";
 import { DealStatusPill, ErrorBanner, FuelPill, RenewalCell } from "@/components/ui";
+import { agentNames, splitLabel } from "@/lib/agents";
 import { formatDate, gbp, toDateInput } from "@/lib/format";
 import { dealRemaining } from "@/lib/finance";
 
@@ -108,7 +109,10 @@ export function CustomerFinanceLedger({
   agents,
 }: {
   customerId: string;
-  deals: (Deal & { salesperson: { name: string } | null })[];
+  deals: (Deal & {
+    salesperson: { name: string } | null;
+    allocations?: { agent: { name: string } }[];
+  })[];
   meters: Meter[];
   leads: Lead[];
   agents: Agent[];
@@ -157,7 +161,15 @@ export function CustomerFinanceLedger({
                   <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
                     {gbp(dealRemaining(deal))}
                   </td>
-                  <td>{deal.salesperson?.name ?? "—"}</td>
+                  <td>
+                    {deal.allocations?.length
+                      ? `${agentNames(deal.allocations.map((row) => row.agent))}${
+                          splitLabel(deal.allocations.length)
+                            ? ` · ${splitLabel(deal.allocations.length)}`
+                            : ""
+                        }`
+                      : (deal.salesperson?.name ?? "—")}
+                  </td>
                 </tr>
               ))}
             </tbody>

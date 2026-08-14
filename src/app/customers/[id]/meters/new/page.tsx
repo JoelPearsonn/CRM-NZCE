@@ -17,7 +17,7 @@ export default async function NewMeterPage({ params }: IdPageProps) {
       <PageHeader
         kicker={customer.companyName}
         title="Add meter"
-        description="MPAN for electric, MPRN for gas. Dual-fuel sites can hold both."
+        description="Give the site a name and address first. MPAN for electric, MPRN for gas."
       />
       <MeterForm customerId={customer.id} agents={agents} />
     </div>

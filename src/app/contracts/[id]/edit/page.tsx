@@ -6,7 +6,10 @@ import { prisma } from "@/lib/prisma";
 
 export default async function EditDealPage({ params }: IdPageProps) {
   const { id } = await params;
-  const deal = await prisma.deal.findUnique({ where: { id }, include: { customer: true } });
+  const deal = await prisma.deal.findUnique({
+    where: { id },
+    include: { customer: true, allocations: true },
+  });
   if (!deal) notFound();
 
   const [customers, meters, leads, agents] = await Promise.all([
@@ -19,7 +22,14 @@ export default async function EditDealPage({ params }: IdPageProps) {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader kicker={deal.customer.companyName} title="Edit contract" />
-      <DealForm deal={deal} customers={customers} meters={meters} leads={leads} agents={agents} />
+      <DealForm
+        deal={deal}
+        customers={customers}
+        meters={meters}
+        leads={leads}
+        agents={agents}
+        selectedAgentIds={deal.allocations.map((row) => row.agentId)}
+      />
     </div>
   );
 }

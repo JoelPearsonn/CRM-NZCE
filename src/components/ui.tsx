@@ -42,21 +42,35 @@ export function EmptyState({
   body,
   actionHref,
   actionLabel,
+  secondaryHref,
+  secondaryLabel,
+  children,
 }: {
   title: string;
   body: string;
   actionHref?: string;
   actionLabel?: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="card px-6 py-10 text-center">
       <p className="font-serif text-xl text-ink">{title}</p>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted">{body}</p>
       {actionHref && actionLabel ? (
-        <Link href={actionHref} className="btn btn-primary mt-5">
-          {actionLabel}
-        </Link>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <Link href={actionHref} className="btn btn-primary">
+            {actionLabel}
+          </Link>
+          {secondaryHref && secondaryLabel ? (
+            <Link href={secondaryHref} className="btn btn-ghost">
+              {secondaryLabel}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
+      {children}
     </div>
   );
 }

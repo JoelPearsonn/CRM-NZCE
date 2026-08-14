@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function ContractsPage() {
   const deals = await prisma.deal.findMany({
-    include: { customer: true, salesperson: true, meter: true },
+    include: { customer: true, salesperson: true, meter: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { renewalDate: "asc" }],
   });
 
@@ -81,7 +81,14 @@ export default async function ContractsPage() {
                   <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
                     {gbp(dealRemaining(deal))}
                   </td>
-                  <td>{deal.salesperson?.name ?? "—"}</td>
+                  <td>
+                    {deal.allocations.length
+                      ? deal.allocations.map((row) => row.agent.name).join(" · ")
+                      : (deal.salesperson?.name ?? "—")}
+                    {deal.allocations.length === 2 ? (
+                      <div className="text-[0.7rem] text-muted">50/50</div>
+                    ) : null}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -21,6 +21,7 @@ export async function saveMeter(
   const mprn = optionalStr(formData.get("mprn"))?.replace(/\s/g, "") ?? null;
 
   if (!customerId) return { error: "Customer is required." };
+  if (!str(formData.get("siteName"))) return { error: "Give the meter a site name." };
   if (!fuelType) return { error: "Choose electric, gas, or dual fuel." };
   if (!mpan && !mprn) return { error: "Enter an MPAN and/or MPRN." };
   if ((fuelType === "ELECTRIC" || fuelType === "DUAL") && !mpan) {

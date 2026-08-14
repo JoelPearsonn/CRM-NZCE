@@ -20,6 +20,7 @@ import { toggleTask } from "@/app/actions/desk";
 import { isTenderLeadStage } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
+import { groupMetersBySite } from "@/lib/sites";
 import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 import { getWorkingAsId } from "@/lib/working-as";
@@ -36,7 +37,10 @@ export default async function CustomerDetailPage({
       where: { id },
       include: {
         meters: { include: { salesperson: true }, orderBy: [{ siteName: "asc" }, { fuelType: "asc" }] },
-        deals: { include: { salesperson: true }, orderBy: { renewalDate: "asc" } },
+        deals: {
+          include: { salesperson: true, allocations: { include: { agent: true } } },
+          orderBy: { renewalDate: "asc" },
+        },
         leads: { include: { allocations: { include: { agent: true } } }, orderBy: { updatedAt: "desc" } },
         tenderResponses: { include: { lead: true }, orderBy: { receivedOn: "desc" } },
         notes: { include: { author: true }, orderBy: { createdAt: "desc" } },
@@ -90,7 +94,7 @@ export default async function CustomerDetailPage({
 
       <div className="mb-6 grid gap-6">
         <Section
-          title={`Meters · ${customer.meters.length}`}
+          title={`Sites · ${groupMetersBySite(customer.meters).length} · ${customer.meters.length} meters`}
           action={
             <Link href={`/customers/${customer.id}/meters/new`} className="btn btn-brass">
               Add meter
@@ -100,17 +104,22 @@ export default async function CustomerDetailPage({
           {customer.meters.length === 0 ? (
             <div className="p-4">
               <EmptyState
-                title="No meters on this account"
-                body="Add an MPAN or MPRN so renewals and tenders have somewhere to sit."
+                title="No sites on this account"
+                body="Add the first meter and give it a site name and address. Multi-site customers keep each building separate."
                 actionHref={`/customers/${customer.id}/meters/new`}
-                actionLabel="Add meter"
+                actionLabel="Add first meter"
               />
             </div>
           ) : (
+            groupMetersBySite(customer.meters).map((site) => (
+              <div key={site.name} className="border-b border-rule last:border-b-0">
+                <div className="bg-[#f6f1e6] px-4 py-3">
+                  <p className="font-serif text-lg text-ink">{site.name}</p>
+                  <p className="text-sm text-muted">{site.address ?? "No site address yet"}</p>
+                </div>
             <table className="desk-table">
               <thead>
                 <tr>
-                  <th>Site</th>
                   <th>Fuel</th>
                   <th>MPAN / MPRN</th>
                   <th>EAC / AQ</th>
@@ -124,15 +133,12 @@ export default async function CustomerDetailPage({
                 </tr>
               </thead>
               <tbody>
-                {customer.meters.map((meter) => (
+                {site.meters.map((meter) => (
                   <tr key={meter.id}>
                     <td>
                       <Link href={`/meters/${meter.id}/edit`} className="font-medium">
-                        {meter.siteName ?? "Site"}
+                        <FuelPill value={meter.fuelType} />
                       </Link>
-                    </td>
-                    <td>
-                      <FuelPill value={meter.fuelType} />
                     </td>
                     <td className="meter-id">
                       {meter.mpan ? <div>E {formatMpan(meter.mpan)}</div> : null}
@@ -176,6 +182,8 @@ export default async function CustomerDetailPage({
                 ))}
               </tbody>
             </table>
+              </div>
+            ))
           )}
           {customer.meters.length > 0 ? (
             <>
