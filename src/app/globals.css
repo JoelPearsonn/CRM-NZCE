@@ -1,0 +1,184 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #101c18;
+  --color-ink-2: #182820;
+  --color-ink-3: #22362c;
+  --color-paper: #f1ece1;
+  --color-paper-2: #faf7f0;
+  --color-card: #fffdf8;
+  --color-brass: #c4922a;
+  --color-brass-dark: #8a6716;
+  --color-moss: #2d6a4f;
+  --color-moss-soft: #d7e8de;
+  --color-rule: #d6cdb8;
+  --color-muted: #5d6c64;
+  --color-danger: #9b2c2c;
+  --color-danger-soft: #f3d6d2;
+  --color-warn: #b45309;
+  --color-warn-soft: #f6e3c4;
+  --font-sans: var(--font-ibm-plex-sans);
+  --font-serif: var(--font-source-serif);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans), "IBM Plex Sans", sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: #e6d3a0;
+  color: var(--color-ink);
+}
+
+.desk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.desk-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--color-rule);
+  background: #f6f1e6;
+  white-space: nowrap;
+}
+
+.desk-table td {
+  padding: 0.65rem 0.7rem;
+  border-bottom: 1px solid #ebe4d4;
+  vertical-align: top;
+}
+
+.desk-table tbody tr:hover td {
+  background: #f7f2e7;
+}
+
+.meter-id {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--color-rule);
+  background: var(--color-card);
+  color: var(--color-ink);
+  border-radius: 2px;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: 2px solid #c4922a55;
+  border-color: var(--color-brass);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 2px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-ink);
+  color: #f6f0e4;
+}
+
+.btn-primary:hover {
+  background: #1c3228;
+}
+
+.btn-brass {
+  background: var(--color-brass);
+  color: #1a1406;
+}
+
+.btn-brass:hover {
+  background: #d4a53a;
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--color-rule);
+  color: var(--color-ink);
+}
+
+.btn-ghost:hover {
+  background: #efe8d8;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-rule);
+  box-shadow: 0 1px 0 #ffffff80 inset;
+}
+
+.section-title {
+  font-family: var(--font-serif), "Source Serif 4", serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}

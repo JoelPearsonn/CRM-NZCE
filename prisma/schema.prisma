@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String   @default("Sales")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  meters          Meter[]
+  deals           Deal[]
+  leadAllocations LeadAllocation[]
+  notes           CallNote[]
+  tasks           Task[]
+  activities      Activity[]
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  companyName  String
+  tradingName  String?
+  contactName  String
+  email        String
+  phone        String?
+  addressLine1 String?
+  city         String?
+  postcode     String?
+  industry     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  meters     Meter[]
+  leads      Lead[]
+  deals      Deal[]
+  notes      CallNote[]
+  emails     EmailLog[]
+  tasks      Task[]
+  activities Activity[]
+}
+
+model Meter {
+  id            String    @id @default(cuid())
+  customerId    String
+  siteName      String?
+  siteAddress   String?
+  fuelType      String
+  mpan          String?
+  mprn          String?
+  electricEac   Int?
+  gasAq         Int?
+  supplier      String?
+  contractStart DateTime?
+  contractEnd   DateTime?
+  meterType     String?
+  settlement    String?
+  currentRates  String?
+  renewalDate   DateTime?
+  loaStatus     String    @default("NOT_REQUESTED")
+  salespersonId String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  salesperson Agent?   @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  deals       Deal[]
+
+  @@index([customerId])
+  @@index([mpan])
+  @@index([mprn])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  customerId String
+  title      String
+  stage      String   @default("NEW")
+  source     String?
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  allocations LeadAllocation[]
+  deals       Deal[]
+
+  @@index([customerId])
+  @@index([stage])
+}
+
+model LeadAllocation {
+  leadId  String
+  agentId String
+  lead    Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  agent   Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([leadId, agentId])
+}
+
+model Deal {
+  id                  String    @id @default(cuid())
+  customerId          String
+  meterId             String?
+  leadId              String?
+  salespersonId       String?
+  supplier            String
+  fuelType            String
+  contractStart       DateTime?
+  contractEnd         DateTime?
+  renewalDate         DateTime?
+  status              String    @default("LIVE")
+  dueDate             DateTime?
+  amountDue           Float?
+  estimatedCommission Float?
+  actualPaid          Float?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  meter       Meter?   @relation(fields: [meterId], references: [id], onDelete: SetNull)
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  salesperson Agent?   @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([renewalDate])
+}
+
+model CallNote {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String?
+  body       String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   Agent?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+model EmailLog {
+  id         String   @id @default(cuid())
+  customerId String
+  subject    String
+  fromAddr   String
+  toAddr     String
+  body       String
+  loggedAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id         String    @id @default(cuid())
+  customerId String
+  assigneeId String?
+  title      String
+  dueDate    DateTime?
+  status     String    @default("OPEN")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignee Agent?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+}
+
+model Activity {
+  id         String   @id @default(cuid())
+  customerId String
+  actorId    String?
+  type       String
+  summary    String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  actor    Agent?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
