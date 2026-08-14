@@ -6,7 +6,7 @@ import { useEffect, useRef } from "react";
 function stamp(root: HTMLElement) {
   root.querySelectorAll("table.desk-table").forEach((table) => {
     const headers = [...table.querySelectorAll("thead th")].map(
-      (th) => th.textContent?.replace(/\s+/g, " ").trim() ?? "",
+      (th) => th.textContent?.replace(/[↑↓]/g, "").replace(/\s+/g, " ").trim() ?? "",
     );
     table.querySelectorAll("tbody tr").forEach((tr) => {
       [...tr.children].forEach((cell, i) => {
