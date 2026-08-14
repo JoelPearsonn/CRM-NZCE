@@ -205,6 +205,7 @@ model CallNote {
   id         String   @id @default(cuid())
   customerId String
   authorId   String?
+  kind       String   @default("NOTE")
   body       String
   createdAt  DateTime @default(now())
 

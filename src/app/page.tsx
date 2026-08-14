@@ -81,9 +81,14 @@ export default async function DashboardPage() {
         <Section
           title="Renewals in the next 90 days"
           action={
-            <Link href="/renewals" className="text-xs font-semibold text-brass-dark">
-              Renewal ops
-            </Link>
+            <div className="flex gap-3">
+              <Link href="/renewals/calendar" className="text-xs font-semibold text-brass-dark">
+                Month diary
+              </Link>
+              <Link href="/renewals" className="text-xs font-semibold text-brass-dark">
+                Renewal ops
+              </Link>
+            </div>
           }
         >
           {renewals.length === 0 ? (

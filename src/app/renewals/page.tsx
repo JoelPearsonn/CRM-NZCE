@@ -46,6 +46,9 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
         description="Every supply coming off contract in the window, with LOA, objection and the customer’s finance snapshot — not just the desk list."
         actions={
           <div className="flex gap-2">
+            <Link href="/renewals/calendar" className="btn btn-ghost">
+              Month diary
+            </Link>
             {WINDOWS.map((window) => (
               <Link
                 key={window}

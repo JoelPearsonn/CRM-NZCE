@@ -38,6 +38,9 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
             <a href="/api/export/deals" className="btn btn-ghost">
               Export deals
             </a>
+            <Link href="/import#deals" className="btn btn-ghost">
+              Import deals
+            </Link>
             <Link href="/contracts/new" className="btn btn-primary">
               Record deal
             </Link>

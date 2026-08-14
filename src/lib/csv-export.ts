@@ -1,4 +1,11 @@
-import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS } from "@/lib/constants";
+import {
+  customerArchiveWhere,
+  customerMatchesFilters,
+  meterMatchesFilters,
+  type BookFilters,
+  type LeadFilters,
+} from "@/lib/book-filters";
+import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "@/lib/constants";
 import { toDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -68,23 +75,39 @@ function meterRow(customer: {
   ];
 }
 
-export async function exportCustomersCsv() {
+const emptyBook: BookFilters = {
+  renewal: "",
+  loa: "",
+  objection: "",
+  salesperson: "",
+  showArchived: false,
+};
+
+export async function exportCustomersCsv(filters: BookFilters = emptyBook) {
   const customers = await prisma.customer.findMany({
-    where: { archivedAt: null },
-    include: { meters: { include: { salesperson: true }, take: 1, orderBy: { createdAt: "asc" } } },
+    where: customerArchiveWhere(filters.showArchived),
+    include: { meters: { include: { salesperson: true }, orderBy: { createdAt: "asc" } } },
     orderBy: { companyName: "asc" },
   });
-  const rows = customers.map((customer) => meterRow(customer, customer.meters[0]));
+  const rows = customers
+    .filter((customer) => customerMatchesFilters(customer, filters))
+    .map((customer) => {
+      const meter =
+        customer.meters.find((item) => meterMatchesFilters(item, filters)) ?? customer.meters[0];
+      return meterRow(customer, meter);
+    });
   return csvResponse("nzce-customers.csv", toCsv(CSV_IMPORT_HEADERS, rows));
 }
 
-export async function exportMetersCsv() {
+export async function exportMetersCsv(filters: BookFilters = emptyBook) {
   const meters = await prisma.meter.findMany({
-    where: { customer: { archivedAt: null } },
+    where: { customer: customerArchiveWhere(filters.showArchived) },
     include: { customer: true, salesperson: true },
     orderBy: [{ customer: { companyName: "asc" } }, { siteName: "asc" }],
   });
-  const rows = meters.map((meter) => meterRow(meter.customer, meter));
+  const rows = meters
+    .filter((meter) => meterMatchesFilters(meter, filters))
+    .map((meter) => meterRow(meter.customer, meter));
   return csvResponse("nzce-meters.csv", toCsv(CSV_IMPORT_HEADERS, rows));
 }
 
@@ -119,4 +142,33 @@ export async function exportDealsCsv() {
     deal.allocations.map((row) => row.agent.email).join(";"),
   ]);
   return csvResponse("nzce-deals.csv", toCsv(CSV_DEAL_HEADERS, rows));
+}
+
+export async function exportLeadsCsv(filters: LeadFilters = { stage: "", agent: "" }) {
+  const leads = await prisma.lead.findMany({
+    where: {
+      customer: { archivedAt: null },
+      ...(filters.stage ? { stage: filters.stage } : {}),
+    },
+    include: {
+      customer: true,
+      allocations: { include: { agent: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
+  const rows = leads
+    .filter((lead) =>
+      filters.agent ? lead.allocations.some((row) => row.agentId === filters.agent) : true,
+    )
+    .map((lead) => [
+      lead.customer.companyName,
+      lead.customer.email,
+      lead.title,
+      lead.stage,
+      lead.source,
+      lead.outcomeReason,
+      lead.allocations.map((row) => row.agent.email).join(";"),
+      lead.notes,
+    ]);
+  return csvResponse("nzce-leads.csv", toCsv(CSV_LEAD_HEADERS, rows));
 }

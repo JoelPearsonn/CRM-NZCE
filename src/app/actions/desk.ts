@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
+import { CALL_NOTE_KINDS } from "@/lib/constants";
 import { isEmail, optionalStr, parseDate, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -19,14 +20,19 @@ export async function addCallNote(
   const customerId = str(formData.get("customerId"));
   const body = str(formData.get("body"));
   const authorId = optionalStr(formData.get("authorId"));
+  const kind = str(formData.get("kind")) || "NOTE";
 
   if (!customerId) return { error: "Customer is missing." };
   if (!body) return { error: "Write a call note before saving." };
+  if (!CALL_NOTE_KINDS.some((item) => item.value === kind)) {
+    return { error: "Choose phone, visit, or note." };
+  }
 
   await prisma.callNote.create({
-    data: { customerId, body, authorId },
+    data: { customerId, body, authorId, kind },
   });
-  await logActivity(customerId, "NOTE_ADDED", "Call note added.", authorId);
+  const label = CALL_NOTE_KINDS.find((item) => item.value === kind)?.label ?? "Note";
+  await logActivity(customerId, "NOTE_ADDED", `${label} logged.`, authorId);
   refreshCustomer(customerId);
   return {};
 }

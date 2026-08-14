@@ -2,14 +2,15 @@ import Link from "next/link";
 import { BulkAllocate, LeadSelect } from "@/components/bulk-allocate";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { EmptyState, PageHeader, StagePill } from "@/components/ui";
+import { exportHref, leadFilterParams, parseLeadFilters } from "@/lib/book-filters";
 import { isTenderLeadStage, LEAD_STAGES } from "@/lib/constants";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeadsPage({ searchParams }: SearchPageProps) {
   const query = await searchParams;
-  const stage = typeof query.stage === "string" ? query.stage : "";
-  const agent = typeof query.agent === "string" ? query.agent : "";
+  const filters = parseLeadFilters(query);
+  const { stage, agent } = filters;
 
   const [leads, agents] = await Promise.all([
     prisma.lead.findMany({
@@ -36,9 +37,14 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
         title="Leads"
         description="Filter by stage or agent. Move a card or allocate one or more people."
         actions={
-          <Link href="/leads/new" className="btn btn-primary">
-            Open lead
-          </Link>
+          <>
+            <a href={exportHref("/api/export/leads", leadFilterParams(filters))} className="btn btn-ghost">
+              {stage || agent ? "Export this view" : "Export leads"}
+            </a>
+            <Link href="/leads/new" className="btn btn-primary">
+              Open lead
+            </Link>
+          </>
         }
       />
 

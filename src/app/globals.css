@@ -176,6 +176,58 @@ a {
   box-shadow: 0 1px 0 #ffffff80 inset;
 }
 
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.calendar-head {
+  background: #f6f1e6;
+  border-bottom: 1px solid var(--color-rule);
+  border-right: 1px solid #ebe4d4;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.calendar-cell {
+  min-height: 7.5rem;
+  border-right: 1px solid #ebe4d4;
+  border-bottom: 1px solid #ebe4d4;
+  padding: 0.4rem 0.45rem;
+  background: var(--color-card);
+}
+
+.calendar-cell-empty {
+  background: #f7f3ea;
+}
+
+.calendar-cell-today {
+  box-shadow: inset 0 0 0 2px var(--color-brass);
+}
+
+.calendar-day {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+
+.calendar-item {
+  display: block;
+  border: 1px solid var(--color-rule);
+  background: #faf6ec;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.calendar-item:hover {
+  background: #f3e6c4;
+}
+
 .section-title {
   font-family: var(--font-serif), "Source Serif 4", serif;
   font-size: 1.15rem;

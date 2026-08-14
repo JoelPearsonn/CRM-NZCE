@@ -13,7 +13,7 @@ export default function HelpPage() {
       <div className="grid gap-5">
         <Guide
           title="Add a customer"
-          body="Start with the company and a named contact. You need an email or a phone. After save, add a meter and give it a site name — that is where the MPAN or MPRN lives. Multi-site customers get one site heading per building."
+          body="Start with the company and a named contact. You need an email or a phone. After save, add a meter and give it a site name — that is where the MPAN or MPRN lives. Multi-site customers get one site heading per building. If the company or email is already on the book, the desk warns you and links the existing record. You can still add a second customer if you confirm."
         >
           <Link href="/customers/new" className="btn btn-primary">
             Add customer
@@ -22,14 +22,29 @@ export default function HelpPage() {
 
         <Guide
           title="Import a list"
-          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Nothing is deleted."
+          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals have their own template — same columns as Export deals. Nothing is deleted."
         >
           <Link href="/import" className="btn btn-ghost">
             Import CSV
           </Link>
           <a href="/api/import/template" className="btn btn-ghost">
-            Download template
+            Meter template
           </a>
+          <a href="/api/import/deals-template" className="btn btn-ghost">
+            Deals template
+          </a>
+        </Guide>
+
+        <Guide
+          title="Export the book"
+          body="Customers, meters, deals and leads each have a download button. The columns match the import templates so a round-trip works. If you have a filter on (renewing 30 days, in objection, my book), Export this view downloads only what you can see."
+        >
+          <Link href="/customers" className="btn btn-ghost">
+            Customers
+          </Link>
+          <Link href="/leads" className="btn btn-ghost">
+            Leads
+          </Link>
         </Guide>
 
         <Guide
@@ -51,14 +66,44 @@ export default function HelpPage() {
         </Guide>
 
         <Guide
+          title="Won or lost reason"
+          body="Moving a lead to Sold or Lost needs a reason. Tap a common one (best price, stayed with incumbent) or type your own. It shows on the lead card so the book remembers why."
+        >
+          <Link href="/leads" className="btn btn-ghost">
+            Open leads
+          </Link>
+        </Guide>
+
+        <Guide
+          title="Log a call"
+          body="On the customer record, mark Phone, Visit or Note, write what was said, and save. Last contact shows on the customer list so you can see who has gone quiet."
+        >
+          <Link href="/customers" className="btn btn-ghost">
+            Customers
+          </Link>
+        </Guide>
+
+        <Guide
           title="Renewals and follow-ups"
-          body="Renewals shows 30 / 60 / 90 days. The desk also opens a renewal task when a site is inside 90 days, if one is not already there. The tasks inbox is every chase across the book."
+          body="Renewals shows 30 / 60 / 90 days. Month diary is the same book on a wall calendar. The desk also opens a renewal task when a site is inside 90 days, if one is not already there. The tasks inbox is every chase across the book."
         >
           <Link href="/renewals" className="btn btn-ghost">
             Renewals
           </Link>
+          <Link href="/renewals/calendar" className="btn btn-ghost">
+            Month diary
+          </Link>
           <Link href="/tasks" className="btn btn-ghost">
             Tasks inbox
+          </Link>
+        </Guide>
+
+        <Guide
+          title="Same MPAN twice"
+          body="The desk will not create a second meter with the same MPAN or MPRN. If you type a supply number that is already on the book, you get a warning and a link to the existing customer. Change the number if this is a different site."
+        >
+          <Link href="/customers" className="btn btn-ghost">
+            Open customers
           </Link>
         </Guide>
 

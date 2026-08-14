@@ -3,7 +3,51 @@
 import { useState } from "react";
 import type { Agent } from "@prisma/client";
 import { allocateLeadAgents, updateLeadStage } from "@/app/actions/leads";
-import { LEAD_STAGES } from "@/lib/constants";
+import { LEAD_STAGES, LOST_REASONS, WON_REASONS } from "@/lib/constants";
+
+export function OutcomeReasonField({
+  id,
+  name,
+  stage,
+  defaultValue,
+  compact,
+}: {
+  id: string;
+  name: string;
+  stage: string;
+  defaultValue?: string | null;
+  compact?: boolean;
+}) {
+  const [value, setValue] = useState(defaultValue ?? "");
+  const presets = stage === "SOLD" ? WON_REASONS : LOST_REASONS;
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex flex-wrap gap-1">
+        {presets.map((reason) => (
+          <button
+            key={reason}
+            type="button"
+            className={`btn ${compact ? "px-1.5 py-0.5 text-[0.65rem]" : "px-2 py-1 text-[0.7rem]"} ${
+              value === reason ? "btn-brass" : "btn-ghost"
+            }`}
+            onClick={() => setValue(reason)}
+          >
+            {reason}
+          </button>
+        ))}
+      </div>
+      <input
+        id={id}
+        name={name}
+        required
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        placeholder={stage === "SOLD" ? "Why was this won?" : "Why was this lost?"}
+        className={compact ? "w-full border border-rule bg-card px-2 py-1 text-xs" : undefined}
+      />
+    </div>
+  );
+}
 
 export function StageSelect({
   leadId,
@@ -47,13 +91,13 @@ export function StageSelect({
           <label className="sr-only" htmlFor={`reason-${leadId}`}>
             {next === "SOLD" ? "Won reason" : "Lost reason"}
           </label>
-          <input
+          <OutcomeReasonField
+            key={next}
             id={`reason-${leadId}`}
             name="outcomeReason"
-            required
-            defaultValue={outcomeReason ?? ""}
-            placeholder={next === "SOLD" ? "Why was this won?" : "Why was this lost?"}
-            className="w-full border border-rule bg-card px-2 py-1 text-xs"
+            stage={next}
+            defaultValue={outcomeReason}
+            compact
           />
           <button className="btn btn-brass px-2 py-1 text-[0.7rem]">Save stage</button>
         </>

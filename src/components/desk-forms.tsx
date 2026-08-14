@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { Agent } from "@prisma/client";
 import { addCallNote, addTask, logEmail, type ActionState } from "@/app/actions/desk";
 import { ErrorBanner, Field } from "@/components/ui";
+import { CALL_NOTE_KINDS } from "@/lib/constants";
 
 const empty: ActionState = {};
 
@@ -21,6 +22,24 @@ export function NoteForm({
     <form action={action} className="grid gap-3 border-b border-rule p-4">
       <input type="hidden" name="customerId" value={customerId} />
       <ErrorBanner message={state.error} />
+      <fieldset className="grid gap-1.5">
+        <legend className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+          What happened
+        </legend>
+        <div className="flex flex-wrap gap-3">
+          {CALL_NOTE_KINDS.map((item) => (
+            <label key={item.value} className="flex items-center gap-1.5 text-sm">
+              <input
+                type="radio"
+                name="kind"
+                value={item.value}
+                defaultChecked={item.value === "PHONE"}
+              />
+              {item.label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <Field label="Call note" name="body">
         <textarea id="body" name="body" rows={3} required placeholder="What was said, who promised what…" />
       </Field>

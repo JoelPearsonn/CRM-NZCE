@@ -9,6 +9,7 @@ import { saveDeal, type ActionState as DealState } from "@/app/actions/deals";
 import { saveLead, type ActionState as LeadState } from "@/app/actions/leads";
 import { saveMeter, type ActionState as MeterState } from "@/app/actions/meters";
 import { saveTenderResponse, type ActionState as TenderState } from "@/app/actions/tenders";
+import { OutcomeReasonField } from "@/components/lead-controls";
 import { ErrorBanner, Field } from "@/components/ui";
 import {
   AGENT_ROLES,
@@ -118,21 +119,47 @@ export function MeterForm({
   agents: Agent[];
 }) {
   const [state, action, pending] = useActionState(saveMeter, empty as MeterState);
+  const draft = state.draft;
   return (
-    <form action={action} encType="multipart/form-data" className="card grid gap-4 p-5 md:grid-cols-2">
+    <form
+      key={state.duplicate ? "duplicate" : meter?.id ?? "new"}
+      action={action}
+      encType="multipart/form-data"
+      className="card grid gap-4 p-5 md:grid-cols-2"
+    >
       {meter ? <input type="hidden" name="id" value={meter.id} /> : null}
       <input type="hidden" name="customerId" value={customerId} />
       <div className="md:col-span-2">
         <ErrorBanner message={state.error} />
+        {state.duplicate ? (
+          <div className="border border-warn/40 bg-warn-soft px-3 py-3 text-sm">
+            <p className="font-medium text-ink">
+              This {state.duplicate.match === "mpan" ? "MPAN" : "MPRN"} is already on the book.
+            </p>
+            <p className="mt-1 text-muted">
+              {state.duplicate.companyName}
+              {state.duplicate.siteName ? ` · ${state.duplicate.siteName}` : ""}
+              {state.duplicate.mpan ? ` · E ${state.duplicate.mpan}` : ""}
+              {state.duplicate.mprn ? ` · G ${state.duplicate.mprn}` : ""}
+            </p>
+            <p className="mt-2">
+              <Link href={`/customers/${state.duplicate.customerId}`} className="font-semibold text-brass-dark">
+                Open the existing record
+              </Link>
+              {" — "}the desk will not create a second meter with the same supply number. Change the
+              MPAN or MPRN if this is a different site.
+            </p>
+          </div>
+        ) : null}
       </div>
       <Field label="Site name" name="siteName" hint="The building or trading site — first-class, not just a note.">
-        <input id="siteName" name="siteName" required defaultValue={meter?.siteName ?? ""} />
+        <input id="siteName" name="siteName" required defaultValue={draft?.siteName ?? meter?.siteName ?? ""} />
       </Field>
       <Field label="Site address" name="siteAddress">
-        <input id="siteAddress" name="siteAddress" defaultValue={meter?.siteAddress ?? ""} />
+        <input id="siteAddress" name="siteAddress" defaultValue={draft?.siteAddress ?? meter?.siteAddress ?? ""} />
       </Field>
       <Field label="Fuel" name="fuelType">
-        <select id="fuelType" name="fuelType" required defaultValue={meter?.fuelType ?? "ELECTRIC"}>
+        <select id="fuelType" name="fuelType" required defaultValue={draft?.fuelType ?? meter?.fuelType ?? "ELECTRIC"}>
           {FUEL_TYPES.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -141,19 +168,19 @@ export function MeterForm({
         </select>
       </Field>
       <Field label="MPAN" name="mpan" hint="Electric supply number">
-        <input id="mpan" name="mpan" className="meter-id" defaultValue={meter?.mpan ?? ""} />
+        <input id="mpan" name="mpan" className="meter-id" defaultValue={draft?.mpan ?? meter?.mpan ?? ""} />
       </Field>
       <Field label="MPRN" name="mprn" hint="Gas supply number">
-        <input id="mprn" name="mprn" className="meter-id" defaultValue={meter?.mprn ?? ""} />
+        <input id="mprn" name="mprn" className="meter-id" defaultValue={draft?.mprn ?? meter?.mprn ?? ""} />
       </Field>
       <Field label="Electric EAC (kWh)" name="electricEac">
-        <input id="electricEac" name="electricEac" defaultValue={meter?.electricEac ?? ""} />
+        <input id="electricEac" name="electricEac" defaultValue={draft?.electricEac ?? meter?.electricEac ?? ""} />
       </Field>
       <Field label="Gas AQ (kWh)" name="gasAq">
-        <input id="gasAq" name="gasAq" defaultValue={meter?.gasAq ?? ""} />
+        <input id="gasAq" name="gasAq" defaultValue={draft?.gasAq ?? meter?.gasAq ?? ""} />
       </Field>
       <Field label="Supplier" name="supplier">
-        <input id="supplier" name="supplier" list="suppliers" defaultValue={meter?.supplier ?? ""} />
+        <input id="supplier" name="supplier" list="suppliers" defaultValue={draft?.supplier ?? meter?.supplier ?? ""} />
         <datalist id="suppliers">
           {UK_SUPPLIERS.map((supplier) => (
             <option key={supplier} value={supplier} />
@@ -161,7 +188,7 @@ export function MeterForm({
         </datalist>
       </Field>
       <Field label="Meter type" name="meterType">
-        <input id="meterType" name="meterType" list="meter-types" defaultValue={meter?.meterType ?? ""} />
+        <input id="meterType" name="meterType" list="meter-types" defaultValue={draft?.meterType ?? meter?.meterType ?? ""} />
         <datalist id="meter-types">
           {METER_TYPES.map((type) => (
             <option key={type} value={type} />
@@ -169,7 +196,7 @@ export function MeterForm({
         </datalist>
       </Field>
       <Field label="HH / NHH" name="settlement">
-        <select id="settlement" name="settlement" defaultValue={meter?.settlement ?? ""}>
+        <select id="settlement" name="settlement" defaultValue={draft?.settlement ?? meter?.settlement ?? ""}>
           <option value="">Not set</option>
           {SETTLEMENT_TYPES.map((item) => (
             <option key={item.value} value={item.value}>
@@ -179,7 +206,7 @@ export function MeterForm({
         </select>
       </Field>
       <Field label="LOA status" name="loaStatus">
-        <select id="loaStatus" name="loaStatus" defaultValue={meter?.loaStatus ?? "NOT_REQUESTED"}>
+        <select id="loaStatus" name="loaStatus" defaultValue={draft?.loaStatus || meter?.loaStatus || "NOT_REQUESTED"}>
           {LOA_STATUSES.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
@@ -192,11 +219,11 @@ export function MeterForm({
           id="loaSignedOn"
           name="loaSignedOn"
           type="date"
-          defaultValue={toDateInput(meter?.loaSignedOn)}
+          defaultValue={draft?.loaSignedOn || toDateInput(meter?.loaSignedOn)}
         />
       </Field>
       <Field label="Who signed" name="loaSignedBy" hint="Name on the LOA — usually the customer contact.">
-        <input id="loaSignedBy" name="loaSignedBy" defaultValue={meter?.loaSignedBy ?? ""} />
+        <input id="loaSignedBy" name="loaSignedBy" defaultValue={draft?.loaSignedBy ?? meter?.loaSignedBy ?? ""} />
       </Field>
       <div className="md:col-span-2">
         <Field
@@ -219,7 +246,7 @@ export function MeterForm({
         <select
           id="objectionStatus"
           name="objectionStatus"
-          defaultValue={meter?.objectionStatus ?? "NONE"}
+          defaultValue={draft?.objectionStatus || meter?.objectionStatus || "NONE"}
         >
           {OBJECTION_STATUSES.map((item) => (
             <option key={item.value} value={item.value}>
@@ -233,7 +260,7 @@ export function MeterForm({
           id="objectionRaisedOn"
           name="objectionRaisedOn"
           type="date"
-          defaultValue={toDateInput(meter?.objectionRaisedOn)}
+          defaultValue={draft?.objectionRaisedOn || toDateInput(meter?.objectionRaisedOn)}
         />
       </Field>
       <Field label="Objection cleared" name="objectionClearedOn">
@@ -241,7 +268,7 @@ export function MeterForm({
           id="objectionClearedOn"
           name="objectionClearedOn"
           type="date"
-          defaultValue={toDateInput(meter?.objectionClearedOn)}
+          defaultValue={draft?.objectionClearedOn || toDateInput(meter?.objectionClearedOn)}
         />
       </Field>
       <div className="md:col-span-2">
@@ -254,21 +281,21 @@ export function MeterForm({
             id="objectionNote"
             name="objectionNote"
             rows={2}
-            defaultValue={meter?.objectionNote ?? ""}
+            defaultValue={draft?.objectionNote ?? meter?.objectionNote ?? ""}
           />
         </Field>
       </div>
       <Field label="Contract start" name="contractStart">
-        <input id="contractStart" name="contractStart" type="date" defaultValue={toDateInput(meter?.contractStart)} />
+        <input id="contractStart" name="contractStart" type="date" defaultValue={draft?.contractStart || toDateInput(meter?.contractStart)} />
       </Field>
       <Field label="Contract end" name="contractEnd">
-        <input id="contractEnd" name="contractEnd" type="date" defaultValue={toDateInput(meter?.contractEnd)} />
+        <input id="contractEnd" name="contractEnd" type="date" defaultValue={draft?.contractEnd || toDateInput(meter?.contractEnd)} />
       </Field>
       <Field label="Renewal date" name="renewalDate">
-        <input id="renewalDate" name="renewalDate" type="date" defaultValue={toDateInput(meter?.renewalDate)} />
+        <input id="renewalDate" name="renewalDate" type="date" defaultValue={draft?.renewalDate || toDateInput(meter?.renewalDate)} />
       </Field>
       <Field label="Salesperson" name="salespersonId">
-        <select id="salespersonId" name="salespersonId" defaultValue={meter?.salespersonId ?? ""}>
+        <select id="salespersonId" name="salespersonId" defaultValue={draft?.salespersonId ?? meter?.salespersonId ?? ""}>
           <option value="">Unassigned</option>
           {agents.map((agent) => (
             <option key={agent.id} value={agent.id}>
@@ -279,7 +306,7 @@ export function MeterForm({
       </Field>
       <div className="md:col-span-2">
         <Field label="Current rates" name="currentRates">
-          <textarea id="currentRates" name="currentRates" rows={2} defaultValue={meter?.currentRates ?? ""} />
+          <textarea id="currentRates" name="currentRates" rows={2} defaultValue={draft?.currentRates ?? meter?.currentRates ?? ""} />
         </Field>
       </div>
       <div className="md:col-span-2 flex justify-end">
@@ -343,18 +370,21 @@ export function LeadForm({
         </select>
       </Field>
       {needsReason ? (
-        <Field
-          label={stage === "SOLD" ? "Won reason" : "Lost reason"}
-          name="outcomeReason"
-          hint="Required when a lead is sold or lost."
-        >
-          <input
-            id="outcomeReason"
+        <div className="md:col-span-2">
+          <Field
+            label={stage === "SOLD" ? "Won reason" : "Lost reason"}
             name="outcomeReason"
-            required
-            defaultValue={lead?.outcomeReason ?? ""}
-          />
-        </Field>
+            hint="Pick a common reason or type your own. Required when a lead is sold or lost."
+          >
+            <OutcomeReasonField
+              key={stage}
+              id="outcomeReason"
+              name="outcomeReason"
+              stage={stage}
+              defaultValue={lead?.outcomeReason}
+            />
+          </Field>
+        </div>
       ) : null}
       <div className="md:col-span-2">
         <Field label="Title" name="title">

@@ -82,6 +82,40 @@ export const UK_SUPPLIERS = [
   "Opus Energy",
 ] as const;
 
+export const WON_REASONS = [
+  "Best price",
+  "Service / existing relationship",
+  "Contract length",
+  "Green / renewable tariff",
+  "Renewal timing",
+] as const;
+
+export const LOST_REASONS = [
+  "Stayed with incumbent on price",
+  "Went direct to supplier",
+  "Another broker won",
+  "No decision / went quiet",
+  "Site closed / change of tenancy",
+  "Objection not cleared",
+] as const;
+
+export const CALL_NOTE_KINDS = [
+  { value: "PHONE", label: "Phone" },
+  { value: "VISIT", label: "Visit" },
+  { value: "NOTE", label: "Note" },
+] as const;
+
+export const CSV_LEAD_HEADERS = [
+  "companyName",
+  "email",
+  "title",
+  "stage",
+  "source",
+  "outcomeReason",
+  "agentEmails",
+  "notes",
+] as const;
+
 export const CSV_DEAL_HEADERS = [
   "companyName",
   "email",

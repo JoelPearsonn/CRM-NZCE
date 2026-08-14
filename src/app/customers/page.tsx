@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { EmptyState, LoaPill, ObjectionPill, PageHeader, RenewalCell, SortLink, StagePill } from "@/components/ui";
-import { LOA_STATUSES, OBJECTION_STATUSES } from "@/lib/constants";
+import {
+  bookFilterParams,
+  customerArchiveWhere,
+  customerMatchesFilters,
+  exportHref,
+  parseBookFilters,
+} from "@/lib/book-filters";
+import { CALL_NOTE_KINDS, LOA_STATUSES, OBJECTION_STATUSES, labelFor } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
@@ -11,22 +18,20 @@ import { getWorkingAsId } from "@/lib/working-as";
 
 export default async function CustomersPage({ searchParams }: SearchPageProps) {
   const query = await searchParams;
-  const renewal = typeof query.renewal === "string" ? query.renewal : "";
-  const loa = typeof query.loa === "string" ? query.loa : "";
-  const objection = typeof query.objection === "string" ? query.objection : "";
-  const salesperson = typeof query.salesperson === "string" ? query.salesperson : "";
-  const showArchived = query.archived === "1";
+  const filters = parseBookFilters(query);
+  const { renewal, loa, objection, salesperson, showArchived } = filters;
   const sort = query.sort === "renewal" || query.sort === "remaining" ? query.sort : "company";
   const dir = sortDir(typeof query.dir === "string" ? query.dir : "");
   const workingAsId = await getWorkingAsId();
 
   const [customers, agents, archivedCount] = await Promise.all([
     prisma.customer.findMany({
-      where: showArchived ? { archivedAt: { not: null } } : { archivedAt: null },
+      where: customerArchiveWhere(showArchived),
       include: {
         meters: { include: { salesperson: true }, orderBy: { renewalDate: "asc" } },
         leads: { orderBy: { updatedAt: "desc" }, take: 1 },
         deals: true,
+        notes: { orderBy: { createdAt: "desc" }, take: 1 },
       },
       orderBy: { companyName: "asc" },
     }),
@@ -34,36 +39,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
     prisma.customer.count({ where: { archivedAt: { not: null } } }),
   ]);
 
-  const now = new Date();
-  const filtered = customers.filter((customer) => {
-    if (renewal) {
-      const days = Number(renewal);
-      const horizon = new Date(now);
-      horizon.setDate(horizon.getDate() + days);
-      const hit = customer.meters.some(
-        (meter) => meter.renewalDate && meter.renewalDate <= horizon,
-      );
-      if (!hit) return false;
-    }
-    if (loa === "unsigned") {
-      if (
-        !customer.meters.some(
-          (meter) => meter.loaStatus !== "SIGNED" && meter.loaStatus !== "RECEIVED",
-        )
-      ) {
-        return false;
-      }
-    } else if (loa && !customer.meters.some((meter) => meter.loaStatus === loa)) {
-      return false;
-    }
-    if (objection && !customer.meters.some((meter) => meter.objectionStatus === objection)) {
-      return false;
-    }
-    if (salesperson && !customer.meters.some((meter) => meter.salespersonId === salesperson)) {
-      return false;
-    }
-    return true;
-  });
+  const filtered = customers.filter((customer) => customerMatchesFilters(customer, filters));
 
   filtered.sort((a, b) => {
     let cmp = 0;
@@ -77,12 +53,8 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
     return dir === "desc" ? -cmp : cmp;
   });
 
-  const listParams = new URLSearchParams();
-  if (renewal) listParams.set("renewal", renewal);
-  if (loa) listParams.set("loa", loa);
-  if (objection) listParams.set("objection", objection);
-  if (salesperson) listParams.set("salesperson", salesperson);
-  if (showArchived) listParams.set("archived", "1");
+  const listParams = bookFilterParams(filters);
+  const filteredExport = Boolean(renewal || loa || objection || salesperson || showArchived);
 
   const views = [
     { href: "/customers", label: "All" },
@@ -104,11 +76,11 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
         description="Businesses on the NZCE desk. Filter the book, or import a CSV. Finance lives on each record."
         actions={
           <>
-            <a href="/api/export/customers" className="btn btn-ghost">
-              Export customers
+            <a href={exportHref("/api/export/customers", listParams)} className="btn btn-ghost">
+              {filteredExport ? "Export this view" : "Export customers"}
             </a>
-            <a href="/api/export/meters" className="btn btn-ghost">
-              Export meters
+            <a href={exportHref("/api/export/meters", listParams)} className="btn btn-ghost">
+              {filteredExport ? "Export these meters" : "Export meters"}
             </a>
             <Link href="/import" className="btn btn-ghost">
               Import CSV
@@ -252,6 +224,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                     Remaining
                   </SortLink>
                 </th>
+                <th>Last contact</th>
                 <th>Added</th>
               </tr>
             </thead>
@@ -302,6 +275,18 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                     <td>{gbp(finance.paid)}</td>
                     <td className={finance.remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
                       {gbp(finance.remaining)}
+                    </td>
+                    <td>
+                      {customer.notes[0] ? (
+                        <>
+                          {formatDate(customer.notes[0].createdAt)}
+                          <div className="text-[0.7rem] text-muted">
+                            {labelFor(CALL_NOTE_KINDS, customer.notes[0].kind)}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
                     <td>{formatDate(customer.createdAt)}</td>
                   </tr>

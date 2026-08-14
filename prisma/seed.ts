@@ -277,6 +277,7 @@ async function main() {
     await ensureRenewalReminderTasks();
     await ensureDemoOutcomes();
     await ensureDemoArchive();
+    await ensureDemoCallKinds();
     console.log("Desk already seeded — skipping (demo extras checked).");
     return;
   }
@@ -925,21 +926,25 @@ async function main() {
       {
         customerId: riverside.id,
         authorId: james.id,
+        kind: "VISIT",
         body: "Spoke with Margaret. Happy with E.ON service. Wants a 12-month again if the day rate stays under 27p.",
       },
       {
         customerId: harbour.id,
         authorId: priya.id,
+        kind: "PHONE",
         body: "Claire confirmed both sites stay on the same start date. Ask EDF for a dual-fuel basket if they can beat last year's SC.",
       },
       {
         customerId: steel.id,
         authorId: james.id,
+        kind: "PHONE",
         body: "Ian is under pressure from the works manager. Needs prices by Friday or they roll onto out-of-contract.",
       },
       {
         customerId: bakery.id,
         authorId: tom.id,
+        kind: "PHONE",
         body: "Left voicemail. Samira texted back — call after 3pm once the ovens are down.",
       },
     ],
@@ -1047,6 +1052,7 @@ async function main() {
   await ensureRenewalReminderTasks();
   await ensureDemoOutcomes();
   await ensureDemoArchive();
+  await ensureDemoCallKinds();
 
   console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
 }
@@ -1089,6 +1095,19 @@ async function ensureDemoOutcomes() {
       allocations: { create: [{ agentId: tom.id }] },
     },
   });
+}
+
+async function ensureDemoCallKinds() {
+  const tagged = await prisma.callNote.findFirst({ where: { kind: { not: "NOTE" } } });
+  if (tagged) return;
+  const notes = await prisma.callNote.findMany({ orderBy: { createdAt: "asc" } });
+  const kinds = ["VISIT", "PHONE", "PHONE", "PHONE"] as const;
+  for (const [index, note] of notes.entries()) {
+    await prisma.callNote.update({
+      where: { id: note.id },
+      data: { kind: kinds[index] ?? "NOTE" },
+    });
+  }
 }
 
 async function ensureDemoArchive() {

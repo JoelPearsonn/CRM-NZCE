@@ -18,7 +18,7 @@ import {
 } from "@/components/ui";
 import { archiveCustomer } from "@/app/actions/customers";
 import { toggleTask } from "@/app/actions/desk";
-import { isTenderLeadStage } from "@/lib/constants";
+import { CALL_NOTE_KINDS, isTenderLeadStage, labelFor } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import { groupMetersBySite } from "@/lib/sites";
@@ -294,6 +294,9 @@ export default async function CustomerDetailPage({
               <ul className="divide-y divide-rule">
                 {customer.notes.map((note) => (
                   <li key={note.id} className="px-4 py-3">
+                    <p className="text-[0.68rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                      {labelFor(CALL_NOTE_KINDS, note.kind)}
+                    </p>
                     <p className="text-sm whitespace-pre-wrap">{note.body}</p>
                     <p className="mt-1 text-[0.7rem] text-muted">
                       {note.author?.name ?? "Desk"} · {formatDateTime(note.createdAt)}
