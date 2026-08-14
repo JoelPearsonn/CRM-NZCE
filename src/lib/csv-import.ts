@@ -60,9 +60,14 @@ export function parseCsv(text: string): string[][] {
   return rows;
 }
 
+export function csvLine(cells: readonly string[]) {
+  return cells
+    .map((raw) => (/[",\n\r]/.test(raw) ? `"${raw.replaceAll('"', '""')}"` : raw))
+    .join(",");
+}
+
 export function csvTemplate() {
-  const header = CSV_IMPORT_HEADERS.join(",");
-  const example = [
+  return `${csvLine(CSV_IMPORT_HEADERS)}\n${csvLine([
     "Example Bakery Ltd",
     "",
     "Samira Khan",
@@ -83,8 +88,7 @@ export function csvTemplate() {
     "NHH",
     "NOT_REQUESTED",
     "",
-  ].join(",");
-  return `${header}\n${example}\n`;
+  ])}\n`;
 }
 
 export function digitsOnly(value: string) {

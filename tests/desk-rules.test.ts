@@ -2,11 +2,30 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS } from "../src/lib/constants";
+import { dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
-import { validateImportRow } from "../src/lib/csv-import";
+import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
 import { liveDealOnSupply } from "../src/lib/deals";
 import { findSupplyClash } from "../src/lib/supply";
 import { withTestDb } from "./helpers/test-db";
+
+test("import templates download with columns the importer accepts", () => {
+  const meter = parseCsv(csvTemplate());
+  assert.deepEqual(meter[0], [...CSV_IMPORT_HEADERS]);
+  const meterRow = validateImportRow(rowToRecord(meter[0], meter[1]), 2);
+  assert.deepEqual(meterRow.errors, []);
+  assert.equal(meterRow.fuelType, "ELECTRIC");
+  assert.equal(meterRow.mpan, "1234567890123");
+  assert.equal(meterRow.siteName, "Stokes Croft");
+
+  const deals = parseCsv(dealsCsvTemplate());
+  assert.deepEqual(deals[0], [...CSV_DEAL_HEADERS]);
+  const dealRow = validateDealRow(rowToRecord(deals[0], deals[1]), 2);
+  assert.deepEqual(dealRow.errors, []);
+  assert.equal(dealRow.supplier, "Octopus Energy");
+  assert.equal(dealRow.mpan, "1234567890123");
+});
 
 test("CSV import source never deletes customers or meters", () => {
   const files = [

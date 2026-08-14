@@ -1,23 +1,30 @@
 # NZCE brokerage desk
 
-This is the working book for **NZCE**, a UK energy brokerage. It keeps customers, meters (MPAN / MPRN), leads, sold contracts and commission in one place.
-
-It is a desk for brokers — not monday.com, not Salesforce, and not a generic admin theme.
+This is the working book for NZCE, a UK energy brokerage.
 
 ## How to run
 
-Needs Node 20+.
+1. Install Node from https://nodejs.org (choose the LTS button).
+2. Open a terminal in this folder and run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-That creates the local database, loads demo data if the book is empty, and starts the desk at [http://localhost:3000](http://localhost:3000). After `npm run build`, run `npm run start` to serve the production desk on the same address.
+3. Open http://localhost:3000 in your browser.
 
-The left-hand menu is Desk, Renewals, Tasks, Customers, Leads, Contracts, Finance, Agents, and How to use. Import is under Customers, not on the menu.
+If the book is empty and you want the demo customers back:
 
-To wipe the demo book and start again:
+```bash
+npm run seed
+```
+
+Then refresh the browser.
+
+This is a desk for brokers — not monday.com, not Salesforce, and not a generic admin theme. The left-hand menu is Desk, Renewals, Tasks, Customers, Leads, Contracts, Finance, Agents, and How to use. Import is under Customers, not on the menu.
+
+After `npm run build`, `npm run start` serves the same address. To wipe the demo book and start again:
 
 ```bash
 npm run db:reset
@@ -70,7 +77,7 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 
 ## Demo book
 
-If the desk is empty, seed loads eight UK businesses, four agents, leads and live contracts. Search `Harbour View` or MPAN `008010011234567890123`. St Anne’s Parish Hall is archived so you can see restore.
+If the desk is empty, `npm run seed` loads eight UK businesses, four agents, leads and live contracts. Search `Harbour View` or MPAN `002160013300112233445`. St Anne’s Parish Hall is archived so you can see restore.
 
 ## Stack
 

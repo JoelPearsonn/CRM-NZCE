@@ -8,7 +8,8 @@
     "start": "prisma generate && next start",
     "lint": "eslint",
     "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts",
-    "db:seed": "tsx prisma/seed.ts",
+    "seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
+    "db:seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
     "postinstall": "prisma generate"
   },

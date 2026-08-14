@@ -1,6 +1,6 @@
 import { CSV_DEAL_HEADERS, DEAL_STATUSES, FUEL_TYPES } from "@/lib/constants";
 import { parseCsvDate, parseCsvMoney } from "@/lib/csv-dates";
-import { parseCsv, rowToRecord } from "@/lib/csv-import";
+import { csvLine, parseCsv, rowToRecord } from "@/lib/csv-import";
 import { isEmail } from "@/lib/format";
 
 export type DealImportAction = "CREATE_DEAL" | "UPDATE_DEAL" | "SKIP";
@@ -26,8 +26,7 @@ const FUELS = new Set<string>(FUEL_TYPES.map((item) => item.value));
 const STATUSES = new Set<string>(DEAL_STATUSES.map((item) => item.value));
 
 export function dealsCsvTemplate() {
-  const header = CSV_DEAL_HEADERS.join(",");
-  const example = [
+  return `${csvLine(CSV_DEAL_HEADERS)}\n${csvLine([
     "Example Bakery Ltd",
     "samira@example-bakery.co.uk",
     "Octopus Energy",
@@ -45,8 +44,7 @@ export function dealsCsvTemplate() {
     "0",
     "tom.brennan@nzce.co.uk",
     "tom.brennan@nzce.co.uk",
-  ].join(",");
-  return `${header}\n${example}\n`;
+  ])}\n`;
 }
 
 export function validateDealRow(values: Record<string, string>, line: number): DealPreviewRow {
