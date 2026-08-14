@@ -11,6 +11,7 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
   const sort = query.sort === "remaining" ? "remaining" : "due";
   const dir = sortDir(typeof query.dir === "string" ? query.dir : "");
   const deals = await prisma.deal.findMany({
+    where: { customer: { archivedAt: null } },
     include: { customer: true, salesperson: true, meter: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { renewalDate: "asc" }],
   });

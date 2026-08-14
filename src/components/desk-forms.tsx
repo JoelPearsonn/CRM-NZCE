@@ -41,12 +41,12 @@ export function NoteForm({
           ))}
         </div>
       </fieldset>
-      <Field label="Call note" name="body">
-        <textarea id="body" name="body" rows={3} required placeholder="What was said, who promised what…" />
+      <Field label="Call note" name="body" htmlFor="note-body">
+        <textarea id="note-body" name="body" rows={3} required placeholder="What was said, who promised what…" />
       </Field>
       <div className="flex items-end gap-3">
-        <Field label="Logged by" name="authorId">
-          <select id="authorId" name="authorId" defaultValue={workingAsId ?? ""}>
+        <Field label="Logged by" name="authorId" htmlFor="note-authorId">
+          <select id="note-authorId" name="authorId" defaultValue={workingAsId ?? ""}>
             <option value="">Desk</option>
             {agents.map((agent) => (
               <option key={agent.id} value={agent.id}>
@@ -80,26 +80,26 @@ export function RecordingForm({
       <p className="text-xs text-muted">
         Store a call recording or a typed transcript. This does not dial or record a live line.
       </p>
-      <Field label="Audio or transcript" name="file">
+      <Field label="Audio or transcript" name="file" htmlFor="recording-file">
         <input
-          id="file"
+          id="recording-file"
           name="file"
           type="file"
           required
           accept=".mp3,.wav,.m4a,.webm,.ogg,.txt,.vtt,.srt,audio/*,text/plain"
         />
       </Field>
-      <Field label="Short note" name="note">
+      <Field label="Short note" name="note" htmlFor="recording-note">
         <input
-          id="note"
+          id="recording-note"
           name="note"
           required
           placeholder="Claire, 14 Aug — renewal walkthrough"
         />
       </Field>
       <div className="flex items-end gap-3">
-        <Field label="Logged by" name="authorId">
-          <select id="recordingAuthorId" name="authorId" defaultValue={workingAsId ?? ""}>
+        <Field label="Logged by" name="authorId" htmlFor="recording-authorId">
+          <select id="recording-authorId" name="authorId" defaultValue={workingAsId ?? ""}>
             <option value="">Desk</option>
             {agents.map((agent) => (
               <option key={agent.id} value={agent.id}>
@@ -133,8 +133,8 @@ export function EmailForm({ customerId }: { customerId: string }) {
           <input id="toAddr" name="toAddr" type="email" required />
         </Field>
       </div>
-      <Field label="Body / summary" name="body">
-        <textarea id="body" name="body" rows={3} required />
+      <Field label="Body / summary" name="body" htmlFor="email-body">
+        <textarea id="email-body" name="body" rows={3} required />
       </Field>
       <div className="flex justify-end">
         <button className="btn btn-ghost" disabled={pending}>

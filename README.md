@@ -13,7 +13,9 @@ npm install
 npm run dev
 ```
 
-That creates the local database, loads demo data if the book is empty, and starts the desk at [http://localhost:3000](http://localhost:3000).
+That creates the local database, loads demo data if the book is empty, and starts the desk at [http://localhost:3000](http://localhost:3000). After `npm run build`, run `npm run start` to serve the production desk on the same address.
+
+The left-hand menu is Desk, Renewals, Tasks, Customers, Leads, Contracts, Finance, Agents, and How to use. Import is under Customers, not on the menu.
 
 To wipe the demo book and start again:
 

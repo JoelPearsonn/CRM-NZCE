@@ -87,17 +87,19 @@ export function ErrorBanner({ message }: { message?: string }) {
 export function Field({
   label,
   name,
+  htmlFor,
   children,
   hint,
 }: {
   label: string;
   name?: string;
+  htmlFor?: string;
   children: React.ReactNode;
   hint?: string;
 }) {
   return (
     <div className="field">
-      <label htmlFor={name}>{label}</label>
+      <label htmlFor={htmlFor ?? name}>{label}</label>
       {children}
       {hint ? <p className="text-xs text-muted">{hint}</p> : null}
     </div>
@@ -229,7 +231,7 @@ export function Section({
   id?: string;
 }) {
   return (
-    <section id={id} className="card overflow-hidden">
+    <section id={id} className="card overflow-x-auto">
       <div className="flex items-center justify-between border-b border-rule px-4 py-3">
         <h2 className="section-title">{title}</h2>
         {action}

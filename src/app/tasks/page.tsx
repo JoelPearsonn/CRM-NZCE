@@ -8,6 +8,7 @@ import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 export default async function TasksInboxPage() {
   await ensureRenewalReminderTasks();
   const tasks = await prisma.task.findMany({
+    where: { customer: { archivedAt: null } },
     include: { customer: true, assignee: true },
     orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
   });

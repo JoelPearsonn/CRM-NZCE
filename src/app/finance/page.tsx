@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function FinancePage() {
   const deals = await prisma.deal.findMany({
+    where: { customer: { archivedAt: null } },
     include: { customer: true, salesperson: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
   });

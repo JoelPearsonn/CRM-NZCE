@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "prisma generate && prisma db push && tsx prisma/seed.ts && next dev --turbopack",
     "build": "prisma generate && prisma db push && next build",
-    "start": "next start",
+    "start": "prisma generate && next start",
     "lint": "eslint",
     "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts",
     "db:seed": "tsx prisma/seed.ts",

@@ -12,6 +12,36 @@ export default function HelpPage() {
 
       <div className="grid gap-5">
         <Guide
+          title="The left-hand menu"
+          body="Desk is today on the book. Renewals is 30 / 60 / 90 days and the month diary. Tasks is every follow-up. Customers is the book (sites, meters, notes). Leads is the pipeline. Contracts is the sold book. Finance is cashflow and profit. Agents is who you allocate. How to use is this page. Import is not on the menu — open it from Customers."
+        >
+          <Link href="/" className="btn btn-ghost">
+            Desk
+          </Link>
+          <Link href="/renewals" className="btn btn-ghost">
+            Renewals
+          </Link>
+          <Link href="/tasks" className="btn btn-ghost">
+            Tasks
+          </Link>
+          <Link href="/customers" className="btn btn-ghost">
+            Customers
+          </Link>
+          <Link href="/leads" className="btn btn-ghost">
+            Leads
+          </Link>
+          <Link href="/contracts" className="btn btn-ghost">
+            Contracts
+          </Link>
+          <Link href="/finance" className="btn btn-ghost">
+            Finance
+          </Link>
+          <Link href="/agents" className="btn btn-ghost">
+            Agents
+          </Link>
+        </Guide>
+
+        <Guide
           title="Add a customer"
           body="Start with the company and a named contact. You need an email or a phone. After save, add a meter and give it a site name — that is where the MPAN or MPRN lives. Multi-site customers get one site heading per building. If the company or email is already on the book, the desk warns you and links the existing record. You can still add a second customer if you confirm."
         >

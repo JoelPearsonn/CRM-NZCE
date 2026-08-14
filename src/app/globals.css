@@ -217,11 +217,13 @@ a {
 
 .calendar-item {
   display: block;
+  overflow: hidden;
   border: 1px solid var(--color-rule);
   background: #faf6ec;
   padding: 0.3rem 0.4rem;
   font-size: 0.72rem;
   line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
 .calendar-item:hover {

@@ -32,10 +32,13 @@ export default async function DashboardPage() {
     }),
     prisma.lead.groupBy({
       by: ["stage"],
+      where: { customer: { archivedAt: null } },
       _count: { _all: true },
     }),
-    prisma.deal.findMany(),
-    prisma.lead.count({ where: { stage: { in: [...OPEN_LEAD_STAGES] } } }),
+    prisma.deal.findMany({ where: { customer: { archivedAt: null } } }),
+    prisma.lead.count({
+      where: { stage: { in: [...OPEN_LEAD_STAGES] }, customer: { archivedAt: null } },
+    }),
     prisma.customer.count({ where: { archivedAt: null } }),
     prisma.meter.count({ where: { customer: { archivedAt: null } } }),
   ]);
