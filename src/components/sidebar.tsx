@@ -7,7 +7,8 @@ const links = [
   { href: "/", label: "Desk", hint: "Renewals & commission" },
   { href: "/customers", label: "Customers", hint: "Sites & contacts" },
   { href: "/leads", label: "Leads", hint: "Pipeline" },
-  { href: "/contracts", label: "Contracts", hint: "Deals & finance" },
+  { href: "/contracts", label: "Contracts", hint: "Sold book" },
+  { href: "/finance", label: "Finance", hint: "Cashflow & profit" },
   { href: "/agents", label: "Agents", hint: "Allocation" },
 ];
 
