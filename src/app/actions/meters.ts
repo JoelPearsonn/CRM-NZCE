@@ -8,6 +8,7 @@ import { optionalStr, parseDate, parseIntField, str } from "@/lib/format";
 import { removeLoaFile, storeLoaFile } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
+import { findSupplyClash } from "@/lib/supply";
 
 export type DuplicateMeter = {
   id: string;
@@ -77,21 +78,6 @@ function draftFrom(formData: FormData): MeterDraft {
   };
 }
 
-async function findSupplyClash(mpan: string | null, mprn: string | null, excludeId?: string | null) {
-  const or = [
-    mpan ? { mpan } : undefined,
-    mprn ? { mprn } : undefined,
-  ].filter(Boolean) as Array<{ mpan?: string; mprn?: string }>;
-  if (!or.length) return null;
-  return prisma.meter.findFirst({
-    where: {
-      OR: or,
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    include: { customer: true },
-  });
-}
-
 export async function saveMeter(
   _prev: ActionState,
   formData: FormData,
@@ -114,7 +100,7 @@ export async function saveMeter(
     return { error: "Gas and dual-fuel meters need an MPRN.", draft };
   }
 
-  const clash = await findSupplyClash(mpan, mprn, id);
+  const clash = await findSupplyClash(prisma, mpan, mprn, id);
   if (clash) {
     const match = mpan && clash.mpan === mpan ? "mpan" : "mprn";
     return {

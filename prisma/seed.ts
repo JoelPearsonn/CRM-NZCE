@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { writeSeedLoa } from "../src/lib/loa-files";
+import { writeSeedRecording } from "../src/lib/recording-files";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 
 const prisma = new PrismaClient();
@@ -278,6 +279,7 @@ async function main() {
     await ensureDemoOutcomes();
     await ensureDemoArchive();
     await ensureDemoCallKinds();
+    await ensureDemoRecording();
     console.log("Desk already seeded — skipping (demo extras checked).");
     return;
   }
@@ -1053,6 +1055,7 @@ async function main() {
   await ensureDemoOutcomes();
   await ensureDemoArchive();
   await ensureDemoCallKinds();
+  await ensureDemoRecording();
 
   console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
 }
@@ -1093,6 +1096,36 @@ async function ensureDemoOutcomes() {
       notes: "Second site — they stayed with the incumbent.",
       outcomeReason: "Stayed with incumbent on price.",
       allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+}
+
+async function ensureDemoRecording() {
+  const already = await prisma.callRecording.count();
+  if (already > 0) return;
+  const harbour = await prisma.customer.findFirst({
+    where: { companyName: "Harbour View Hotels Ltd" },
+  });
+  const priya = await prisma.agent.findUnique({ where: { email: "priya.shah@nzce.co.uk" } });
+  if (!harbour) return;
+  const storedName = `${harbour.id}-harbour-view-transcript.txt`;
+  await writeSeedRecording(
+    storedName,
+    [
+      "Harbour View — Claire Debenham, 11 Aug 2026",
+      "Priya: Both sites stay on the same start date.",
+      "Claire: Ask EDF for a dual-fuel basket if they can beat last year's standing charge.",
+      "Priya: I'll store the signed LOA on Marine Parade and come back with the pack.",
+    ].join("\n"),
+  );
+  await prisma.callRecording.create({
+    data: {
+      customerId: harbour.id,
+      authorId: priya?.id,
+      note: "Claire, 11 Aug — renewal walkthrough (transcript).",
+      fileName: "harbour-view-claire-11-aug.txt",
+      storedName,
+      mimeType: "text/plain",
     },
   });
 }

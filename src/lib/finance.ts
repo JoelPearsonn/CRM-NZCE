@@ -31,6 +31,15 @@ export function dealRemaining(deal: FinanceDeal) {
   return Math.max(0, (deal.amountDue ?? 0) - (deal.actualPaid ?? 0));
 }
 
+export function splitAmounts(deal: FinanceDeal, agentCount: number): FinanceDeal {
+  const share = Math.max(1, agentCount);
+  return {
+    amountDue: (deal.amountDue ?? 0) / share,
+    actualPaid: (deal.actualPaid ?? 0) / share,
+    estimatedCommission: (deal.estimatedCommission ?? 0) / share,
+  };
+}
+
 export function financeTotals(deals: FinanceDeal[]) {
   const due = deals.reduce((sum, deal) => sum + (deal.amountDue ?? 0), 0);
   const paid = deals.reduce((sum, deal) => sum + (deal.actualPaid ?? 0), 0);
@@ -94,12 +103,7 @@ export function groupByAgent(deals: AnalyticsDeal[]): Bucket[] {
         : deal.salespersonId
           ? [{ id: deal.salespersonId, name: deal.salespersonName ?? "Agent" }]
           : [{ id: "unassigned", name: "Unassigned" }];
-    const share = agents.length;
-    const slice: FinanceDeal = {
-      amountDue: (deal.amountDue ?? 0) / share,
-      actualPaid: (deal.actualPaid ?? 0) / share,
-      estimatedCommission: (deal.estimatedCommission ?? 0) / share,
-    };
+    const slice = splitAmounts(deal, agents.length);
     for (const agent of agents) {
       const bucket = map.get(agent.id) ?? emptyBucket(agent.id, agent.name);
       addDeal(bucket, slice);

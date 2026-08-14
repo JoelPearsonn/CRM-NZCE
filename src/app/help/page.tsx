@@ -76,7 +76,7 @@ export default function HelpPage() {
 
         <Guide
           title="Log a call"
-          body="On the customer record, mark Phone, Visit or Note, write what was said, and save. Last contact shows on the customer list so you can see who has gone quiet."
+          body="On the customer record, mark Phone, Visit or Note, write what was said, and save. You can also store a call recording or a text transcript with a short note. The desk does not dial or record a live line. Last contact shows on the customer list so you can see who has gone quiet."
         >
           <Link href="/customers" className="btn btn-ghost">
             Customers

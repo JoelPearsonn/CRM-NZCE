@@ -21,6 +21,7 @@ model Agent {
   dealAllocations  DealAllocation[]
   reconciliations  DealReconciliation[]
   notes            CallNote[]
+  recordings       CallRecording[]
   tasks            Task[]
   activities       Activity[]
 }
@@ -45,6 +46,7 @@ model Customer {
   deals           Deal[]
   tenderResponses TenderResponse[]
   notes           CallNote[]
+  recordings      CallRecording[]
   emails          EmailLog[]
   tasks           Task[]
   activities      Activity[]
@@ -211,6 +213,22 @@ model CallNote {
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   author   Agent?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+model CallRecording {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String?
+  note       String
+  fileName   String
+  storedName String
+  mimeType   String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   Agent?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
 }
 
 model EmailLog {

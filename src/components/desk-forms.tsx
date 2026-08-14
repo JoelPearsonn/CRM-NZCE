@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { Agent } from "@prisma/client";
 import { addCallNote, addTask, logEmail, type ActionState } from "@/app/actions/desk";
+import { addCallRecording } from "@/app/actions/recordings";
 import { ErrorBanner, Field } from "@/components/ui";
 import { CALL_NOTE_KINDS } from "@/lib/constants";
 
@@ -56,6 +57,59 @@ export function NoteForm({
         </Field>
         <button className="btn btn-primary mb-0.5" disabled={pending}>
           {pending ? "Saving…" : "Add note"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function RecordingForm({
+  customerId,
+  agents,
+  workingAsId,
+}: {
+  customerId: string;
+  agents: Agent[];
+  workingAsId?: string | null;
+}) {
+  const [state, action, pending] = useActionState(addCallRecording, empty);
+  return (
+    <form action={action} encType="multipart/form-data" className="grid gap-3 border-b border-rule p-4">
+      <input type="hidden" name="customerId" value={customerId} />
+      <ErrorBanner message={state.error} />
+      <p className="text-xs text-muted">
+        Store a call recording or a typed transcript. This does not dial or record a live line.
+      </p>
+      <Field label="Audio or transcript" name="file">
+        <input
+          id="file"
+          name="file"
+          type="file"
+          required
+          accept=".mp3,.wav,.m4a,.webm,.ogg,.txt,.vtt,.srt,audio/*,text/plain"
+        />
+      </Field>
+      <Field label="Short note" name="note">
+        <input
+          id="note"
+          name="note"
+          required
+          placeholder="Claire, 14 Aug — renewal walkthrough"
+        />
+      </Field>
+      <div className="flex items-end gap-3">
+        <Field label="Logged by" name="authorId">
+          <select id="recordingAuthorId" name="authorId" defaultValue={workingAsId ?? ""}>
+            <option value="">Desk</option>
+            {agents.map((agent) => (
+              <option key={agent.id} value={agent.id}>
+                {agent.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <button className="btn btn-primary mb-0.5" disabled={pending}>
+          {pending ? "Saving…" : "Store file"}
         </button>
       </div>
     </form>

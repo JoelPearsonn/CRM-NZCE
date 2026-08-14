@@ -1,34 +1,8 @@
 # NZCE brokerage desk
 
-Purpose-built CRM for **NZCE**, a UK energy brokerage. It is a working book for customers, meters, leads and sold contracts — not a generic admin theme and not a Twenty / monday.com / Salesforce shell.
+This is the working book for **NZCE**, a UK energy brokerage. It keeps customers, meters (MPAN / MPRN), leads, sold contracts and commission in one place.
 
-This cut is the first working version: sales and ops can keep the book, move leads, and see renewals and commission. It does **not** generate LOAs, send tender emails, talk to DocuSign or Gmail, store call recordings, or build monthly report PDFs.
-
-## What is in this cut
-
-- **Customers** with business/contact details, multiple meters, and a finance tracker on the record (due date, amount due, estimated commission, actual paid, remaining)
-- **Meters** with MPAN / MPRN, Electric EAC / Gas AQ, supplier, contract dates, meter type, HH/NHH, current rates, renewal date, LOA status (field only), salesperson, and **objection** (None / In objection / Cleared, plus reason and dates)
-- **Leads** on a sales process, allocated to one or more agents
-- **Contracts / deals** when sold — same records as the customer finance tracker, plus a book-wide Contracts page
-- **Finance dashboard** — cashflow by month, profit (estimated vs paid), and breakdowns by agent and customer, all from those same deals
-- **Master search** in the header (name, MPAN, MPRN, email, company)
-- Customer desk: call notes, email log (manual, not live Gmail), tasks/follow-ups, activity history
-- Dashboard: renewals in the next 90 days, open leads by stage, commission due vs paid
-- Agents list for allocation (no real auth)
-
-Lead stages (edit `src/lib/constants.ts` to change them):
-
-`New → Contacted → LOA requested → Tendering → Quoted → Sold → Lost`
-
-## What is out
-
-- LOA document generation
-- Tender email send
-- DocuSign
-- Call recordings / transcripts
-- Monthly report PDFs
-- Gmail, monday.com, or other CRM integrations
-- Real login / permissions (stub only: “no login in this cut”)
+It is a desk for brokers — not monday.com, not Salesforce, and not a generic admin theme.
 
 ## How to run
 
@@ -39,24 +13,63 @@ npm install
 npm run dev
 ```
 
-That generates the Prisma client, creates the local SQLite database, seeds demo data if the desk is empty, and starts the app at [http://localhost:3000](http://localhost:3000).
+That creates the local database, loads demo data if the book is empty, and starts the desk at [http://localhost:3000](http://localhost:3000).
 
-To wipe and reseed:
+To wipe the demo book and start again:
 
 ```bash
 npm run db:reset
 ```
 
-SQLite file: `prisma/dev.db` (gitignored). Connection string is in `.env` / `.env.example`:
+To run the desk checks (split math, import, MPAN, objection, one live contract):
+
+```bash
+npm test
+```
+
+The database is a SQLite file at `prisma/dev.db` (not committed). Connection string:
 
 ```
 DATABASE_URL="file:./dev.db"
 ```
 
+## How to import
+
+1. Open **Import CSV** (from Customers, or go to `/import`).
+2. Download the **meter template** (or the deals template if you are loading contracts).
+3. Fill company, site, and MPAN or MPRN. For deals, use the same columns as **Export deals**.
+4. Preview the rows. Then import.
+5. Existing meters are updated by supply number. Existing deals are updated by customer + supplier + start date. **Nothing is deleted.**
+
+You can also add one customer by hand: **Add customer** → add a meter → give it a site name.
+
+## What is in
+
+- Customers, sites and meters (MPAN, MPRN, EAC, AQ, LOA status, objection)
+- Leads on a sales process, with a won or lost reason
+- Contracts / deals and a finance tracker (due, estimated, paid, remaining)
+- Two agents on a deal split estimated and actual **50/50**
+- Renewals (30 / 60 / 90 days and a month diary)
+- CSV import and export (round-trip columns)
+- Soft-archive a customer (hidden from the default book, recoverable — no hard delete)
+- Call notes, plus store a recording or transcript file (no live phone)
+- Store a signed LOA copy (the desk does not generate an LOA)
+- Tasks, activity, and a how-to page in plain English
+
+## What is out
+
+- monday.com, or any other CRM sync
+- DocuSign
+- Gmail send (you can log an email by hand)
+- Tender-email generation
+- Monthly report PDFs
+- Hard delete of live customer data
+- Real login / permissions
+
 ## Demo book
 
-Seed loads eight UK businesses (mix of single- and multi-meter, electric and gas), four desk agents, mid-pipeline leads, and live contracts with commission figures. Try searching an MPAN such as `008010011234567890123` or a company such as `Harbour View`.
+If the desk is empty, seed loads eight UK businesses, four agents, leads and live contracts. Search `Harbour View` or MPAN `008010011234567890123`. St Anne’s Parish Hall is archived so you can see restore.
 
 ## Stack
 
-Next.js App Router, TypeScript, Tailwind CSS, Prisma, SQLite.
+Next.js, TypeScript, Tailwind CSS, Prisma 6, SQLite.

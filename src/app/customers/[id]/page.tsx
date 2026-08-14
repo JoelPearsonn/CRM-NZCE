@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
 import { CustomerTenderBook } from "@/components/customer-tenders";
-import { EmailForm, NoteForm, TaskForm } from "@/components/desk-forms";
+import { EmailForm, NoteForm, RecordingForm, TaskForm } from "@/components/desk-forms";
 import { MeterLoaForm } from "@/components/meter-loa";
 import { MeterObjectionForm } from "@/components/meter-objection";
 import { TenderCompare } from "@/components/tender-compare";
@@ -49,6 +49,7 @@ export default async function CustomerDetailPage({
         leads: { include: { allocations: { include: { agent: true } } }, orderBy: { updatedAt: "desc" } },
         tenderResponses: { include: { lead: true }, orderBy: { receivedOn: "desc" } },
         notes: { include: { author: true }, orderBy: { createdAt: "desc" } },
+        recordings: { include: { author: true }, orderBy: { createdAt: "desc" } },
         emails: { orderBy: { loggedAt: "desc" } },
         tasks: { include: { assignee: true }, orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { include: { actor: true }, orderBy: { createdAt: "desc" } },
@@ -305,6 +306,32 @@ export default async function CustomerDetailPage({
                 ))}
               </ul>
             )}
+            <div className="border-t border-rule">
+              <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                Recordings / transcripts
+              </p>
+              <RecordingForm customerId={customer.id} agents={agents} workingAsId={workingAsId} />
+              {customer.recordings.length === 0 ? (
+                <p className="p-4 text-sm text-muted">No file stored yet.</p>
+              ) : (
+                <ul className="divide-y divide-rule">
+                  {customer.recordings.map((recording) => (
+                    <li key={recording.id} className="px-4 py-3">
+                      <a
+                        href={`/api/recordings/${recording.id}`}
+                        className="font-medium text-brass-dark"
+                      >
+                        {recording.fileName}
+                      </a>
+                      <p className="mt-1 text-sm">{recording.note}</p>
+                      <p className="mt-1 text-[0.7rem] text-muted">
+                        {recording.author?.name ?? "Desk"} · {formatDateTime(recording.createdAt)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </Section>
 
           <Section title="Tasks / follow-ups">
