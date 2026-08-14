@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { EmptyState, PageHeader, StagePill } from "@/components/ui";
-import { LEAD_STAGES } from "@/lib/constants";
+import { isTenderLeadStage, LEAD_STAGES } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeadsPage() {
@@ -56,6 +56,14 @@ export default async function LeadsPage() {
                           {lead.customer.companyName}
                         </Link>
                         <p className="mt-0.5 text-xs text-muted">{lead.title}</p>
+                        {isTenderLeadStage(lead.stage) ? (
+                          <Link
+                            href={`/customers/${lead.customerId}?leadId=${lead.id}#tenders`}
+                            className="mt-2 inline-block text-[0.7rem] font-semibold text-brass-dark"
+                          >
+                            Add tender response
+                          </Link>
+                        ) : null}
                         <div className="mt-2">
                           <StageSelect leadId={lead.id} stage={lead.stage} />
                         </div>

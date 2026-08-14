@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
-import { PageHeader, Section, StagePill } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
+import { FuelPill, PageHeader, Section, StagePill, TenderStatusPill } from "@/components/ui";
+import { isTenderLeadStage } from "@/lib/constants";
+import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
@@ -15,11 +16,13 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         customer: true,
         allocations: { include: { agent: true } },
         deals: true,
+        tenderResponses: { orderBy: [{ status: "asc" }, { receivedOn: "desc" }] },
       },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
   ]);
   if (!lead) notFound();
+  const canAddTender = isTenderLeadStage(lead.stage);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -69,6 +72,54 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
           <h2 className="section-title mb-2">Notes</h2>
           <p className="text-sm whitespace-pre-wrap">{lead.notes}</p>
         </section>
+      ) : null}
+
+      {canAddTender || lead.tenderResponses.length > 0 ? (
+        <div className="mt-4">
+        <Section
+          title={`Tender responses · ${lead.tenderResponses.length}`}
+          action={
+            canAddTender ? (
+              <Link
+                href={`/customers/${lead.customerId}?leadId=${lead.id}#tenders`}
+                className="btn btn-brass"
+              >
+                Add response
+              </Link>
+            ) : null
+          }
+        >
+          {lead.tenderResponses.length === 0 ? (
+            <p className="p-4 text-sm text-muted">
+              This lead is {lead.stage === "TENDERING" ? "in tendering" : "quoted"}. Log supplier
+              quotes on the customer — no email is sent from here.
+            </p>
+          ) : (
+            <ul className="divide-y divide-rule">
+              {lead.tenderResponses.map((tender) => (
+                <li key={tender.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div>
+                    <Link href={`/tenders/${tender.id}/edit`} className="font-medium">
+                      {tender.supplier}
+                    </Link>
+                    <div className="text-[0.7rem] text-muted">
+                      {formatDate(tender.receivedOn)}
+                      {tender.unitRates ? ` · ${tender.unitRates}` : ""}
+                      {tender.estimatedAnnualCost != null
+                        ? ` · ${gbp(tender.estimatedAnnualCost)} est. annual`
+                        : ""}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <FuelPill value={tender.fuelType} />
+                    <TenderStatusPill value={tender.status} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+        </div>
       ) : null}
 
       {lead.deals.length > 0 ? (

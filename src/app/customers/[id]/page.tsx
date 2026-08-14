@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
+import { CustomerTenderBook } from "@/components/customer-tenders";
 import { EmailForm, NoteForm, TaskForm } from "@/components/desk-forms";
 import { MeterObjectionForm } from "@/components/meter-objection";
 import {
@@ -14,13 +15,19 @@ import {
   StagePill,
 } from "@/components/ui";
 import { toggleTask } from "@/app/actions/desk";
+import { isTenderLeadStage } from "@/lib/constants";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
-import type { IdPageProps } from "@/lib/page-props";
+import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
-export default async function CustomerDetailPage({ params }: IdPageProps) {
+export default async function CustomerDetailPage({
+  params,
+  searchParams,
+}: IdPageProps & SearchPageProps) {
   const { id } = await params;
+  const query = await searchParams;
+  const presetLeadId = typeof query.leadId === "string" ? query.leadId : undefined;
   const [customer, agents] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
@@ -28,6 +35,7 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
         meters: { include: { salesperson: true }, orderBy: [{ siteName: "asc" }, { fuelType: "asc" }] },
         deals: { include: { salesperson: true }, orderBy: { renewalDate: "asc" } },
         leads: { include: { allocations: { include: { agent: true } } }, orderBy: { updatedAt: "desc" } },
+        tenderResponses: { include: { lead: true }, orderBy: { receivedOn: "desc" } },
         notes: { include: { author: true }, orderBy: { createdAt: "desc" } },
         emails: { orderBy: { loggedAt: "desc" } },
         tasks: { include: { assignee: true }, orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
@@ -166,6 +174,18 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
           ) : null}
         </Section>
 
+        <Section
+          id="tenders"
+          title={`Tender responses · ${customer.tenderResponses.length}`}
+        >
+          <CustomerTenderBook
+            customerId={customer.id}
+            tenders={customer.tenderResponses}
+            leads={customer.leads}
+            presetLeadId={presetLeadId}
+          />
+        </Section>
+
         <Section title="Finance tracker">
           <CustomerFinanceLedger
             customerId={customer.id}
@@ -191,7 +211,17 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
                       {lead.allocations.map((allocation) => allocation.agent.name).join(", ") || "Unallocated"}
                     </div>
                   </div>
-                  <StagePill value={lead.stage} />
+                  <div className="flex items-center gap-2">
+                    {isTenderLeadStage(lead.stage) ? (
+                      <Link
+                        href={`/customers/${customer.id}?leadId=${lead.id}#tenders`}
+                        className="btn btn-brass text-[0.7rem]"
+                      >
+                        Add response
+                      </Link>
+                    ) : null}
+                    <StagePill value={lead.stage} />
+                  </div>
                 </li>
               ))}
             </ul>

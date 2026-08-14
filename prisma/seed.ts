@@ -27,11 +27,150 @@ async function ensureDemoObjection() {
   });
 }
 
+async function ensureDemoTenders() {
+  const already = await prisma.tenderResponse.count();
+  if (already > 0) return;
+  await seedHarbourViewTenders();
+  await seedOakfieldTenders();
+}
+
+async function seedHarbourViewTenders() {
+  const harbour = await prisma.customer.findFirst({
+    where: { companyName: "Harbour View Hotels Ltd" },
+  });
+  if (!harbour) return;
+
+  const priya = await prisma.agent.findFirst({ where: { email: "priya.shah@nzce.co.uk" } });
+  let lead = await prisma.lead.findFirst({
+    where: { customerId: harbour.id, title: "Hotel group 2026 retender" },
+  });
+  if (!lead) {
+    lead = await prisma.lead.create({
+      data: {
+        customerId: harbour.id,
+        title: "Hotel group 2026 retender",
+        stage: "QUOTED",
+        source: "Existing book",
+        notes: "Quotes in from Octopus, British Gas and TotalEnergies. Claire reviewing the 24-month Octopus.",
+        allocations: priya ? { create: [{ agentId: priya.id }] } : undefined,
+      },
+    });
+  }
+
+  await prisma.tenderResponse.createMany({
+    data: [
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "Octopus Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-8),
+        standingCharge: 118,
+        unitRates: "Day 25.8p / Night 15.1p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 98400,
+        status: "PREFERRED",
+        notes: "24-month fixed, no exit. Best day rate of the pack — Claire leaning this way.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "British Gas",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-7),
+        standingCharge: 132,
+        unitRates: "Day 26.4p / Night 15.9p",
+        contractLengthMonths: 12,
+        estimatedAnnualCost: 102200,
+        status: "RECEIVED",
+        notes: "12-month only. Competitive but Claire prefers a longer fix if the rate holds.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "TotalEnergies",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-10),
+        standingCharge: 145,
+        unitRates: "Day 28.1p / Night 16.8p",
+        contractLengthMonths: 36,
+        estimatedAnnualCost: 108900,
+        status: "DECLINED",
+        notes: "Long fix but above the incumbent. Declined 11 Aug.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "E.ON Next",
+        fuelType: "GAS",
+        receivedOn: daysFromNow(-6),
+        standingCharge: 34,
+        unitRates: "6.85p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 41200,
+        status: "RECEIVED",
+        notes: "Gas-only. Sitting with the electric pack for a dual walkthrough.",
+      },
+    ],
+  });
+
+  await prisma.activity.create({
+    data: {
+      customerId: harbour.id,
+      actorId: priya?.id,
+      type: "TENDER_RECORDED",
+      summary: "Octopus, British Gas, TotalEnergies and E.ON Next quotes logged on Harbour View.",
+    },
+  });
+}
+
+async function seedOakfieldTenders() {
+  const oakfield = await prisma.customer.findFirst({
+    where: { companyName: "Oakfield Primary Academy" },
+  });
+  if (!oakfield) return;
+  const lead = await prisma.lead.findFirst({
+    where: { customerId: oakfield.id, title: "Academy electric retender" },
+  });
+
+  await prisma.tenderResponse.createMany({
+    data: [
+      {
+        customerId: oakfield.id,
+        leadId: lead?.id,
+        supplier: "Octopus Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-12),
+        standingCharge: 86,
+        unitRates: "Day 24.9p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 18600,
+        status: "PREFERRED",
+        notes: "Governors pack — Priya’s recommendation.",
+      },
+      {
+        customerId: oakfield.id,
+        leadId: lead?.id,
+        supplier: "EDF Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-11),
+        standingCharge: 92,
+        unitRates: "Day 25.6p",
+        contractLengthMonths: 12,
+        estimatedAnnualCost: 19450,
+        status: "RECEIVED",
+        notes: "Incumbent 12-month. Waiting on governors.",
+      },
+    ],
+  });
+}
+
 async function main() {
   const existing = await prisma.agent.count();
   if (existing > 0) {
     await ensureDemoObjection();
-    console.log("Desk already seeded — skipping (objection demo checked).");
+    await ensureDemoTenders();
+    console.log("Desk already seeded — skipping (objection and tender demos checked).");
     return;
   }
 
@@ -773,7 +912,10 @@ async function main() {
     ],
   });
 
-  console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts.");
+  await seedHarbourViewTenders();
+  await seedOakfieldTenders();
+
+  console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders.");
 }
 
 main()

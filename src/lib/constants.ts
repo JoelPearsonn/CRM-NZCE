@@ -46,6 +46,19 @@ export const METER_TYPES = [
   "Prepayment",
 ] as const;
 
+export const TENDER_STATUSES = [
+  { value: "RECEIVED", label: "Received" },
+  { value: "DECLINED", label: "Declined" },
+  { value: "PREFERRED", label: "Preferred" },
+  { value: "EXPIRED", label: "Expired" },
+] as const;
+
+export const TENDER_LEAD_STAGES = ["TENDERING", "QUOTED"] as const;
+
+export function isTenderLeadStage(stage: string) {
+  return (TENDER_LEAD_STAGES as readonly string[]).includes(stage);
+}
+
 export const DEAL_STATUSES = [
   { value: "LIVE", label: "Live" },
   { value: "PENDING", label: "Pending start" },

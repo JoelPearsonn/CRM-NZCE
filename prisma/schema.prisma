@@ -37,13 +37,14 @@ model Customer {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  meters     Meter[]
-  leads      Lead[]
-  deals      Deal[]
-  notes      CallNote[]
-  emails     EmailLog[]
-  tasks      Task[]
-  activities Activity[]
+  meters          Meter[]
+  leads           Lead[]
+  deals           Deal[]
+  tenderResponses TenderResponse[]
+  notes           CallNote[]
+  emails          EmailLog[]
+  tasks           Task[]
+  activities      Activity[]
 }
 
 model Meter {
@@ -92,9 +93,10 @@ model Lead {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  allocations LeadAllocation[]
-  deals       Deal[]
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  allocations     LeadAllocation[]
+  deals           Deal[]
+  tenderResponses TenderResponse[]
 
   @@index([customerId])
   @@index([stage])
@@ -136,6 +138,30 @@ model Deal {
 
   @@index([customerId])
   @@index([renewalDate])
+}
+
+model TenderResponse {
+  id                  String    @id @default(cuid())
+  customerId          String
+  leadId              String?
+  supplier            String
+  fuelType            String
+  receivedOn          DateTime?
+  standingCharge      Float?
+  unitRates           String?
+  contractLengthMonths Int?
+  estimatedAnnualCost Float?
+  status              String    @default("RECEIVED")
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([status])
 }
 
 model CallNote {

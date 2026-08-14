@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Agent, Customer, Deal, Lead, Meter } from "@prisma/client";
+import type { Agent, Customer, Deal, Lead, Meter, TenderResponse } from "@prisma/client";
 import { saveAgent, type ActionState as AgentState } from "@/app/actions/agents";
 import { saveCustomer, type ActionState as CustomerState } from "@/app/actions/customers";
 import { saveDeal, type ActionState as DealState } from "@/app/actions/deals";
 import { saveLead, type ActionState as LeadState } from "@/app/actions/leads";
 import { saveMeter, type ActionState as MeterState } from "@/app/actions/meters";
+import { saveTenderResponse, type ActionState as TenderState } from "@/app/actions/tenders";
 import { ErrorBanner, Field } from "@/components/ui";
 import {
   AGENT_ROLES,
@@ -17,6 +18,7 @@ import {
   METER_TYPES,
   OBJECTION_STATUSES,
   SETTLEMENT_TYPES,
+  TENDER_STATUSES,
   UK_SUPPLIERS,
 } from "@/lib/constants";
 import { toDateInput } from "@/lib/format";
@@ -455,6 +457,136 @@ export function DealForm({
               : lockCustomer
                 ? "Record deal on this customer"
                 : "Record contract"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export function TenderForm({
+  tender,
+  customerId,
+  leads,
+  presetLeadId,
+  embedded,
+}: {
+  tender?: TenderResponse;
+  customerId: string;
+  leads: Lead[];
+  presetLeadId?: string;
+  embedded?: boolean;
+}) {
+  const [state, action, pending] = useActionState(saveTenderResponse, empty as TenderState);
+  return (
+    <form
+      action={action}
+      className={embedded ? "grid gap-4 p-4 md:grid-cols-2" : "card grid gap-4 p-5 md:grid-cols-2"}
+    >
+      {tender ? <input type="hidden" name="id" value={tender.id} /> : null}
+      <input type="hidden" name="customerId" value={customerId} />
+      <div className="md:col-span-2">
+        <ErrorBanner message={state.error} />
+      </div>
+      <Field label="Supplier" name="supplier">
+        <input
+          id="tenderSupplier"
+          name="supplier"
+          list="tender-suppliers"
+          required
+          defaultValue={tender?.supplier}
+        />
+        <datalist id="tender-suppliers">
+          {UK_SUPPLIERS.map((supplier) => (
+            <option key={supplier} value={supplier} />
+          ))}
+        </datalist>
+      </Field>
+      <Field label="Fuel" name="fuelType">
+        <select id="tenderFuelType" name="fuelType" required defaultValue={tender?.fuelType ?? "ELECTRIC"}>
+          {FUEL_TYPES.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Date received" name="receivedOn">
+        <input
+          id="receivedOn"
+          name="receivedOn"
+          type="date"
+          defaultValue={toDateInput(tender?.receivedOn) || toDateInput(new Date())}
+        />
+      </Field>
+      <Field label="Status" name="status">
+        <select id="tenderStatus" name="status" defaultValue={tender?.status ?? "RECEIVED"}>
+          {TENDER_STATUSES.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Standing charge (p/day)" name="standingCharge" hint="As quoted by the supplier.">
+        <input
+          id="standingCharge"
+          name="standingCharge"
+          defaultValue={tender?.standingCharge ?? ""}
+          placeholder="118"
+        />
+      </Field>
+      <Field
+        label="Unit rate(s)"
+        name="unitRates"
+        hint="Day / night / weekend — however the quote was written."
+      >
+        <input
+          id="unitRates"
+          name="unitRates"
+          defaultValue={tender?.unitRates ?? ""}
+          placeholder="Day 25.8p / Night 15.1p"
+        />
+      </Field>
+      <Field label="Contract length (months)" name="contractLengthMonths">
+        <input
+          id="contractLengthMonths"
+          name="contractLengthMonths"
+          defaultValue={tender?.contractLengthMonths ?? ""}
+          placeholder="24"
+        />
+      </Field>
+      <Field label="Estimated annual cost (£)" name="estimatedAnnualCost">
+        <input
+          id="estimatedAnnualCost"
+          name="estimatedAnnualCost"
+          defaultValue={tender?.estimatedAnnualCost ?? ""}
+          placeholder="98400"
+        />
+      </Field>
+      <Field label="Link to lead" name="leadId">
+        <select id="tenderLeadId" name="leadId" defaultValue={tender?.leadId ?? presetLeadId ?? ""}>
+          <option value="">Not linked</option>
+          {leads.map((lead) => (
+            <option key={lead.id} value={lead.id}>
+              {lead.title}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <div className="md:col-span-2">
+        <Field label="Notes" name="notes">
+          <textarea
+            id="tenderNotes"
+            name="notes"
+            rows={2}
+            defaultValue={tender?.notes ?? ""}
+            placeholder="Validity, exit fees, why preferred or declined…"
+          />
+        </Field>
+      </div>
+      <div className="md:col-span-2 flex justify-end">
+        <button className="btn btn-primary" disabled={pending}>
+          {pending ? "Saving…" : tender ? "Save tender response" : "Add tender response"}
         </button>
       </div>
     </form>

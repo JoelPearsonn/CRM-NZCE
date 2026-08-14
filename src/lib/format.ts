@@ -15,6 +15,19 @@ export function gbpExact(value: number | null | undefined) {
   }).format(value);
 }
 
+export function pence(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return `${new Intl.NumberFormat("en-GB", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)}p`;
+}
+
+export function monthsLabel(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value === 1 ? "1 month" : `${value} months`;
+}
+
 export function kwh(value: number | null | undefined) {
   if (value == null) return "—";
   return `${new Intl.NumberFormat("en-GB").format(value)} kWh`;

@@ -5,6 +5,7 @@ import {
   LEAD_STAGES,
   LOA_STATUSES,
   OBJECTION_STATUSES,
+  TENDER_STATUSES,
   labelFor,
 } from "@/lib/constants";
 import { daysUntil, formatDate, renewalTone } from "@/lib/format";
@@ -135,6 +136,20 @@ export function ObjectionPill({ value }: { value: string }) {
   );
 }
 
+export function TenderStatusPill({ value }: { value: string }) {
+  const tones: Record<string, string> = {
+    RECEIVED: "bg-[#dce8f5] text-[#204060]",
+    DECLINED: "bg-danger-soft text-danger",
+    PREFERRED: "bg-moss-soft text-moss",
+    EXPIRED: "bg-[#e7e4dc] text-muted",
+  };
+  return (
+    <span className={`pill ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}>
+      {labelFor(TENDER_STATUSES, value)}
+    </span>
+  );
+}
+
 export function DealStatusPill({ value }: { value: string }) {
   const tones: Record<string, string> = {
     LIVE: "bg-moss-soft text-moss",
@@ -172,13 +187,15 @@ export function Section({
   title,
   action,
   children,
+  id,
 }: {
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  id?: string;
 }) {
   return (
-    <section className="card overflow-hidden">
+    <section id={id} className="card overflow-hidden">
       <div className="flex items-center justify-between border-b border-rule px-4 py-3">
         <h2 className="section-title">{title}</h2>
         {action}
