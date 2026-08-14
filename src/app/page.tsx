@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StartBook } from "@/components/start-book";
 import {
   EmptyState,
   FuelPill,
@@ -14,6 +15,11 @@ import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 export default async function DashboardPage() {
+  const liveCustomers = await prisma.customer.count({ where: { archivedAt: null } });
+  if (liveCustomers === 0) {
+    return <StartBook />;
+  }
+
   await ensureRenewalReminderTasks();
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 90);
@@ -51,17 +57,6 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      {customerCount === 0 ? (
-        <EmptyState
-          title="The book is empty"
-          body="Add the first customer, or import a CSV of companies and meters. You do not need the demo seed to start work."
-          actionHref="/customers/new"
-          actionLabel="Add first customer"
-          secondaryHref="/import"
-          secondaryLabel="Import CSV"
-        />
-      ) : null}
-
       <PageHeader
         kicker="Today on the desk"
         title="Renewals, pipeline, commission"

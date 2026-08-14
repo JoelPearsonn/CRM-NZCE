@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && prisma db push && tsx prisma/seed.ts && next dev --turbopack",
+    "dev": "prisma generate && prisma db push && next dev --turbopack",
     "build": "prisma generate && prisma db push && next build",
     "start": "prisma generate && next start",
     "lint": "eslint",

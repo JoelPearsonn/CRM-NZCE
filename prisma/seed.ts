@@ -266,7 +266,7 @@ async function seedOakfieldTenders() {
   });
 }
 
-async function main() {
+export async function seedDesk() {
   const existing = await prisma.agent.count();
   if (existing > 0) {
     await ensureDemoObjection();
@@ -1199,11 +1199,15 @@ async function ensureDemoReconciliations() {
   }
 }
 
-main()
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+const entry = (process.argv[1] ?? "").replaceAll("\\", "/");
+const runningAsScript = entry.endsWith("seed.ts") || entry.endsWith("seed.js") || entry.includes("prisma/seed");
+if (runningAsScript) {
+  seedDesk()
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}

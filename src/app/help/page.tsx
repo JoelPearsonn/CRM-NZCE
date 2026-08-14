@@ -87,11 +87,38 @@ export default function HelpPage() {
         </Guide>
 
         <Guide
+          title="First run"
+          body="If the book is empty you get a start screen: add a customer, import a CSV, or load the demo. The demo is optional."
+        >
+          <Link href="/" className="btn btn-ghost">
+            Desk
+          </Link>
+          <Link href="/customers/new" className="btn btn-ghost">
+            Add customer
+          </Link>
+          <Link href="/import" className="btn btn-ghost">
+            Import CSV
+          </Link>
+        </Guide>
+
+        <Guide
           title="Record a deal"
           body="When a lead is sold, record the contract on the customer (or on Contracts). Same row appears in finance. Two agents on a deal split estimated and actual 50/50. A meter can only have one live contract."
         >
           <Link href="/contracts/new" className="btn btn-ghost">
             Record deal
+          </Link>
+        </Guide>
+
+        <Guide
+          title="Monthly finance"
+          body="Finance opens on this month. Pick another month to see due, paid, outstanding and estimated for that month only. It is a screen, not a PDF."
+        >
+          <Link href="/finance" className="btn btn-ghost">
+            This month
+          </Link>
+          <Link href="/finance?month=all" className="btn btn-ghost">
+            All months
           </Link>
         </Guide>
 

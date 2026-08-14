@@ -14,7 +14,7 @@ npm run dev
 
 3. Open http://localhost:3000 in your browser.
 
-If the book is empty and you want the demo customers back:
+The first screen is empty on purpose. Add a customer, import a CSV, or click **Load demo**. You do not have to use the demo. You can also load it later with:
 
 ```bash
 npm run seed
@@ -56,7 +56,7 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 
 - Customers, sites and meters (MPAN, MPRN, EAC, AQ, LOA status, objection)
 - Leads on a sales process, with a won or lost reason
-- Contracts / deals and a finance tracker (due, estimated, paid, remaining)
+- Contracts / deals and a monthly finance screen (due, paid, outstanding, estimated — not a PDF)
 - Two agents on a deal split estimated and actual **50/50**
 - Renewals (30 / 60 / 90 days and a month diary)
 - CSV import and export (round-trip columns)

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LoadDemoButton } from "@/components/load-demo-button";
 import { EmptyState, LoaPill, ObjectionPill, PageHeader, RenewalCell, SortLink, StagePill } from "@/components/ui";
 import {
   bookFilterParams,
@@ -175,12 +176,15 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
           secondaryHref="/import"
           secondaryLabel="Import CSV"
         >
-          <p className="mt-4 text-xs text-muted">
-            <a href="/api/import/template" className="font-semibold text-brass-dark">
-              Download the template
-            </a>{" "}
-            · then add a meter on the customer so renewals have a home.
-          </p>
+          <div className="mt-4 flex flex-col items-center gap-3">
+            <LoadDemoButton className="btn btn-brass" />
+            <p className="text-xs text-muted">
+              <a href="/api/import/template" className="font-semibold text-brass-dark">
+                Download the template
+              </a>{" "}
+              · then add a meter on the customer so renewals have a home. Demo is optional.
+            </p>
+          </div>
         </EmptyState>
       ) : filtered.length === 0 ? (
         <EmptyState

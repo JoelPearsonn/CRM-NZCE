@@ -70,6 +70,15 @@ export function monthKey(date: Date) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+export function isMonthKey(value: string) {
+  return /^\d{4}-(0[1-9]|1[0-2])$/.test(value);
+}
+
+export function filterDealsByMonth<T extends { dueDate: Date | null }>(deals: T[], month: string) {
+  if (!month) return deals;
+  return deals.filter((deal) => deal.dueDate && monthKey(deal.dueDate) === month);
+}
+
 export function monthLabel(key: string) {
   const [year, month] = key.split("-").map(Number);
   return new Intl.DateTimeFormat("en-GB", {
