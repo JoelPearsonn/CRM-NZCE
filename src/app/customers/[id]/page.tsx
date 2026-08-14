@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
 import { EmailForm, NoteForm, TaskForm } from "@/components/desk-forms";
 import {
-  DealStatusPill,
   EmptyState,
   FuelPill,
   LoaPill,
@@ -12,7 +12,8 @@ import {
   StagePill,
 } from "@/components/ui";
 import { toggleTask } from "@/app/actions/desk";
-import { formatDate, formatDateTime, formatMpan, gbp, kwh } from "@/lib/format";
+import { financeTotals } from "@/lib/finance";
+import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
@@ -36,6 +37,8 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
 
   if (!customer) notFound();
 
+  const finance = financeTotals(customer.deals);
+
   return (
     <div>
       <PageHeader
@@ -58,12 +61,18 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
             <Link href={`/leads/new?customerId=${customer.id}`} className="btn btn-ghost">
               Open lead
             </Link>
-            <Link href={`/contracts/new?customerId=${customer.id}`} className="btn btn-primary">
-              Record deal
-            </Link>
           </>
         }
       />
+
+      <div className="mb-6">
+        <FinanceSnapshot
+          due={finance.due}
+          paid={finance.paid}
+          remaining={finance.remaining}
+          estimated={finance.estimated}
+        />
+      </div>
 
       <div className="mb-6 grid gap-6">
         <Section
@@ -136,78 +145,37 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
           )}
         </Section>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <Section
-            title="Contracts"
-            action={
-              <Link href={`/contracts/new?customerId=${customer.id}`} className="text-xs font-semibold text-brass-dark">
-                Record deal
-              </Link>
-            }
-          >
-            {customer.deals.length === 0 ? (
-              <p className="p-4 text-sm text-muted">No sold contracts recorded yet.</p>
-            ) : (
-              <table className="desk-table">
-                <thead>
-                  <tr>
-                    <th>Supplier</th>
-                    <th>Status</th>
-                    <th>Renewal</th>
-                    <th>Due</th>
-                    <th>Est / paid</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customer.deals.map((deal) => (
-                    <tr key={deal.id}>
-                      <td>
-                        <Link href={`/contracts/${deal.id}`} className="font-medium">
-                          {deal.supplier}
-                        </Link>
-                      </td>
-                      <td>
-                        <DealStatusPill value={deal.status} />
-                      </td>
-                      <td>
-                        <RenewalCell date={deal.renewalDate} />
-                      </td>
-                      <td>
-                        <div>{formatDate(deal.dueDate)}</div>
-                        <div className="text-[0.7rem] text-muted">{gbp(deal.amountDue)}</div>
-                      </td>
-                      <td>
-                        {gbp(deal.estimatedCommission)} / {gbp(deal.actualPaid)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </Section>
+        <Section title="Finance tracker">
+          <CustomerFinanceLedger
+            customerId={customer.id}
+            deals={customer.deals}
+            meters={customer.meters}
+            leads={customer.leads}
+            agents={agents}
+          />
+        </Section>
 
-          <Section title="Leads">
-            {customer.leads.length === 0 ? (
-              <p className="p-4 text-sm text-muted">No live sales process on this account.</p>
-            ) : (
-              <ul className="divide-y divide-rule">
-                {customer.leads.map((lead) => (
-                  <li key={lead.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                    <div>
-                      <Link href={`/leads/${lead.id}`} className="font-medium">
-                        {lead.title}
-                      </Link>
-                      <div className="text-[0.7rem] text-muted">
-                        {lead.allocations.map((allocation) => allocation.agent.name).join(", ") || "Unallocated"}
-                      </div>
+        <Section title="Leads">
+          {customer.leads.length === 0 ? (
+            <p className="p-4 text-sm text-muted">No live sales process on this account.</p>
+          ) : (
+            <ul className="divide-y divide-rule">
+              {customer.leads.map((lead) => (
+                <li key={lead.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                  <div>
+                    <Link href={`/leads/${lead.id}`} className="font-medium">
+                      {lead.title}
+                    </Link>
+                    <div className="text-[0.7rem] text-muted">
+                      {lead.allocations.map((allocation) => allocation.agent.name).join(", ") || "Unallocated"}
                     </div>
-                    <StagePill value={lead.stage} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-        </div>
+                  </div>
+                  <StagePill value={lead.stage} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
 
         <div className="grid gap-6 xl:grid-cols-2">
           <Section title="Call notes">

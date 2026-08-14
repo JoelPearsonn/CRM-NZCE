@@ -53,8 +53,9 @@ export async function saveDeal(
     );
     revalidatePath("/");
     revalidatePath("/contracts");
+    revalidatePath("/customers");
     revalidatePath(`/customers/${customerId}`);
-    redirect(`/contracts/${id}`);
+    redirect(returnToCustomer(formData, customerId, id));
   }
 
   const deal = await prisma.deal.create({ data });
@@ -65,6 +66,53 @@ export async function saveDeal(
   );
   revalidatePath("/");
   revalidatePath("/contracts");
+  revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
-  redirect(`/contracts/${deal.id}`);
+  redirect(returnToCustomer(formData, customerId, deal.id));
+}
+
+function returnToCustomer(formData: FormData, customerId: string, dealId: string) {
+  return str(formData.get("returnTo")) === "customer"
+    ? `/customers/${customerId}`
+    : `/contracts/${dealId}`;
+}
+
+export async function reconcileDeal(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = str(formData.get("id"));
+  if (!id) return { error: "Deal is missing." };
+
+  const deal = await prisma.deal.findUnique({
+    where: { id },
+    include: { customer: true },
+  });
+  if (!deal) return { error: "Contract not found." };
+
+  const actualPaid = parseMoney(formData.get("actualPaid"));
+  const amountDue = parseMoney(formData.get("amountDue"));
+  const estimatedCommission = parseMoney(formData.get("estimatedCommission"));
+  const dueDate = parseDate(formData.get("dueDate"));
+
+  await prisma.deal.update({
+    where: { id },
+    data: {
+      dueDate,
+      amountDue,
+      estimatedCommission,
+      actualPaid,
+    },
+  });
+  await logActivity(
+    deal.customerId,
+    "DEAL_UPDATED",
+    `Finance reconciled on ${deal.supplier} for ${deal.customer.companyName}.`,
+  );
+  revalidatePath("/");
+  revalidatePath("/contracts");
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${deal.customerId}`);
+  revalidatePath(`/contracts/${id}`);
+  return {};
 }

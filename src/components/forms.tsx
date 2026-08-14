@@ -276,6 +276,9 @@ export function DealForm({
   leads,
   agents,
   presetCustomerId,
+  returnTo,
+  lockCustomer,
+  embedded,
 }: {
   deal?: Deal;
   customers: Customer[];
@@ -283,24 +286,36 @@ export function DealForm({
   leads: Lead[];
   agents: Agent[];
   presetCustomerId?: string;
+  returnTo?: "customer" | "contract";
+  lockCustomer?: boolean;
+  embedded?: boolean;
 }) {
   const [state, action, pending] = useActionState(saveDeal, empty as DealState);
+  const customerId = deal?.customerId ?? presetCustomerId ?? "";
   return (
-    <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">
+    <form
+      action={action}
+      className={embedded ? "grid gap-4 p-4 md:grid-cols-2" : "card grid gap-4 p-5 md:grid-cols-2"}
+    >
       {deal ? <input type="hidden" name="id" value={deal.id} /> : null}
+      {returnTo ? <input type="hidden" name="returnTo" value={returnTo} /> : null}
       <div className="md:col-span-2">
         <ErrorBanner message={state.error} />
       </div>
-      <Field label="Customer" name="customerId">
-        <select id="customerId" name="customerId" required defaultValue={deal?.customerId ?? presetCustomerId ?? ""}>
-          <option value="">Select customer</option>
-          {customers.map((customer) => (
-            <option key={customer.id} value={customer.id}>
-              {customer.companyName}
-            </option>
-          ))}
-        </select>
-      </Field>
+      {lockCustomer ? (
+        <input type="hidden" name="customerId" value={customerId} />
+      ) : (
+        <Field label="Customer" name="customerId">
+          <select id="customerId" name="customerId" required defaultValue={customerId}>
+            <option value="">Select customer</option>
+            {customers.map((customer) => (
+              <option key={customer.id} value={customer.id}>
+                {customer.companyName}
+              </option>
+            ))}
+          </select>
+        </Field>
+      )}
       <Field label="Supplier" name="supplier">
         <input id="supplier" name="supplier" list="suppliers" required defaultValue={deal?.supplier} />
         <datalist id="suppliers">
@@ -389,7 +404,13 @@ export function DealForm({
       </div>
       <div className="md:col-span-2 flex justify-end">
         <button className="btn btn-primary" disabled={pending}>
-          {pending ? "Saving…" : deal ? "Save contract" : "Record contract"}
+          {pending
+            ? "Saving…"
+            : deal
+              ? "Save contract"
+              : lockCustomer
+                ? "Record deal on this customer"
+                : "Record contract"}
         </button>
       </div>
     </form>

@@ -6,10 +6,10 @@ This cut is the first working version: sales and ops can keep the book, move lea
 
 ## What is in this cut
 
-- **Customers** with business/contact details and multiple meters
+- **Customers** with business/contact details, multiple meters, and a finance tracker on the record (due date, amount due, estimated commission, actual paid, remaining)
 - **Meters** with MPAN / MPRN, Electric EAC / Gas AQ, supplier, contract dates, meter type, HH/NHH, current rates, renewal date, LOA status (field only), salesperson
 - **Leads** on a sales process, allocated to one or more agents
-- **Contracts / deals** when sold, with renewal visibility and finance fields: due date, amount due, estimated commission, actual paid
+- **Contracts / deals** when sold — same records as the customer finance tracker, plus a book-wide Contracts page
 - **Master search** in the header (name, MPAN, MPRN, email, company)
 - Customer desk: call notes, email log (manual, not live Gmail), tasks/follow-ups, activity history
 - Dashboard: renewals in the next 90 days, open leads by stage, commission due vs paid

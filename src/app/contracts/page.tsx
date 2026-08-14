@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { DealStatusPill, EmptyState, FuelPill, PageHeader, RenewalCell } from "@/components/ui";
+import { dealRemaining } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -14,7 +15,7 @@ export default async function ContractsPage() {
       <PageHeader
         kicker="Sold book"
         title="Contracts"
-        description="Deals on supply, with renewal visibility and commission due versus paid."
+        description="Book-wide view of the same deal records that live on each customer. Edit finance on the customer record or here."
         actions={
           <Link href="/contracts/new" className="btn btn-primary">
             Record deal
@@ -43,6 +44,7 @@ export default async function ContractsPage() {
                 <th>Amount due</th>
                 <th>Est. commission</th>
                 <th>Actual paid</th>
+                <th>Remaining</th>
                 <th>Sales</th>
               </tr>
             </thead>
@@ -50,9 +52,14 @@ export default async function ContractsPage() {
               {deals.map((deal) => (
                 <tr key={deal.id}>
                   <td>
-                    <Link href={`/contracts/${deal.id}`} className="font-medium">
+                    <Link href={`/customers/${deal.customerId}`} className="font-medium">
                       {deal.customer.companyName}
                     </Link>
+                    <div>
+                      <Link href={`/contracts/${deal.id}`} className="text-[0.7rem] text-muted">
+                        Deal record
+                      </Link>
+                    </div>
                   </td>
                   <td>{deal.supplier}</td>
                   <td>
@@ -71,6 +78,9 @@ export default async function ContractsPage() {
                   <td>{gbp(deal.amountDue)}</td>
                   <td>{gbp(deal.estimatedCommission)}</td>
                   <td>{gbp(deal.actualPaid)}</td>
+                  <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
+                    {gbp(dealRemaining(deal))}
+                  </td>
                   <td>{deal.salesperson?.name ?? "—"}</td>
                 </tr>
               ))}
