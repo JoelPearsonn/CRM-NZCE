@@ -20,27 +20,49 @@ export function GroupedBars({
   );
 
   return (
-    <div className="px-4 py-4">
-      <div className="mb-3 flex gap-4 text-[0.7rem] text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 bg-brass" /> {leftLabel}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 bg-moss" /> {rightLabel}
-        </span>
-      </div>
-      <div className="flex h-52 items-end gap-5">
-        {rows.map((row) => (
-          <div key={row.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-            <div className="flex h-44 w-full items-end justify-center gap-1">
-              <Bar value={row[left]} max={max} tone="brass" label={gbp(row[left])} />
-              <Bar value={row[right]} max={max} tone="moss" label={gbp(row[right])} />
+    <>
+      <div className="hidden px-4 py-4 md:block">
+        <div className="mb-3 flex gap-4 text-[0.7rem] text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 bg-brass" /> {leftLabel}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 bg-moss" /> {rightLabel}
+          </span>
+        </div>
+        <div className="flex h-52 items-end gap-5">
+          {rows.map((row) => (
+            <div key={row.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+              <div className="flex h-44 w-full items-end justify-center gap-1">
+                <Bar value={row[left]} max={max} tone="brass" label={gbp(row[left])} />
+                <Bar value={row[right]} max={max} tone="moss" label={gbp(row[right])} />
+              </div>
+              <p className="text-center text-[0.7rem] font-medium text-ink">{row.label}</p>
             </div>
-            <p className="text-center text-[0.7rem] font-medium text-ink">{row.label}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+      <ul className="space-y-2 p-4 md:hidden">
+        {rows.map((row) => (
+          <li key={row.key} className="rounded-sm border border-rule bg-paper px-3 py-2.5">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2">
+              <span className="font-medium">{row.label}</span>
+              <span className="text-[0.7rem] text-muted">
+                {leftLabel} {gbp(row[left])} · {rightLabel} {gbp(row[right])}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <div className="h-2 bg-[#ebe4d4]">
+                <div className="h-2 bg-brass" style={{ width: `${(row[left] / max) * 100}%` }} />
+              </div>
+              <div className="h-2 bg-[#ebe4d4]">
+                <div className="h-2 bg-moss" style={{ width: `${(row[right] / max) * 100}%` }} />
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

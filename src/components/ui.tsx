@@ -32,7 +32,7 @@ export function PageHeader({
         <h1 className="font-serif text-3xl leading-none tracking-tight text-ink">{title}</h1>
         {description ? <p className="mt-2 max-w-2xl text-sm text-muted">{description}</p> : null}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? <div className="page-actions">{actions}</div> : null}
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function EmptyState({
       <p className="font-serif text-xl text-ink">{title}</p>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted">{body}</p>
       {actionHref && actionLabel ? (
-        <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <div className="empty-actions mt-5 flex flex-wrap justify-center gap-2">
           <Link href={actionHref} className="btn btn-primary">
             {actionLabel}
           </Link>
@@ -232,7 +232,7 @@ export function Section({
 }) {
   return (
     <section id={id} className="card overflow-x-auto">
-      <div className="flex items-center justify-between border-b border-rule px-4 py-3">
+      <div className="section-head">
         <h2 className="section-title">{title}</h2>
         {action}
       </div>

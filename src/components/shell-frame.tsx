@@ -3,7 +3,8 @@
 import { usePathname } from "next/navigation";
 import type { Agent } from "@prisma/client";
 import { MasterSearch } from "@/components/master-search";
-import { Sidebar } from "@/components/sidebar";
+import { MobileNav, Sidebar } from "@/components/sidebar";
+import { TableLabels } from "@/components/table-labels";
 import { WorkingAsPicker } from "@/components/working-as";
 
 export function ShellFrame({
@@ -24,11 +25,14 @@ export function ShellFrame({
     <div className="flex min-h-screen bg-paper">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-rule bg-paper-2 px-6 py-3">
+        <header className="desk-header">
+          <MobileNav />
           <MasterSearch />
           <WorkingAsPicker agents={agents} currentId={currentId} />
         </header>
-        <main className="flex-1 px-6 py-6">{children}</main>
+        <main className="desk-main">
+          <TableLabels>{children}</TableLabels>
+        </main>
       </div>
     </div>
   );

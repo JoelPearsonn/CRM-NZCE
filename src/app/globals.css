@@ -79,6 +79,64 @@ a {
   box-shadow: 1px 0 0 #ebe4d4;
 }
 
+.desk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--color-rule);
+  background: var(--color-paper-2);
+  padding: 0.75rem 1.5rem;
+}
+
+.desk-main {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border: 1px solid var(--color-rule);
+  background: var(--color-card);
+  color: var(--color-ink);
+}
+
+.nav-toggle span {
+  display: block;
+  width: 1.1rem;
+  height: 2px;
+  background: var(--color-ink);
+}
+
+.nav-toggle-close {
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #f4e7c3;
+  border-color: #ffffff30;
+  background: transparent;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kv-row {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
 .desk-table th:first-child {
   z-index: 3;
   background: #f6f1e6;
@@ -108,6 +166,7 @@ a {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.75rem;
   letter-spacing: 0.01em;
+  overflow-wrap: anywhere;
 }
 
 .field {
@@ -157,6 +216,7 @@ a {
   border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
+  touch-action: manipulation;
 }
 
 .btn:disabled {
@@ -269,6 +329,161 @@ a {
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.75rem 1rem;
+}
+
+@media screen and (max-width: 767px) {
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .desk-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem max(1rem, env(safe-area-inset-left));
+  }
+
+  .desk-main {
+    padding: 1rem max(1rem, env(safe-area-inset-right)) 1.5rem max(1rem, env(safe-area-inset-left));
+    overflow-x: hidden;
+  }
+
+  .master-search {
+    order: 3;
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  .working-as {
+    margin-left: auto;
+  }
+
+  .working-as-hint {
+    display: none;
+  }
+
+  .page-actions,
+  .page-actions form,
+  .empty-actions {
+    width: 100%;
+  }
+
+  .page-actions .btn,
+  .page-actions form .btn,
+  .empty-actions .btn,
+  .section-head .btn {
+    width: 100%;
+    min-height: 2.75rem;
+  }
+
+  .btn {
+    min-height: 2.75rem;
+    padding: 0.65rem 0.85rem;
+  }
+
+  .field input,
+  .field select,
+  .field textarea,
+  .master-search input,
+  .working-as select {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+
+  .desk-table thead {
+    display: none;
+  }
+
+  .desk-table,
+  .desk-table tbody,
+  .desk-table tr,
+  .desk-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .desk-table .col-lesser,
+  .desk-table .col-extra {
+    display: grid;
+  }
+
+  .desk-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .desk-table tbody tr {
+    border: 1px solid var(--color-rule);
+    background: var(--color-card);
+    padding: 0.35rem 0;
+  }
+
+  .desk-table td {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.45rem 0.75rem;
+    border-bottom: 0;
+    min-width: 0;
+  }
+
+  .desk-table td::before {
+    content: attr(data-label);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    padding-top: 0.15rem;
+  }
+
+  .desk-table th:first-child,
+  .desk-table td:first-child {
+    position: static;
+    min-width: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .desk-table tbody tr:hover td,
+  .desk-table tbody tr:hover td:first-child {
+    background: transparent;
+  }
+
+  .kv-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .stack-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .calendar-cell {
+    min-height: 4.75rem;
+    padding: 0.25rem;
+  }
+
+  .calendar-item {
+    font-size: 0.62rem;
+    padding: 0.2rem 0.25rem;
+  }
+
+  h1 {
+    overflow-wrap: anywhere;
+  }
 }
 
 @media print {

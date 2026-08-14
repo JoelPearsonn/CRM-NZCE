@@ -29,6 +29,11 @@ export const metadata: Metadata = {
   description: "Purpose-built CRM for NZCE, a UK energy brokerage.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const dynamic = "force-dynamic";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

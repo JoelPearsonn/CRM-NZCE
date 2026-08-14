@@ -12,8 +12,8 @@ export default function HelpPage() {
 
       <div className="grid gap-5">
         <Guide
-          title="The left-hand menu"
-          body="Desk is today on the book. Renewals is 30 / 60 / 90 days and the month diary. Tasks is every follow-up. Customers is the book (sites, meters, notes). Leads is the pipeline. Contracts is the sold book. Finance is cashflow and profit. Agents is who you allocate. How to use is this page. Import is not on the menu — open it from Customers."
+          title="The menu"
+          body="On a computer the menu sits on the left. On a phone tap the three-line button at the top left. Desk is today on the book. Renewals is 30 / 60 / 90 days and the month diary. Tasks is every follow-up. Customers is the book (sites, meters, notes). Leads is the pipeline. Contracts is the sold book. Finance is cashflow and profit. Agents is who you allocate. How to use is this page. Import is not on the menu — open it from Customers."
         >
           <Link href="/" className="btn btn-ghost">
             Desk

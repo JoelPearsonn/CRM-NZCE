@@ -82,7 +82,7 @@ export function MasterSearch() {
   }
 
   return (
-    <div ref={boxRef} className="relative w-full max-w-xl">
+    <div ref={boxRef} className="master-search relative w-full max-w-xl">
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -102,11 +102,11 @@ export function MasterSearch() {
           onFocus={() => visible && setOpen(true)}
           placeholder="Search name, MPAN, MPRN, email, company…"
           autoComplete="off"
-          className="w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-sm text-ink outline-none focus:border-brass"
+          className="h-11 w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-base text-ink outline-none focus:border-brass md:text-sm"
         />
       </form>
       {open && query.trim().length >= 2 ? (
-        <div className="absolute z-30 mt-1 max-h-[28rem] w-full overflow-auto border border-rule bg-card shadow-lg">
+        <div className="absolute z-30 mt-1 max-h-[min(28rem,70vh)] w-full overflow-auto border border-rule bg-card shadow-lg">
           <div className="flex flex-wrap gap-1 border-b border-rule bg-[#f6f1e6] px-2 py-2">
             {[
               { value: "", label: "All" },
@@ -120,7 +120,7 @@ export function MasterSearch() {
                 type="button"
                 tabIndex={-1}
                 onClick={() => setType(item.value)}
-                className={`btn px-2 py-1 text-[0.68rem] ${type === item.value ? "btn-brass" : "btn-ghost"}`}
+                className={`btn min-h-11 px-3 py-2 text-[0.75rem] ${type === item.value ? "btn-brass" : "btn-ghost"}`}
               >
                 {item.label}
               </button>
@@ -145,7 +145,7 @@ export function MasterSearch() {
                         setOpen(false);
                         setQuery("");
                       }}
-                      className="block px-3 py-2 hover:bg-[#f7f2e7]"
+                      className="block min-h-11 px-3 py-2.5 hover:bg-[#f7f2e7]"
                     >
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span className="text-sm font-medium text-ink">{hit.title}</span>

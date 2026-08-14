@@ -61,7 +61,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
 
       <div className="card divide-y divide-rule">
         {rows.map(([label]) => (
-          <div key={label} className="grid grid-cols-[10rem_1fr] gap-3 px-4 py-3 text-sm">
+          <div key={label} className="kv-row">
             <div className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
               {label}
             </div>
@@ -76,14 +76,14 @@ export default async function DealDetailPage({ params }: IdPageProps) {
             </div>
           </div>
         ))}
-        <div className="grid grid-cols-[10rem_1fr] gap-3 px-4 py-3 text-sm">
+        <div className="kv-row">
           <div className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
             Renewal
           </div>
           <RenewalCell date={deal.renewalDate} />
         </div>
         {deal.meter ? (
-          <div className="grid grid-cols-[10rem_1fr] gap-3 px-4 py-3 text-sm">
+          <div className="kv-row">
             <div className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
               Meter
             </div>
@@ -93,7 +93,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
           </div>
         ) : null}
         {deal.lead ? (
-          <div className="grid grid-cols-[10rem_1fr] gap-3 px-4 py-3 text-sm">
+          <div className="kv-row">
             <div className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
               Lead
             </div>

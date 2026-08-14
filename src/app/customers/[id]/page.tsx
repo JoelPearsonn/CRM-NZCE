@@ -274,7 +274,7 @@ export default async function CustomerDetailPage({
           ) : (
             <ul className="divide-y divide-rule">
               {customer.leads.map((lead) => (
-                <li key={lead.id} className="flex items-center justify-between gap-3 px-4 py-3">
+                <li key={lead.id} className="stack-row flex items-center justify-between gap-3 px-4 py-3">
                   <div>
                     <Link href={`/leads/${lead.id}`} className="font-medium">
                       {lead.title}
@@ -355,7 +355,7 @@ export default async function CustomerDetailPage({
             ) : (
               <ul className="divide-y divide-rule">
                 {customer.tasks.map((task) => (
-                  <li key={task.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <li key={task.id} className="stack-row flex items-start justify-between gap-3 px-4 py-3">
                     <div>
                       <p className={task.status === "DONE" ? "text-sm text-muted line-through" : "text-sm"}>
                         {task.title}

@@ -97,10 +97,10 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           </select>
         </label>
         <div className="flex items-end gap-2">
-          <button type="submit" className="btn btn-brass">
+          <button type="submit" className="btn btn-brass flex-1 sm:flex-none">
             Apply
           </button>
-          <Link href="/leads" className="btn btn-ghost">
+          <Link href="/leads" className="btn btn-ghost flex-1 sm:flex-none">
             Clear
           </Link>
         </div>
@@ -117,11 +117,11 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
         />
       ) : (
         <BulkAllocate agents={agents}>
-        <div className="flex gap-3 overflow-x-auto pb-4">
+        <div className="flex flex-col gap-4 md:flex-row md:overflow-x-auto md:pb-4">
           {LEAD_STAGES.filter((item) => !stage || item.value === stage).map((item) => {
             const column = filtered.filter((lead) => lead.stage === item.value);
             return (
-              <section key={item.value} className="w-64 shrink-0">
+              <section key={item.value} className="w-full md:w-64 md:shrink-0">
                 <div className="mb-2 flex items-center justify-between">
                   <StagePill value={item.value} />
                   <span className="text-xs text-muted">{column.length}</span>

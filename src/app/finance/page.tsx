@@ -85,7 +85,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
             ))}
           </select>
         </label>
-        <button type="submit" className="btn btn-brass">
+        <button type="submit" className="btn btn-brass w-full sm:w-auto">
           Show this month
         </button>
       </form>
