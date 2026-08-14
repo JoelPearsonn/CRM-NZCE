@@ -182,3 +182,25 @@ a {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
+
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  body,
+  html {
+    background: white;
+  }
+
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+
+  .print-sheet {
+    background: white;
+  }
+}

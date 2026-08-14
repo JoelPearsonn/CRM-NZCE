@@ -16,12 +16,13 @@ model Agent {
   updatedAt DateTime @updatedAt
 
   meters          Meter[]
-  deals           Deal[]
-  leadAllocations LeadAllocation[]
-  dealAllocations DealAllocation[]
-  notes           CallNote[]
-  tasks           Task[]
-  activities      Activity[]
+  deals            Deal[]
+  leadAllocations  LeadAllocation[]
+  dealAllocations  DealAllocation[]
+  reconciliations  DealReconciliation[]
+  notes            CallNote[]
+  tasks            Task[]
+  activities       Activity[]
 }
 
 model Customer {
@@ -139,11 +140,30 @@ model Deal {
   customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
   meter       Meter?           @relation(fields: [meterId], references: [id], onDelete: SetNull)
   lead        Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  salesperson Agent?           @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
-  allocations DealAllocation[]
+  salesperson     Agent?               @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  allocations     DealAllocation[]
+  reconciliations DealReconciliation[]
 
   @@index([customerId])
   @@index([renewalDate])
+}
+
+model DealReconciliation {
+  id            String   @id @default(cuid())
+  dealId        String
+  actorId       String?
+  actualPaidOld Float?
+  actualPaidNew Float?
+  amountDueOld  Float?
+  amountDueNew  Float?
+  estimatedOld  Float?
+  estimatedNew  Float?
+  createdAt     DateTime @default(now())
+
+  deal  Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actor Agent? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([dealId, createdAt])
 }
 
 model DealAllocation {

@@ -129,3 +129,31 @@ export async function allocateLeadAgents(formData: FormData) {
   revalidatePath(`/leads/${id}`);
   revalidatePath(`/customers/${lead.customerId}`);
 }
+
+export async function bulkAllocateLeads(formData: FormData) {
+  const leadIds = [
+    ...new Set(formData.getAll("leadIds").map((value) => String(value)).filter(Boolean)),
+  ];
+  const agentIds = agentIdsFrom(formData);
+  if (leadIds.length === 0 || agentIds.length === 0) return;
+
+  const leads = await prisma.lead.findMany({
+    where: { id: { in: leadIds } },
+  });
+
+  for (const lead of leads) {
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: {
+        allocations: {
+          deleteMany: {},
+          create: agentIds.map((agentId) => ({ agentId })),
+        },
+      },
+    });
+    await logActivity(lead.customerId, "AGENT_ALLOCATED", `Bulk allocation on ${lead.title}.`);
+    revalidatePath(`/customers/${lead.customerId}`);
+    revalidatePath(`/leads/${lead.id}`);
+  }
+  revalidatePath("/leads");
+}

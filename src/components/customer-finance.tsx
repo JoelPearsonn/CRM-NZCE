@@ -6,7 +6,7 @@ import { reconcileDeal, type ActionState } from "@/app/actions/deals";
 import { DealForm } from "@/components/forms";
 import { DealStatusPill, ErrorBanner, FuelPill, RenewalCell } from "@/components/ui";
 import { agentNames, splitLabel } from "@/lib/agents";
-import { formatDate, gbp, toDateInput } from "@/lib/format";
+import { formatDate, formatDateTime, gbp, gbpExact, toDateInput } from "@/lib/format";
 import { dealRemaining } from "@/lib/finance";
 
 const empty: ActionState = {};
@@ -112,6 +112,15 @@ export function CustomerFinanceLedger({
   deals: (Deal & {
     salesperson: { name: string } | null;
     allocations?: { agent: { name: string } }[];
+    reconciliations?: {
+      id: string;
+      createdAt: Date;
+      actualPaidOld: number | null;
+      actualPaidNew: number | null;
+      amountDueOld: number | null;
+      amountDueNew: number | null;
+      actor: { name: string } | null;
+    }[];
   })[];
   meters: Meter[];
   leads: Lead[];
@@ -183,6 +192,21 @@ export function CustomerFinanceLedger({
             Reconcile · {deal.supplier}
           </p>
           <ReconcileDealForm deal={deal} />
+          {deal.reconciliations?.length ? (
+            <ol className="mt-3 space-y-1 text-xs text-muted">
+              {deal.reconciliations.map((row) => (
+                <li key={row.id}>
+                  {formatDateTime(row.createdAt)} · {row.actor?.name ?? "Desk"} · Actual paid{" "}
+                  {gbpExact(row.actualPaidOld)} → {gbpExact(row.actualPaidNew)}
+                  {row.amountDueOld !== row.amountDueNew
+                    ? ` · Due ${gbpExact(row.amountDueOld)} → ${gbpExact(row.amountDueNew)}`
+                    : ""}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="mt-3 text-xs text-muted">No paid-history yet — each save is logged here.</p>
+          )}
         </div>
       ))}
 

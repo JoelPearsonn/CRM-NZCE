@@ -16,18 +16,21 @@ export async function saveCustomer(
   const companyName = str(formData.get("companyName"));
   const contactName = str(formData.get("contactName"));
   const email = str(formData.get("email"));
+  const phone = optionalStr(formData.get("phone"));
 
   if (!companyName) return { error: "Company name is required." };
   if (!contactName) return { error: "A named contact is required." };
-  if (!email) return { error: "Email is required." };
-  if (!isEmail(email)) return { error: "Enter a valid email address." };
+  if (!email && !phone) {
+    return { error: "Add an email or a phone — at least one contact method." };
+  }
+  if (email && !isEmail(email)) return { error: "Enter a valid email address." };
 
   const data = {
     companyName,
     tradingName: optionalStr(formData.get("tradingName")),
     contactName,
     email,
-    phone: optionalStr(formData.get("phone")),
+    phone,
     addressLine1: optionalStr(formData.get("addressLine1")),
     city: optionalStr(formData.get("city")),
     postcode: optionalStr(formData.get("postcode"))?.toUpperCase() ?? null,

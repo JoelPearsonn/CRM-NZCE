@@ -12,10 +12,12 @@ import { financeTotals } from "@/lib/finance";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 const WINDOWS = [30, 60, 90] as const;
 
 export default async function RenewalsPage({ searchParams }: SearchPageProps) {
+  await ensureRenewalReminderTasks();
   const query = await searchParams;
   const raw = Number(typeof query.days === "string" ? query.days : 90);
   const days = WINDOWS.includes(raw as (typeof WINDOWS)[number]) ? raw : 90;

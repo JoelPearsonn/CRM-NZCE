@@ -7,6 +7,7 @@ import { labelFor, LOA_STATUSES, OBJECTION_STATUSES } from "@/lib/constants";
 import { optionalStr, parseDate, parseIntField, str } from "@/lib/format";
 import { removeLoaFile, storeLoaFile } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
+import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 export type ActionState = { error?: string };
 
@@ -69,9 +70,11 @@ export async function saveMeter(
     }
     await prisma.meter.update({ where: { id }, data: { ...data, ...fileFields } });
     await logMeterChanges(customerId, label, existing, { ...data, ...fileFields });
+    await ensureRenewalReminderTasks();
     revalidatePath("/");
     revalidatePath("/customers");
     revalidatePath("/renewals");
+    revalidatePath("/tasks");
     revalidatePath(`/customers/${customerId}`);
     redirect(`/customers/${customerId}`);
   }
@@ -84,8 +87,10 @@ export async function saveMeter(
   }
   await prisma.meter.create({ data: { ...data, ...fileFields } });
   await logActivity(customerId, "METER_ADDED", `Meter added: ${label}.`);
+  await ensureRenewalReminderTasks();
   revalidatePath("/");
   revalidatePath("/customers");
+  revalidatePath("/tasks");
   revalidatePath(`/customers/${customerId}`);
   redirect(`/customers/${customerId}`);
 }

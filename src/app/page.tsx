@@ -11,8 +11,10 @@ import {
 import { LEAD_STAGES, OPEN_LEAD_STAGES } from "@/lib/constants";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 export default async function DashboardPage() {
+  await ensureRenewalReminderTasks();
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 90);
 

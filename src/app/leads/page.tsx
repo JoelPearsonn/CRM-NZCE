@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BulkAllocate, LeadSelect } from "@/components/bulk-allocate";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { EmptyState, PageHeader, StagePill } from "@/components/ui";
 import { isTenderLeadStage, LEAD_STAGES } from "@/lib/constants";
@@ -103,6 +104,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           secondaryLabel="Add customer first"
         />
       ) : (
+        <BulkAllocate agents={agents}>
         <div className="flex gap-3 overflow-x-auto pb-4">
           {LEAD_STAGES.filter((item) => !stage || item.value === stage).map((item) => {
             const column = filtered.filter((lead) => lead.stage === item.value);
@@ -118,6 +120,9 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
                   ) : (
                     column.map((lead) => (
                       <article key={lead.id} className="card p-3">
+                        <div className="mb-1 flex items-start justify-between gap-2">
+                          <LeadSelect leadId={lead.id} />
+                        </div>
                         <Link href={`/leads/${lead.id}`} className="font-medium">
                           {lead.customer.companyName}
                         </Link>
@@ -151,6 +156,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
             );
           })}
         </div>
+        </BulkAllocate>
       )}
     </div>
   );

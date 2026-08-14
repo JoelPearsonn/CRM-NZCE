@@ -38,7 +38,11 @@ export default async function CustomerDetailPage({
       include: {
         meters: { include: { salesperson: true }, orderBy: [{ siteName: "asc" }, { fuelType: "asc" }] },
         deals: {
-          include: { salesperson: true, allocations: { include: { agent: true } } },
+          include: {
+            salesperson: true,
+            allocations: { include: { agent: true } },
+            reconciliations: { include: { actor: true }, orderBy: { createdAt: "desc" } },
+          },
           orderBy: { renewalDate: "asc" },
         },
         leads: { include: { allocations: { include: { agent: true } } }, orderBy: { updatedAt: "desc" } },
@@ -78,6 +82,9 @@ export default async function CustomerDetailPage({
             </Link>
             <Link href={`/leads/new?customerId=${customer.id}`} className="btn btn-ghost">
               Open lead
+            </Link>
+            <Link href={`/customers/${customer.id}/print`} className="btn btn-ghost">
+              Print summary
             </Link>
           </>
         }

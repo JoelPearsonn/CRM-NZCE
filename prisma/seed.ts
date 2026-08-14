@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { writeSeedLoa } from "../src/lib/loa-files";
+import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 
 const prisma = new PrismaClient();
 
@@ -272,6 +273,8 @@ async function main() {
     await ensureDemoLoa();
     await ensureDemoDealSplits();
     await ensureDemoInbox();
+    await ensureDemoReconciliations();
+    await ensureRenewalReminderTasks();
     console.log("Desk already seeded — skipping (demo extras checked).");
     return;
   }
@@ -1024,8 +1027,55 @@ async function main() {
   await seedHarbourViewSignedLoa();
   await ensureDemoDealSplits();
   await ensureDemoInbox();
+  await ensureDemoReconciliations();
+  await ensureRenewalReminderTasks();
 
   console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
+}
+
+async function ensureDemoReconciliations() {
+  const already = await prisma.dealReconciliation.count();
+  if (already > 0) return;
+
+  const mersey = await prisma.deal.findFirst({
+    where: { supplier: "SmartestEnergy", customer: { companyName: "Mersey Logistics Ltd" } },
+  });
+  const tom = await prisma.agent.findUnique({ where: { email: "tom.brennan@nzce.co.uk" } });
+  if (mersey && tom) {
+    await prisma.dealReconciliation.create({
+      data: {
+        dealId: mersey.id,
+        actorId: tom.id,
+        actualPaidOld: 0,
+        actualPaidNew: mersey.actualPaid,
+        amountDueOld: mersey.amountDue,
+        amountDueNew: mersey.amountDue,
+        estimatedOld: mersey.estimatedCommission,
+        estimatedNew: mersey.estimatedCommission,
+        createdAt: daysFromNow(-18),
+      },
+    });
+  }
+
+  const riverside = await prisma.deal.findFirst({
+    where: { supplier: "E.ON Next", customer: { companyName: "Riverside Care Group Ltd" } },
+  });
+  const james = await prisma.agent.findUnique({ where: { email: "james.whitaker@nzce.co.uk" } });
+  if (riverside && james) {
+    await prisma.dealReconciliation.create({
+      data: {
+        dealId: riverside.id,
+        actorId: james.id,
+        actualPaidOld: 0,
+        actualPaidNew: riverside.actualPaid,
+        amountDueOld: riverside.amountDue,
+        amountDueNew: riverside.amountDue,
+        estimatedOld: riverside.estimatedCommission,
+        estimatedNew: riverside.estimatedCommission,
+        createdAt: daysFromNow(-20),
+      },
+    });
+  }
 }
 
 main()

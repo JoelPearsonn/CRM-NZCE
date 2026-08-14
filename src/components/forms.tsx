@@ -42,8 +42,8 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
       <Field label="Contact name" name="contactName">
         <input id="contactName" name="contactName" required defaultValue={customer?.contactName} />
       </Field>
-      <Field label="Email" name="email">
-        <input id="email" name="email" type="email" required defaultValue={customer?.email} />
+      <Field label="Email" name="email" hint="Email or phone — at least one is required.">
+        <input id="email" name="email" type="email" defaultValue={customer?.email} />
       </Field>
       <Field label="Phone" name="phone">
         <input id="phone" name="phone" defaultValue={customer?.phone ?? ""} />
@@ -416,7 +416,11 @@ export function DealForm({
           ))}
         </select>
       </Field>
-      <Field label="Meter" name="meterId">
+      <Field
+        label="Meter"
+        name="meterId"
+        hint="A meter (MPAN/MPRN) can only have one live contract."
+      >
         <select id="meterId" name="meterId" defaultValue={deal?.meterId ?? ""}>
           <option value="">Not linked</option>
           {meters.map((meter) => (

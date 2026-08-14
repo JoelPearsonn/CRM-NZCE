@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
-import { optionalStr, parseDate, parseMoney, str } from "@/lib/format";
+import { liveDealOnSupply } from "@/lib/deals";
+import { gbpExact, optionalStr, parseDate, parseMoney, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getWorkingAsId } from "@/lib/working-as";
 
 export type ActionState = { error?: string };
 
@@ -23,6 +25,18 @@ export async function saveDeal(
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return { error: "Customer not found." };
+
+  const clash = await liveDealOnSupply({
+    dealId: id,
+    meterId: optionalStr(formData.get("meterId")),
+    status: str(formData.get("status")) || "LIVE",
+  });
+  if (clash) {
+    const supply = clash.meter?.mpan || clash.meter?.mprn || "this supply";
+    return {
+      error: `A live contract already sits on ${supply} (${clash.supplier} · ${clash.customer.companyName}). One live contract per MPAN/MPRN.`,
+    };
+  }
 
   const agentIds = formData
     .getAll("agentIds")
@@ -131,6 +145,7 @@ export async function reconcileDeal(
   const amountDue = parseMoney(formData.get("amountDue"));
   const estimatedCommission = parseMoney(formData.get("estimatedCommission"));
   const dueDate = parseDate(formData.get("dueDate"));
+  const actorId = await getWorkingAsId();
 
   await prisma.deal.update({
     where: { id },
@@ -141,10 +156,23 @@ export async function reconcileDeal(
       actualPaid,
     },
   });
+  await prisma.dealReconciliation.create({
+    data: {
+      dealId: deal.id,
+      actorId,
+      actualPaidOld: deal.actualPaid,
+      actualPaidNew: actualPaid,
+      amountDueOld: deal.amountDue,
+      amountDueNew: amountDue,
+      estimatedOld: deal.estimatedCommission,
+      estimatedNew: estimatedCommission,
+    },
+  });
   await logActivity(
     deal.customerId,
     "FINANCE_RECONCILED",
-    `Finance reconciled on ${deal.supplier} for ${deal.customer.companyName}: due ${amountDue ?? 0}, paid ${actualPaid ?? 0}.`,
+    `${deal.supplier} actual paid ${gbpExact(deal.actualPaid)} → ${gbpExact(actualPaid)}.`,
+    actorId,
   );
   revalidatePath("/");
   revalidatePath("/contracts");

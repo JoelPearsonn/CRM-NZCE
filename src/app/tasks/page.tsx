@@ -3,8 +3,10 @@ import { toggleTask } from "@/app/actions/desk";
 import { EmptyState, PageHeader, Section } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 export default async function TasksInboxPage() {
+  await ensureRenewalReminderTasks();
   const tasks = await prisma.task.findMany({
     include: { customer: true, assignee: true },
     orderBy: [{ status: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],

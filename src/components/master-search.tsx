@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { LoaPill, ObjectionPill } from "@/components/ui";
 
 type SearchHit = {
   id: string;
@@ -9,6 +10,8 @@ type SearchHit = {
   title: string;
   subtitle: string;
   href: string;
+  loaStatus?: string | null;
+  objectionStatus?: string | null;
 };
 
 type SearchResponse = {
@@ -18,15 +21,16 @@ type SearchResponse = {
   deals: SearchHit[];
 };
 
-const groups: { key: keyof SearchResponse; label: string }[] = [
-  { key: "customers", label: "Customers" },
-  { key: "meters", label: "Meters" },
-  { key: "leads", label: "Leads" },
-  { key: "deals", label: "Contracts" },
+const groups: { key: keyof SearchResponse; label: string; type: SearchHit["type"] }[] = [
+  { key: "customers", label: "Customers", type: "customer" },
+  { key: "meters", label: "Meters", type: "meter" },
+  { key: "leads", label: "Leads", type: "lead" },
+  { key: "deals", label: "Contracts", type: "deal" },
 ];
 
 export function MasterSearch() {
   const [query, setQuery] = useState("");
+  const [type, setType] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -43,13 +47,15 @@ export function MasterSearch() {
     const q = query.trim();
     if (q.length < 2) return;
     const handle = window.setTimeout(async () => {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const params = new URLSearchParams({ q });
+      if (type) params.set("type", type);
+      const response = await fetch(`/api/search?${params}`);
       if (!response.ok) return;
       setResults((await response.json()) as SearchResponse);
       setOpen(true);
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [query]);
+  }, [query, type]);
 
   const visible = query.trim().length < 2 ? null : results;
   const total = visible
@@ -71,6 +77,24 @@ export function MasterSearch() {
       />
       {open && query.trim().length >= 2 ? (
         <div className="absolute z-30 mt-1 max-h-[28rem] w-full overflow-auto border border-rule bg-card shadow-lg">
+          <div className="flex flex-wrap gap-1 border-b border-rule bg-[#f6f1e6] px-2 py-2">
+            {[
+              { value: "", label: "All" },
+              { value: "customer", label: "Customers" },
+              { value: "meter", label: "Meters" },
+              { value: "lead", label: "Leads" },
+              { value: "deal", label: "Contracts" },
+            ].map((item) => (
+              <button
+                key={item.value || "all"}
+                type="button"
+                onClick={() => setType(item.value)}
+                className={`btn px-2 py-1 text-[0.68rem] ${type === item.value ? "btn-brass" : "btn-ghost"}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
           {total === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">No matches on the desk.</p>
           ) : (
@@ -92,7 +116,13 @@ export function MasterSearch() {
                       }}
                       className="block px-3 py-2 hover:bg-[#f7f2e7]"
                     >
-                      <div className="text-sm font-medium text-ink">{hit.title}</div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-sm font-medium text-ink">{hit.title}</span>
+                        {hit.loaStatus ? <LoaPill value={hit.loaStatus} /> : null}
+                        {hit.objectionStatus && hit.objectionStatus !== "NONE" ? (
+                          <ObjectionPill value={hit.objectionStatus} />
+                        ) : null}
+                      </div>
                       <div className="meter-id text-muted">{hit.subtitle}</div>
                     </Link>
                   ))}

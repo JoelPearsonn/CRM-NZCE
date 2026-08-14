@@ -8,7 +8,7 @@ export default function NewCustomerPage() {
       <PageHeader
         kicker="New record"
         title="Add customer"
-        description="Company and contact first. After save, add a meter with a site name and address. Or import a CSV if you already have a list."
+        description="Company name is required, plus a named contact and at least an email or a phone. After save, add a meter with a site name and address. Or import a CSV if you already have a list."
         actions={
           <Link href="/import" className="btn btn-ghost">
             Import CSV instead
