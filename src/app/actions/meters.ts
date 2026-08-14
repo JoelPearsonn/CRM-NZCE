@@ -48,6 +48,7 @@ export async function saveMeter(
     currentRates: optionalStr(formData.get("currentRates")),
     renewalDate: parseDate(formData.get("renewalDate")),
     loaStatus: str(formData.get("loaStatus")) || "NOT_REQUESTED",
+    ...objectionFields(formData),
     salespersonId: optionalStr(formData.get("salespersonId")),
   };
 
@@ -70,4 +71,51 @@ export async function saveMeter(
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
   redirect(`/customers/${customerId}`);
+}
+
+function objectionFields(formData: FormData) {
+  const objectionStatus = str(formData.get("objectionStatus")) || "NONE";
+  let objectionRaisedOn = parseDate(formData.get("objectionRaisedOn"));
+  let objectionClearedOn = parseDate(formData.get("objectionClearedOn"));
+  if (objectionStatus === "IN_OBJECTION" && !objectionRaisedOn) {
+    objectionRaisedOn = new Date();
+  }
+  if (objectionStatus === "CLEARED" && !objectionClearedOn) {
+    objectionClearedOn = new Date();
+  }
+  if (objectionStatus === "NONE") {
+    objectionRaisedOn = null;
+    objectionClearedOn = null;
+  }
+  return {
+    objectionStatus,
+    objectionNote: optionalStr(formData.get("objectionNote")),
+    objectionRaisedOn,
+    objectionClearedOn,
+  };
+}
+
+export async function saveMeterObjection(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const id = str(formData.get("id"));
+  if (!id) return { error: "Meter is missing." };
+  const meter = await prisma.meter.findUnique({ where: { id } });
+  if (!meter) return { error: "Meter not found." };
+
+  const fields = objectionFields(formData);
+  await prisma.meter.update({ where: { id }, data: fields });
+  const label = meter.mpan ? `MPAN ${meter.mpan}` : `MPRN ${meter.mprn}`;
+  const status =
+    fields.objectionStatus === "IN_OBJECTION"
+      ? "in objection"
+      : fields.objectionStatus === "CLEARED"
+        ? "cleared"
+        : "none";
+  await logActivity(meter.customerId, "METER_UPDATED", `Objection on ${label} set to ${status}.`);
+  revalidatePath("/");
+  revalidatePath("/customers");
+  revalidatePath(`/customers/${meter.customerId}`);
+  return {};
 }

@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
 import { EmailForm, NoteForm, TaskForm } from "@/components/desk-forms";
+import { MeterObjectionForm } from "@/components/meter-objection";
 import {
   EmptyState,
   FuelPill,
   LoaPill,
+  ObjectionPill,
   PageHeader,
   RenewalCell,
   Section,
@@ -105,6 +107,7 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
                   <th>Rates</th>
                   <th>Renewal</th>
                   <th>LOA</th>
+                  <th>Objection</th>
                   <th>Sales</th>
                 </tr>
               </thead>
@@ -137,12 +140,30 @@ export default async function CustomerDetailPage({ params }: IdPageProps) {
                     <td>
                       <LoaPill value={meter.loaStatus} />
                     </td>
+                    <td>
+                      <ObjectionPill value={meter.objectionStatus} />
+                      {meter.objectionNote ? (
+                        <div className="mt-1 max-w-[12rem] text-[0.7rem] text-muted">
+                          {meter.objectionNote}
+                        </div>
+                      ) : null}
+                    </td>
                     <td>{meter.salesperson?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
+          {customer.meters.length > 0 ? (
+            <div className="border-t border-rule">
+              <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                Set or clear objection
+              </p>
+              {customer.meters.map((meter) => (
+                <MeterObjectionForm key={meter.id} meter={meter} />
+              ))}
+            </div>
+          ) : null}
         </Section>
 
         <Section title="Finance tracker">

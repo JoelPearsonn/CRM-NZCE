@@ -7,7 +7,7 @@ This cut is the first working version: sales and ops can keep the book, move lea
 ## What is in this cut
 
 - **Customers** with business/contact details, multiple meters, and a finance tracker on the record (due date, amount due, estimated commission, actual paid, remaining)
-- **Meters** with MPAN / MPRN, Electric EAC / Gas AQ, supplier, contract dates, meter type, HH/NHH, current rates, renewal date, LOA status (field only), salesperson
+- **Meters** with MPAN / MPRN, Electric EAC / Gas AQ, supplier, contract dates, meter type, HH/NHH, current rates, renewal date, LOA status (field only), salesperson, and **objection** (None / In objection / Cleared, plus reason and dates)
 - **Leads** on a sales process, allocated to one or more agents
 - **Contracts / deals** when sold — same records as the customer finance tracker, plus a book-wide Contracts page
 - **Finance dashboard** — cashflow by month, profit (estimated vs paid), and breakdowns by agent and customer, all from those same deals

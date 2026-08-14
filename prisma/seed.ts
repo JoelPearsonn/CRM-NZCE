@@ -9,10 +9,29 @@ function daysFromNow(offset: number) {
   return date;
 }
 
+async function ensureDemoObjection() {
+  const already = await prisma.meter.count({ where: { objectionStatus: "IN_OBJECTION" } });
+  if (already > 0) return;
+  const steel = await prisma.meter.findFirst({
+    where: { mpan: "000080016600223344556" },
+  });
+  if (!steel) return;
+  await prisma.meter.update({
+    where: { id: steel.id },
+    data: {
+      objectionStatus: "IN_OBJECTION",
+      objectionNote: "Debt on account — TotalEnergies raised 8 Aug 2026. Works manager chasing arrears.",
+      objectionRaisedOn: daysFromNow(-6),
+      objectionClearedOn: null,
+    },
+  });
+}
+
 async function main() {
   const existing = await prisma.agent.count();
   if (existing > 0) {
-    console.log("Desk already seeded — skipping.");
+    await ensureDemoObjection();
+    console.log("Desk already seeded — skipping (objection demo checked).");
     return;
   }
 
@@ -382,6 +401,9 @@ async function main() {
       currentRates: "HH profile / SC £4.10",
       renewalDate: daysFromNow(12),
       loaStatus: "RECEIVED",
+      objectionStatus: "IN_OBJECTION",
+      objectionNote: "Debt on account — TotalEnergies raised 8 Aug 2026. Works manager chasing arrears.",
+      objectionRaisedOn: daysFromNow(-6),
       salespersonId: james.id,
     },
   });

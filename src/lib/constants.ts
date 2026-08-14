@@ -25,6 +25,12 @@ export const SETTLEMENT_TYPES = [
   { value: "HH", label: "HH" },
 ] as const;
 
+export const OBJECTION_STATUSES = [
+  { value: "NONE", label: "None" },
+  { value: "IN_OBJECTION", label: "In objection" },
+  { value: "CLEARED", label: "Cleared" },
+] as const;
+
 export const LOA_STATUSES = [
   { value: "NOT_REQUESTED", label: "Not requested" },
   { value: "REQUESTED", label: "Requested" },

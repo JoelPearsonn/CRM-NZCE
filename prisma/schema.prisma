@@ -63,10 +63,14 @@ model Meter {
   settlement    String?
   currentRates  String?
   renewalDate   DateTime?
-  loaStatus     String    @default("NOT_REQUESTED")
-  salespersonId String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  loaStatus          String    @default("NOT_REQUESTED")
+  objectionStatus    String    @default("NONE")
+  objectionNote      String?
+  objectionRaisedOn  DateTime?
+  objectionClearedOn DateTime?
+  salespersonId      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   salesperson Agent?   @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
@@ -75,6 +79,7 @@ model Meter {
   @@index([customerId])
   @@index([mpan])
   @@index([mprn])
+  @@index([objectionStatus])
 }
 
 model Lead {

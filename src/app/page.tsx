@@ -1,18 +1,32 @@
 import Link from "next/link";
-import { EmptyState, FuelPill, PageHeader, RenewalCell, Section, StagePill } from "@/components/ui";
+import {
+  EmptyState,
+  FuelPill,
+  ObjectionPill,
+  PageHeader,
+  RenewalCell,
+  Section,
+  StagePill,
+} from "@/components/ui";
 import { LEAD_STAGES, OPEN_LEAD_STAGES } from "@/lib/constants";
-import { formatMpan, gbp } from "@/lib/format";
+import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 90);
 
-  const [renewals, leads, deals, openLeadCount, customerCount, meterCount] = await Promise.all([
+  const [renewals, objections, leads, deals, openLeadCount, customerCount, meterCount] =
+    await Promise.all([
     prisma.meter.findMany({
       where: { renewalDate: { lte: horizon } },
       include: { customer: true, salesperson: true },
       orderBy: { renewalDate: "asc" },
+    }),
+    prisma.meter.findMany({
+      where: { objectionStatus: "IN_OBJECTION" },
+      include: { customer: true, salesperson: true },
+      orderBy: { objectionRaisedOn: "asc" },
     }),
     prisma.lead.groupBy({
       by: ["stage"],
@@ -35,14 +49,19 @@ export default async function DashboardPage() {
       <PageHeader
         kicker="Today on the desk"
         title="Renewals, pipeline, commission"
-        description="What is coming off contract, where the book sits in the sales process, and what finance is still owed."
+        description="What is coming off contract, which supplies are in objection, where the book sits, and what finance is still owed."
       />
 
-      <div className="mb-6 grid gap-3 md:grid-cols-4">
+      <div className="mb-6 grid gap-3 md:grid-cols-5">
         <Stat label="Customers" value={String(customerCount)} hint={`${meterCount} meters on supply`} />
         <Stat label="Open leads" value={String(openLeadCount)} hint="Not sold or lost" />
         <Stat label="Commission due" value={gbp(due)} hint={`${gbp(estimated)} estimated`} />
         <Stat label="Paid" value={gbp(paid)} hint={`${gbp(estimated - paid)} still expected`} />
+        <Stat
+          label="In objection"
+          value={String(objections.length)}
+          hint={objections.length === 1 ? "Supply blocked on switch" : "Supplies blocked on switch"}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
@@ -123,6 +142,57 @@ export default async function DashboardPage() {
               Open pipeline
             </Link>
           </div>
+        </Section>
+      </div>
+
+      <div className="mt-6">
+        <Section title={`Meters in objection · ${objections.length}`}>
+          {objections.length === 0 ? (
+            <p className="p-4 text-sm text-muted">
+              No supplies currently blocked. When a current supplier objects, it will show here and
+              on the customer meter.
+            </p>
+          ) : (
+            <table className="desk-table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Supply</th>
+                  <th>Fuel</th>
+                  <th>Supplier</th>
+                  <th>Status</th>
+                  <th>Raised</th>
+                  <th>Reason</th>
+                  <th>Sales</th>
+                </tr>
+              </thead>
+              <tbody>
+                {objections.map((meter) => (
+                  <tr key={meter.id}>
+                    <td>
+                      <Link href={`/customers/${meter.customerId}`} className="font-medium">
+                        {meter.customer.companyName}
+                      </Link>
+                      <div className="text-[0.7rem] text-muted">{meter.siteName}</div>
+                    </td>
+                    <td className="meter-id">
+                      {meter.mpan ? formatMpan(meter.mpan) : meter.mprn}
+                    </td>
+                    <td>
+                      <FuelPill value={meter.fuelType} />
+                    </td>
+                    <td>{meter.supplier ?? "—"}</td>
+                    <td>
+                      <ObjectionPill value={meter.objectionStatus} />
+                    </td>
+                    <td>{formatDate(meter.objectionRaisedOn)}</td>
+                    <td className="max-w-[16rem] text-[0.75rem]">{meter.objectionNote ?? "—"}</td>
+                    <td>{meter.salesperson?.name ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Section>
       </div>
     </div>

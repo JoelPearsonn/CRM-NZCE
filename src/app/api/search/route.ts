@@ -34,6 +34,7 @@ export async function GET(request: Request) {
           { siteName: contains },
           { supplier: contains },
           { siteAddress: contains },
+          { objectionNote: contains },
         ],
       },
       include: { customer: true },

@@ -17,7 +17,7 @@ export default async function EditMeterPage({ params }: IdPageProps) {
       <PageHeader
         kicker={meter.customer.companyName}
         title={meter.siteName ?? "Edit meter"}
-        description="Rates, LOA status and renewal date live on the meter, not the company."
+        description="Rates, LOA, objection and renewal live on the meter, not the company."
       />
       <MeterForm customerId={meter.customerId} meter={meter} agents={agents} />
     </div>

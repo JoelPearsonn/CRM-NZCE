@@ -15,6 +15,7 @@ import {
   LEAD_STAGES,
   LOA_STATUSES,
   METER_TYPES,
+  OBJECTION_STATUSES,
   SETTLEMENT_TYPES,
   UK_SUPPLIERS,
 } from "@/lib/constants";
@@ -142,6 +143,49 @@ export function MeterForm({
           ))}
         </select>
       </Field>
+      <Field label="Objection" name="objectionStatus">
+        <select
+          id="objectionStatus"
+          name="objectionStatus"
+          defaultValue={meter?.objectionStatus ?? "NONE"}
+        >
+          {OBJECTION_STATUSES.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Objection raised" name="objectionRaisedOn">
+        <input
+          id="objectionRaisedOn"
+          name="objectionRaisedOn"
+          type="date"
+          defaultValue={toDateInput(meter?.objectionRaisedOn)}
+        />
+      </Field>
+      <Field label="Objection cleared" name="objectionClearedOn">
+        <input
+          id="objectionClearedOn"
+          name="objectionClearedOn"
+          type="date"
+          defaultValue={toDateInput(meter?.objectionClearedOn)}
+        />
+      </Field>
+      <div className="md:col-span-2">
+        <Field
+          label="Objection reason"
+          name="objectionNote"
+          hint="Debt, contracted, errant, date raised — whatever the current supplier cited."
+        >
+          <textarea
+            id="objectionNote"
+            name="objectionNote"
+            rows={2}
+            defaultValue={meter?.objectionNote ?? ""}
+          />
+        </Field>
+      </div>
       <Field label="Contract start" name="contractStart">
         <input id="contractStart" name="contractStart" type="date" defaultValue={toDateInput(meter?.contractStart)} />
       </Field>

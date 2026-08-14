@@ -4,6 +4,7 @@ import {
   FUEL_TYPES,
   LEAD_STAGES,
   LOA_STATUSES,
+  OBJECTION_STATUSES,
   labelFor,
 } from "@/lib/constants";
 import { daysUntil, formatDate, renewalTone } from "@/lib/format";
@@ -119,6 +120,19 @@ export function LoaPill({ value }: { value: string }) {
     EXPIRED: "bg-danger-soft text-danger",
   };
   return <span className={`pill ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}>{labelFor(LOA_STATUSES, value)}</span>;
+}
+
+export function ObjectionPill({ value }: { value: string }) {
+  const tones: Record<string, string> = {
+    NONE: "bg-[#e7e4dc] text-muted",
+    IN_OBJECTION: "bg-danger-soft text-danger",
+    CLEARED: "bg-moss-soft text-moss",
+  };
+  return (
+    <span className={`pill ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}>
+      {labelFor(OBJECTION_STATUSES, value)}
+    </span>
+  );
 }
 
 export function DealStatusPill({ value }: { value: string }) {
