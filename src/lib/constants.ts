@@ -35,6 +35,7 @@ export const LOA_STATUSES = [
   { value: "NOT_REQUESTED", label: "Not requested" },
   { value: "REQUESTED", label: "Requested" },
   { value: "RECEIVED", label: "Received" },
+  { value: "SIGNED", label: "Signed" },
   { value: "EXPIRED", label: "Expired" },
 ] as const;
 

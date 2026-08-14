@@ -65,6 +65,10 @@ model Meter {
   currentRates  String?
   renewalDate   DateTime?
   loaStatus          String    @default("NOT_REQUESTED")
+  loaSignedOn        DateTime?
+  loaSignedBy        String?
+  loaFileName        String?
+  loaStoredName      String?
   objectionStatus    String    @default("NONE")
   objectionNote      String?
   objectionRaisedOn  DateTime?

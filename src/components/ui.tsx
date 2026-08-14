@@ -118,6 +118,7 @@ export function LoaPill({ value }: { value: string }) {
     NOT_REQUESTED: "bg-[#e7e4dc] text-ink",
     REQUESTED: "bg-warn-soft text-warn",
     RECEIVED: "bg-moss-soft text-moss",
+    SIGNED: "bg-moss-soft text-moss",
     EXPIRED: "bg-danger-soft text-danger",
   };
   return <span className={`pill ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}>{labelFor(LOA_STATUSES, value)}</span>;

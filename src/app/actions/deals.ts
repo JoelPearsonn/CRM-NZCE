@@ -106,13 +106,15 @@ export async function reconcileDeal(
   });
   await logActivity(
     deal.customerId,
-    "DEAL_UPDATED",
-    `Finance reconciled on ${deal.supplier} for ${deal.customer.companyName}.`,
+    "FINANCE_RECONCILED",
+    `Finance reconciled on ${deal.supplier} for ${deal.customer.companyName}: due ${amountDue ?? 0}, paid ${actualPaid ?? 0}.`,
   );
   revalidatePath("/");
   revalidatePath("/contracts");
   revalidatePath("/customers");
   revalidatePath(`/customers/${deal.customerId}`);
   revalidatePath(`/contracts/${id}`);
+  revalidatePath("/renewals");
+  revalidatePath("/finance");
   return {};
 }

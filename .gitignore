@@ -43,3 +43,7 @@ next-env.d.ts
 /prisma/dev.db-journal
 /prisma/*.db
 /prisma/*.db-journal
+
+# uploaded LOA copies (seed writes demo files at runtime)
+/uploads/loa/*
+!/uploads/loa/.gitkeep

@@ -7,7 +7,15 @@ import { ErrorBanner, Field } from "@/components/ui";
 
 const empty: ActionState = {};
 
-export function NoteForm({ customerId, agents }: { customerId: string; agents: Agent[] }) {
+export function NoteForm({
+  customerId,
+  agents,
+  workingAsId,
+}: {
+  customerId: string;
+  agents: Agent[];
+  workingAsId?: string | null;
+}) {
   const [state, action, pending] = useActionState(addCallNote, empty);
   return (
     <form action={action} className="grid gap-3 border-b border-rule p-4">
@@ -18,7 +26,7 @@ export function NoteForm({ customerId, agents }: { customerId: string; agents: A
       </Field>
       <div className="flex items-end gap-3">
         <Field label="Logged by" name="authorId">
-          <select id="authorId" name="authorId" defaultValue="">
+          <select id="authorId" name="authorId" defaultValue={workingAsId ?? ""}>
             <option value="">Desk</option>
             {agents.map((agent) => (
               <option key={agent.id} value={agent.id}>
@@ -64,7 +72,15 @@ export function EmailForm({ customerId }: { customerId: string }) {
   );
 }
 
-export function TaskForm({ customerId, agents }: { customerId: string; agents: Agent[] }) {
+export function TaskForm({
+  customerId,
+  agents,
+  workingAsId,
+}: {
+  customerId: string;
+  agents: Agent[];
+  workingAsId?: string | null;
+}) {
   const [state, action, pending] = useActionState(addTask, empty);
   return (
     <form action={action} className="grid gap-3 border-b border-rule p-4">
@@ -78,7 +94,7 @@ export function TaskForm({ customerId, agents }: { customerId: string; agents: A
           <input id="dueDate" name="dueDate" type="date" />
         </Field>
         <Field label="Assignee" name="assigneeId">
-          <select id="assigneeId" name="assigneeId" defaultValue="">
+          <select id="assigneeId" name="assigneeId" defaultValue={workingAsId ?? ""}>
             <option value="">Unassigned</option>
             {agents.map((agent) => (
               <option key={agent.id} value={agent.id}>

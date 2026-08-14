@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
 import { CustomerTenderBook } from "@/components/customer-tenders";
 import { EmailForm, NoteForm, TaskForm } from "@/components/desk-forms";
+import { MeterLoaForm } from "@/components/meter-loa";
 import { MeterObjectionForm } from "@/components/meter-objection";
+import { TenderCompare } from "@/components/tender-compare";
 import {
   EmptyState,
   FuelPill,
@@ -20,6 +22,7 @@ import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { getWorkingAsId } from "@/lib/working-as";
 
 export default async function CustomerDetailPage({
   params,
@@ -28,7 +31,7 @@ export default async function CustomerDetailPage({
   const { id } = await params;
   const query = await searchParams;
   const presetLeadId = typeof query.leadId === "string" ? query.leadId : undefined;
-  const [customer, agents] = await Promise.all([
+  const [customer, agents, workingAsId] = await Promise.all([
     prisma.customer.findUnique({
       where: { id },
       include: {
@@ -43,6 +46,7 @@ export default async function CustomerDetailPage({
       },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    getWorkingAsId(),
   ]);
 
   if (!customer) notFound();
@@ -147,6 +151,17 @@ export default async function CustomerDetailPage({
                     </td>
                     <td>
                       <LoaPill value={meter.loaStatus} />
+                      {meter.loaSignedOn || meter.loaSignedBy ? (
+                        <div className="mt-1 text-[0.7rem] text-muted">
+                          {meter.loaSignedOn ? formatDate(meter.loaSignedOn) : "Signed"}
+                          {meter.loaSignedBy ? ` · ${meter.loaSignedBy}` : ""}
+                        </div>
+                      ) : null}
+                      {meter.loaFileName ? (
+                        <a href={`/api/loa/${meter.id}`} className="mt-1 block text-[0.7rem] font-semibold text-brass-dark">
+                          {meter.loaFileName}
+                        </a>
+                      ) : null}
                     </td>
                     <td>
                       <ObjectionPill value={meter.objectionStatus} />
@@ -163,14 +178,27 @@ export default async function CustomerDetailPage({
             </table>
           )}
           {customer.meters.length > 0 ? (
-            <div className="border-t border-rule">
-              <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
-                Set or clear objection
-              </p>
-              {customer.meters.map((meter) => (
-                <MeterObjectionForm key={meter.id} meter={meter} />
-              ))}
-            </div>
+            <>
+              <div className="border-t border-rule">
+                <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                  Signed LOA
+                </p>
+                <p className="px-4 pt-1 text-xs text-muted">
+                  Mark signed and store the copy. This does not generate an LOA or send it to DocuSign.
+                </p>
+                {customer.meters.map((meter) => (
+                  <MeterLoaForm key={meter.id} meter={meter} />
+                ))}
+              </div>
+              <div className="border-t border-rule">
+                <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                  Set or clear objection
+                </p>
+                {customer.meters.map((meter) => (
+                  <MeterObjectionForm key={meter.id} meter={meter} />
+                ))}
+              </div>
+            </>
           ) : null}
         </Section>
 
@@ -184,6 +212,7 @@ export default async function CustomerDetailPage({
             leads={customer.leads}
             presetLeadId={presetLeadId}
           />
+          <TenderCompare tenders={customer.tenderResponses} />
         </Section>
 
         <Section title="Finance tracker">
@@ -230,7 +259,7 @@ export default async function CustomerDetailPage({
 
         <div className="grid gap-6 xl:grid-cols-2">
           <Section title="Call notes">
-            <NoteForm customerId={customer.id} agents={agents} />
+            <NoteForm customerId={customer.id} agents={agents} workingAsId={workingAsId} />
             {customer.notes.length === 0 ? (
               <p className="p-4 text-sm text-muted">No call notes yet.</p>
             ) : (
@@ -248,7 +277,7 @@ export default async function CustomerDetailPage({
           </Section>
 
           <Section title="Tasks / follow-ups">
-            <TaskForm customerId={customer.id} agents={agents} />
+            <TaskForm customerId={customer.id} agents={agents} workingAsId={workingAsId} />
             {customer.tasks.length === 0 ? (
               <p className="p-4 text-sm text-muted">Nothing to chase.</p>
             ) : (

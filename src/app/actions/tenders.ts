@@ -108,5 +108,6 @@ function revalidateTender(customerId: string, leadId?: string | null) {
   revalidatePath("/customers");
   revalidatePath(`/customers/${customerId}`);
   revalidatePath("/leads");
+  revalidatePath("/renewals");
   if (leadId) revalidatePath(`/leads/${leadId}`);
 }

@@ -80,7 +80,7 @@ export function MeterForm({
 }) {
   const [state, action, pending] = useActionState(saveMeter, empty as MeterState);
   return (
-    <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">
+    <form action={action} encType="multipart/form-data" className="card grid gap-4 p-5 md:grid-cols-2">
       {meter ? <input type="hidden" name="id" value={meter.id} /> : null}
       <input type="hidden" name="customerId" value={customerId} />
       <div className="md:col-span-2">
@@ -145,6 +145,34 @@ export function MeterForm({
           ))}
         </select>
       </Field>
+      <Field label="LOA signed on" name="loaSignedOn">
+        <input
+          id="loaSignedOn"
+          name="loaSignedOn"
+          type="date"
+          defaultValue={toDateInput(meter?.loaSignedOn)}
+        />
+      </Field>
+      <Field label="Who signed" name="loaSignedBy" hint="Name on the LOA — usually the customer contact.">
+        <input id="loaSignedBy" name="loaSignedBy" defaultValue={meter?.loaSignedBy ?? ""} />
+      </Field>
+      <div className="md:col-span-2">
+        <Field
+          label="Signed LOA copy"
+          name="loaFile"
+          hint="Store the signed file here. This does not generate an LOA or send it to DocuSign."
+        >
+          <input id="loaFile" name="loaFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" />
+          {meter?.loaFileName ? (
+            <p className="text-xs text-muted">
+              On file:{" "}
+              <a href={`/api/loa/${meter.id}`} className="font-medium text-brass-dark">
+                {meter.loaFileName}
+              </a>
+            </p>
+          ) : null}
+        </Field>
+      </div>
       <Field label="Objection" name="objectionStatus">
         <select
           id="objectionStatus"

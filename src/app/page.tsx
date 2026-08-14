@@ -68,8 +68,8 @@ export default async function DashboardPage() {
         <Section
           title="Renewals in the next 90 days"
           action={
-            <Link href="/customers" className="text-xs font-semibold text-brass-dark">
-              All customers
+            <Link href="/renewals" className="text-xs font-semibold text-brass-dark">
+              Renewal ops
             </Link>
           }
         >
