@@ -30,7 +30,7 @@ export default async function AgentsPage() {
           actionLabel="Add agent"
         />
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <table className="desk-table">
             <thead>
               <tr>

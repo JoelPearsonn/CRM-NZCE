@@ -64,6 +64,8 @@ export default async function FinancePage() {
           body="Record a deal on a customer and it will land here and on the Contracts page."
           actionHref="/customers"
           actionLabel="Open customers"
+          secondaryHref="/contracts/new"
+          secondaryLabel="Record deal"
         />
       ) : (
         <div className="grid gap-6">
@@ -160,8 +162,8 @@ export default async function FinancePage() {
                     <th>Due</th>
                     <th>Paid</th>
                     <th>Remaining</th>
-                    <th>Estimated</th>
-                    <th>Variance</th>
+                    <th className="col-extra">Estimated</th>
+                    <th className="col-lesser">Variance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -181,8 +183,8 @@ export default async function FinancePage() {
                       <td className={row.remaining > 0 ? "text-warn" : "text-moss"}>
                         {gbp(row.remaining)}
                       </td>
-                      <td>{gbp(row.estimated)}</td>
-                      <td>{gbp(row.variance)}</td>
+                      <td className="col-extra">{gbp(row.estimated)}</td>
+                      <td className="col-lesser">{gbp(row.variance)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,9 +200,9 @@ export default async function FinancePage() {
                   <th>Due</th>
                   <th>Paid</th>
                   <th>Remaining</th>
-                  <th>Estimated</th>
-                  <th>Variance</th>
-                  <th>Deals</th>
+                  <th className="col-extra">Estimated</th>
+                  <th className="col-lesser">Variance</th>
+                  <th className="col-lesser">Deals</th>
                 </tr>
               </thead>
               <tbody>
@@ -216,9 +218,9 @@ export default async function FinancePage() {
                     <td className={row.remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
                       {gbp(row.remaining)}
                     </td>
-                    <td>{gbp(row.estimated)}</td>
-                    <td>{gbp(row.variance)}</td>
-                    <td>{row.dealCount}</td>
+                    <td className="col-extra">{gbp(row.estimated)}</td>
+                    <td className="col-lesser">{gbp(row.variance)}</td>
+                    <td className="col-lesser">{row.dealCount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -230,13 +232,13 @@ export default async function FinancePage() {
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Supplier</th>
+                  <th className="col-extra">Supplier</th>
                   <th>Due date</th>
                   <th>Amount due</th>
-                  <th>Paid</th>
+                  <th className="col-lesser">Paid</th>
                   <th>Remaining</th>
-                  <th>Estimated</th>
-                  <th>Sales</th>
+                  <th className="col-lesser">Estimated</th>
+                  <th className="col-lesser">Sales</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,15 +256,15 @@ export default async function FinancePage() {
                           </Link>
                         </div>
                       </td>
-                      <td>{deal.supplier}</td>
+                      <td className="col-extra">{deal.supplier}</td>
                       <td>{formatDate(deal.dueDate)}</td>
                       <td>{gbp(deal.amountDue)}</td>
-                      <td>{gbp(deal.actualPaid)}</td>
+                      <td className="col-lesser">{gbp(deal.actualPaid)}</td>
                       <td className={remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
                         {gbp(remaining)}
                       </td>
-                      <td>{gbp(deal.estimatedCommission)}</td>
-                      <td>
+                      <td className="col-lesser">{gbp(deal.estimatedCommission)}</td>
+                      <td className="col-lesser">
                         {deal.allocations.length
                           ? deal.allocations.map((row) => row.agent.name).join(" · ")
                           : (deal.salesperson?.name ?? "—")}

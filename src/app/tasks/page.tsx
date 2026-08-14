@@ -48,7 +48,7 @@ export default async function TasksInboxPage() {
               <tr>
                 <th>Follow-up</th>
                 <th>Customer</th>
-                <th>Assignee</th>
+                <th className="col-extra">Assignee</th>
                 <th>Due</th>
                 <th>Status</th>
                 <th></th>
@@ -66,7 +66,7 @@ export default async function TasksInboxPage() {
                     <td>
                       <Link href={`/customers/${task.customerId}`}>{task.customer.companyName}</Link>
                     </td>
-                    <td>{task.assignee?.name ?? "Unassigned"}</td>
+                    <td className="col-extra">{task.assignee?.name ?? "Unassigned"}</td>
                     <td className={isOverdue ? "font-semibold text-danger" : undefined}>
                       {formatDate(task.dueDate)}
                       {isOverdue ? <div className="text-[0.7rem]">Overdue</div> : null}

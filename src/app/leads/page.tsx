@@ -94,7 +94,9 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           </select>
         </label>
         <div className="flex items-end gap-2">
-          <button className="btn btn-brass">Apply</button>
+          <button type="submit" className="btn btn-brass">
+            Apply
+          </button>
           <Link href="/leads" className="btn btn-ghost">
             Clear
           </Link>

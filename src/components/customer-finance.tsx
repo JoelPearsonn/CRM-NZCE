@@ -139,38 +139,38 @@ export function CustomerFinanceLedger({
             <thead>
               <tr>
                 <th>Supplier</th>
-                <th>Fuel</th>
+                <th className="col-lesser">Fuel</th>
                 <th>Status</th>
-                <th>Renewal</th>
+                <th className="col-extra">Renewal</th>
                 <th>Due date</th>
                 <th>Amount due</th>
-                <th>Est. commission</th>
-                <th>Actual paid</th>
+                <th className="col-lesser">Est. commission</th>
+                <th className="col-extra">Actual paid</th>
                 <th>Remaining</th>
-                <th>Sales</th>
+                <th className="col-lesser">Sales</th>
               </tr>
             </thead>
             <tbody>
               {deals.map((deal) => (
                 <tr key={deal.id}>
                   <td className="font-medium">{deal.supplier}</td>
-                  <td>
+                  <td className="col-lesser">
                     <FuelPill value={deal.fuelType} />
                   </td>
                   <td>
                     <DealStatusPill value={deal.status} />
                   </td>
-                  <td>
+                  <td className="col-extra">
                     <RenewalCell date={deal.renewalDate} />
                   </td>
                   <td>{formatDate(deal.dueDate)}</td>
                   <td>{gbp(deal.amountDue)}</td>
-                  <td>{gbp(deal.estimatedCommission)}</td>
-                  <td>{gbp(deal.actualPaid)}</td>
+                  <td className="col-lesser">{gbp(deal.estimatedCommission)}</td>
+                  <td className="col-extra">{gbp(deal.actualPaid)}</td>
                   <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
                     {gbp(dealRemaining(deal))}
                   </td>
-                  <td>
+                  <td className="col-lesser">
                     {deal.allocations?.length
                       ? `${agentNames(deal.allocations.map((row) => row.agent))}${
                           splitLabel(deal.allocations.length)

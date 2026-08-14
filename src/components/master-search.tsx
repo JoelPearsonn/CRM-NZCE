@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LoaPill, ObjectionPill } from "@/components/ui";
 
@@ -28,11 +29,22 @@ const groups: { key: keyof SearchResponse; label: string; type: SearchHit["type"
   { key: "deals", label: "Contracts", type: "deal" },
 ];
 
+function firstHit(results: SearchResponse | null): SearchHit | null {
+  if (!results) return null;
+  for (const group of groups) {
+    const hit = results[group.key][0];
+    if (hit) return hit;
+  }
+  return null;
+}
+
 export function MasterSearch() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("");
   const [open, setOpen] = useState(false);
   const [results, setResults] = useState<SearchResponse | null>(null);
+  const [resultQuery, setResultQuery] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,6 +64,7 @@ export function MasterSearch() {
       const response = await fetch(`/api/search?${params}`);
       if (!response.ok) return;
       setResults((await response.json()) as SearchResponse);
+      setResultQuery(q);
       setOpen(true);
     }, 180);
     return () => window.clearTimeout(handle);
@@ -62,19 +75,36 @@ export function MasterSearch() {
     ? groups.reduce((sum, group) => sum + visible[group.key].length, 0)
     : 0;
 
+  function openHit(hit: SearchHit) {
+    setOpen(false);
+    setQuery("");
+    router.push(hit.href);
+  }
+
   return (
     <div ref={boxRef} className="relative w-full max-w-xl">
-      <label className="sr-only" htmlFor="master-search">
-        Master search
-      </label>
-      <input
-        id="master-search"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onFocus={() => visible && setOpen(true)}
-        placeholder="Search name, MPAN, MPRN, email, company…"
-        className="w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-sm text-ink outline-none focus:border-brass"
-      />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (resultQuery !== query.trim()) return;
+          const hit = firstHit(visible);
+          if (hit) openHit(hit);
+        }}
+      >
+        <label className="sr-only" htmlFor="master-search">
+          Master search
+        </label>
+        <input
+          id="master-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onFocus={() => visible && setOpen(true)}
+          placeholder="Search name, MPAN, MPRN, email, company…"
+          autoComplete="off"
+          className="w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-sm text-ink outline-none focus:border-brass"
+        />
+      </form>
       {open && query.trim().length >= 2 ? (
         <div className="absolute z-30 mt-1 max-h-[28rem] w-full overflow-auto border border-rule bg-card shadow-lg">
           <div className="flex flex-wrap gap-1 border-b border-rule bg-[#f6f1e6] px-2 py-2">
@@ -88,6 +118,7 @@ export function MasterSearch() {
               <button
                 key={item.value || "all"}
                 type="button"
+                tabIndex={-1}
                 onClick={() => setType(item.value)}
                 className={`btn px-2 py-1 text-[0.68rem] ${type === item.value ? "btn-brass" : "btn-ghost"}`}
               >

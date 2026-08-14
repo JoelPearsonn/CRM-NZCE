@@ -42,14 +42,14 @@ export function CustomerTenderBook({
             <thead>
               <tr>
                 <th>Supplier</th>
-                <th>Fuel</th>
-                <th>Received</th>
-                <th>Standing charge</th>
-                <th>Unit rate(s)</th>
-                <th>Length</th>
+                <th className="col-lesser">Fuel</th>
+                <th className="col-extra">Received</th>
+                <th className="col-lesser">Standing charge</th>
+                <th className="col-extra">Unit rate(s)</th>
+                <th className="col-lesser">Length</th>
                 <th>Est. annual</th>
                 <th>Status</th>
-                <th>Lead</th>
+                <th className="col-lesser">Lead</th>
                 <th></th>
               </tr>
             </thead>
@@ -65,18 +65,20 @@ export function CustomerTenderBook({
                       <div className="mt-1 max-w-[14rem] text-[0.7rem] text-muted">{tender.notes}</div>
                     ) : null}
                   </td>
-                  <td>
+                  <td className="col-lesser">
                     <FuelPill value={tender.fuelType} />
                   </td>
-                  <td>{formatDate(tender.receivedOn)}</td>
-                  <td>{tender.standingCharge != null ? `${pence(tender.standingCharge)}/day` : "—"}</td>
-                  <td className="max-w-[12rem] text-[0.75rem]">{tender.unitRates ?? "—"}</td>
-                  <td>{monthsLabel(tender.contractLengthMonths)}</td>
+                  <td className="col-extra">{formatDate(tender.receivedOn)}</td>
+                  <td className="col-lesser">
+                    {tender.standingCharge != null ? `${pence(tender.standingCharge)}/day` : "—"}
+                  </td>
+                  <td className="col-extra max-w-[12rem] text-[0.75rem]">{tender.unitRates ?? "—"}</td>
+                  <td className="col-lesser">{monthsLabel(tender.contractLengthMonths)}</td>
                   <td className="font-medium">{gbp(tender.estimatedAnnualCost)}</td>
                   <td>
                     <TenderStatusPill value={tender.status} />
                   </td>
-                  <td>
+                  <td className="col-lesser">
                     {tender.lead ? (
                       <Link href={`/leads/${tender.lead.id}`} className="text-[0.75rem]">
                         {tender.lead.title}

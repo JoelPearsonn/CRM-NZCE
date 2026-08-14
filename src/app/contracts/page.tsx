@@ -61,10 +61,10 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
             <thead>
               <tr>
                 <th>Customer</th>
-                <th>Supplier</th>
-                <th>Fuel</th>
+                <th className="col-extra">Supplier</th>
+                <th className="col-lesser">Fuel</th>
                 <th>Status</th>
-                <th>Term</th>
+                <th className="col-lesser">Term</th>
                 <th>Renewal</th>
                 <th>
                   <SortLink
@@ -76,8 +76,8 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
                   </SortLink>
                 </th>
                 <th>Amount due</th>
-                <th>Est. commission</th>
-                <th>Actual paid</th>
+                <th className="col-lesser">Est. commission</th>
+                <th className="col-extra">Actual paid</th>
                 <th>
                   <SortLink
                     href={sortHref("/contracts", listParams, "remaining", sort, dir)}
@@ -87,7 +87,7 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
                     Remaining
                   </SortLink>
                 </th>
-                <th>Sales</th>
+                <th className="col-lesser">Sales</th>
               </tr>
             </thead>
             <tbody>
@@ -103,14 +103,14 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
                       </Link>
                     </div>
                   </td>
-                  <td>{deal.supplier}</td>
-                  <td>
+                  <td className="col-extra">{deal.supplier}</td>
+                  <td className="col-lesser">
                     <FuelPill value={deal.fuelType} />
                   </td>
                   <td>
                     <DealStatusPill value={deal.status} />
                   </td>
-                  <td className="text-[0.75rem]">
+                  <td className="col-lesser text-[0.75rem]">
                     {formatDate(deal.contractStart)} – {formatDate(deal.contractEnd)}
                   </td>
                   <td>
@@ -118,12 +118,12 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
                   </td>
                   <td>{formatDate(deal.dueDate)}</td>
                   <td>{gbp(deal.amountDue)}</td>
-                  <td>{gbp(deal.estimatedCommission)}</td>
-                  <td>{gbp(deal.actualPaid)}</td>
+                  <td className="col-lesser">{gbp(deal.estimatedCommission)}</td>
+                  <td className="col-extra">{gbp(deal.actualPaid)}</td>
                   <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
                     {gbp(dealRemaining(deal))}
                   </td>
-                  <td>
+                  <td className="col-lesser">
                     {deal.allocations.length
                       ? deal.allocations.map((row) => row.agent.name).join(" · ")
                       : (deal.salesperson?.name ?? "—")}

@@ -99,6 +99,8 @@ export default async function DashboardPage() {
               <EmptyState
                 title="No meters renewing in 90 days"
                 body="When contract end dates land inside the window they will show here."
+                actionHref="/customers"
+                actionLabel="Open customers"
               />
             </div>
           ) : (
@@ -107,10 +109,10 @@ export default async function DashboardPage() {
                 <tr>
                   <th>Customer</th>
                   <th>Supply</th>
-                  <th>Fuel</th>
-                  <th>Supplier</th>
+                  <th className="col-lesser">Fuel</th>
+                  <th className="col-extra">Supplier</th>
                   <th>Renewal</th>
-                  <th>Sales</th>
+                  <th className="col-lesser">Sales</th>
                 </tr>
               </thead>
               <tbody>
@@ -125,14 +127,14 @@ export default async function DashboardPage() {
                     <td className="meter-id">
                       {meter.mpan ? formatMpan(meter.mpan) : meter.mprn}
                     </td>
-                    <td>
+                    <td className="col-lesser">
                       <FuelPill value={meter.fuelType} />
                     </td>
-                    <td>{meter.supplier ?? "—"}</td>
+                    <td className="col-extra">{meter.supplier ?? "—"}</td>
                     <td>
                       <RenewalCell date={meter.renewalDate} />
                     </td>
-                    <td>{meter.salesperson?.name ?? "—"}</td>
+                    <td className="col-lesser">{meter.salesperson?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -169,22 +171,26 @@ export default async function DashboardPage() {
       <div className="mt-6">
         <Section title={`Meters in objection · ${objections.length}`}>
           {objections.length === 0 ? (
-            <p className="p-4 text-sm text-muted">
-              No supplies currently blocked. When a current supplier objects, it will show here and
-              on the customer meter.
-            </p>
+            <div className="p-4">
+              <EmptyState
+                title="No supplies in objection"
+                body="When a current supplier objects, it will show here and on the customer meter."
+                actionHref="/customers"
+                actionLabel="Open customers"
+              />
+            </div>
           ) : (
             <table className="desk-table">
               <thead>
                 <tr>
                   <th>Customer</th>
                   <th>Supply</th>
-                  <th>Fuel</th>
-                  <th>Supplier</th>
+                  <th className="col-lesser">Fuel</th>
+                  <th className="col-extra">Supplier</th>
                   <th>Status</th>
-                  <th>Raised</th>
-                  <th>Reason</th>
-                  <th>Sales</th>
+                  <th className="col-lesser">Raised</th>
+                  <th className="col-extra">Reason</th>
+                  <th className="col-lesser">Sales</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,16 +205,16 @@ export default async function DashboardPage() {
                     <td className="meter-id">
                       {meter.mpan ? formatMpan(meter.mpan) : meter.mprn}
                     </td>
-                    <td>
+                    <td className="col-lesser">
                       <FuelPill value={meter.fuelType} />
                     </td>
-                    <td>{meter.supplier ?? "—"}</td>
+                    <td className="col-extra">{meter.supplier ?? "—"}</td>
                     <td>
                       <ObjectionPill value={meter.objectionStatus} />
                     </td>
-                    <td>{formatDate(meter.objectionRaisedOn)}</td>
-                    <td className="max-w-[16rem] text-[0.75rem]">{meter.objectionNote ?? "—"}</td>
-                    <td>{meter.salesperson?.name ?? "—"}</td>
+                    <td className="col-lesser">{formatDate(meter.objectionRaisedOn)}</td>
+                    <td className="col-extra max-w-[16rem] text-[0.75rem]">{meter.objectionNote ?? "—"}</td>
+                    <td className="col-lesser">{meter.salesperson?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

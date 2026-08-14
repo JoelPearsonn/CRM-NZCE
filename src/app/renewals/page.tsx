@@ -82,6 +82,8 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
             <EmptyState
               title="Nothing in this window"
               body="When a meter’s renewal date lands inside 30, 60 or 90 days it will show here."
+              actionHref="/customers"
+              actionLabel="Open customers"
             />
           </div>
         ) : (
@@ -90,13 +92,13 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
               <tr>
                 <th>Customer</th>
                 <th>Supply</th>
-                <th>Fuel</th>
-                <th>Supplier</th>
+                <th className="col-lesser">Fuel</th>
+                <th className="col-extra">Supplier</th>
                 <th>Renewal</th>
                 <th>LOA</th>
                 <th>Objection</th>
                 <th>Finance</th>
-                <th>Sales</th>
+                <th className="col-lesser">Sales</th>
               </tr>
             </thead>
             <tbody>
@@ -113,10 +115,10 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
                     <td className="meter-id">
                       {meter.mpan ? formatMpan(meter.mpan) : meter.mprn}
                     </td>
-                    <td>
+                    <td className="col-lesser">
                       <FuelPill value={meter.fuelType} />
                     </td>
-                    <td>{meter.supplier ?? "—"}</td>
+                    <td className="col-extra">{meter.supplier ?? "—"}</td>
                     <td>
                       <RenewalCell date={meter.renewalDate} />
                     </td>
@@ -143,7 +145,7 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
                       </div>
                       <div className="text-[0.7rem] text-muted">Paid {gbp(finance.paid)}</div>
                     </td>
-                    <td>{meter.salesperson?.name ?? "—"}</td>
+                    <td className="col-lesser">{meter.salesperson?.name ?? "—"}</td>
                   </tr>
                 );
               })}

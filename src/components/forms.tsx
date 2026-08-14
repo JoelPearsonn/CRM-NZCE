@@ -64,6 +64,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
           id="companyName"
           name="companyName"
           required
+          autoFocus={!customer}
           defaultValue={draft?.companyName ?? customer?.companyName}
         />
       </Field>
@@ -101,7 +102,7 @@ export function CustomerForm({ customer }: { customer?: Customer }) {
         <input id="postcode" name="postcode" defaultValue={draft?.postcode ?? customer?.postcode ?? ""} />
       </Field>
       <div className="md:col-span-2 flex justify-end">
-        <button className="btn btn-primary" disabled={pending}>
+        <button type="submit" className="btn btn-primary" disabled={pending}>
           {pending ? "Saving…" : customer ? "Save customer" : state.duplicate ? "Add anyway" : "Add customer"}
         </button>
       </div>

@@ -141,38 +141,38 @@ export default async function CustomerDetailPage({
             <table className="desk-table">
               <thead>
                 <tr>
-                  <th>Fuel</th>
                   <th>MPAN / MPRN</th>
-                  <th>EAC / AQ</th>
-                  <th>Supplier</th>
-                  <th>HH/NHH</th>
-                  <th>Rates</th>
+                  <th>Fuel</th>
+                  <th className="col-lesser">EAC / AQ</th>
+                  <th className="col-extra">Supplier</th>
+                  <th className="col-lesser">HH/NHH</th>
+                  <th className="col-lesser">Rates</th>
                   <th>Renewal</th>
                   <th>LOA</th>
                   <th>Objection</th>
-                  <th>Sales</th>
+                  <th className="col-lesser">Sales</th>
                 </tr>
               </thead>
               <tbody>
                 {site.meters.map((meter) => (
                   <tr key={meter.id}>
-                    <td>
+                    <td className="meter-id">
                       <Link href={`/meters/${meter.id}/edit`} className="font-medium">
-                        <FuelPill value={meter.fuelType} />
+                        {meter.mpan ? <div>E {formatMpan(meter.mpan)}</div> : null}
+                        {meter.mprn ? <div>G {meter.mprn}</div> : null}
                       </Link>
                     </td>
-                    <td className="meter-id">
-                      {meter.mpan ? <div>E {formatMpan(meter.mpan)}</div> : null}
-                      {meter.mprn ? <div>G {meter.mprn}</div> : null}
-                    </td>
                     <td>
+                      <FuelPill value={meter.fuelType} />
+                    </td>
+                    <td className="col-lesser">
                       {meter.electricEac != null ? <div>EAC {kwh(meter.electricEac)}</div> : null}
                       {meter.gasAq != null ? <div>AQ {kwh(meter.gasAq)}</div> : null}
                       {meter.electricEac == null && meter.gasAq == null ? "—" : null}
                     </td>
-                    <td>{meter.supplier ?? "—"}</td>
-                    <td>{meter.settlement ?? "—"}</td>
-                    <td className="max-w-[12rem] text-[0.75rem]">{meter.currentRates ?? "—"}</td>
+                    <td className="col-extra">{meter.supplier ?? "—"}</td>
+                    <td className="col-lesser">{meter.settlement ?? "—"}</td>
+                    <td className="col-lesser max-w-[12rem] text-[0.75rem]">{meter.currentRates ?? "—"}</td>
                     <td>
                       <RenewalCell date={meter.renewalDate} />
                     </td>
@@ -198,7 +198,7 @@ export default async function CustomerDetailPage({
                         </div>
                       ) : null}
                     </td>
-                    <td>{meter.salesperson?.name ?? "—"}</td>
+                    <td className="col-lesser">{meter.salesperson?.name ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -254,9 +254,23 @@ export default async function CustomerDetailPage({
           />
         </Section>
 
-        <Section title="Leads">
+        <Section
+          title="Leads"
+          action={
+            <Link href={`/leads/new?customerId=${customer.id}`} className="btn btn-brass text-[0.75rem]">
+              Open lead
+            </Link>
+          }
+        >
           {customer.leads.length === 0 ? (
-            <p className="p-4 text-sm text-muted">No live sales process on this account.</p>
+            <div className="p-4">
+              <EmptyState
+                title="No live sales process"
+                body="Open a lead on this customer when you start working the account."
+                actionHref={`/leads/new?customerId=${customer.id}`}
+                actionLabel="Open lead"
+              />
+            </div>
           ) : (
             <ul className="divide-y divide-rule">
               {customer.leads.map((lead) => (

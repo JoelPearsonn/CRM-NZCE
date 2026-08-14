@@ -159,7 +159,10 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
           </select>
         </label>
         <div className="flex items-end">
-          <button className="btn btn-brass w-full">Apply filters</button>
+          {showArchived ? <input type="hidden" name="archived" value="1" /> : null}
+          <button type="submit" className="btn btn-brass w-full">
+            Apply filters
+          </button>
         </div>
       </form>
 
@@ -200,8 +203,8 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                     Company
                   </SortLink>
                 </th>
-                <th>Contact</th>
-                <th>Sites</th>
+                <th className="col-extra">Contact</th>
+                <th className="col-lesser">Sites</th>
                 <th>
                   <SortLink
                     href={sortHref("/customers", listParams, "renewal", sort, dir)}
@@ -212,9 +215,9 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                   </SortLink>
                 </th>
                 <th>LOA / objection</th>
-                <th>Latest lead</th>
+                <th className="col-lesser">Latest lead</th>
                 <th>Due</th>
-                <th>Paid</th>
+                <th className="col-extra">Paid</th>
                 <th>
                   <SortLink
                     href={sortHref("/customers", listParams, "remaining", sort, dir)}
@@ -224,8 +227,8 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                     Remaining
                   </SortLink>
                 </th>
-                <th>Last contact</th>
-                <th>Added</th>
+                <th className="col-lesser">Last contact</th>
+                <th className="col-lesser">Added</th>
               </tr>
             </thead>
             <tbody>
@@ -249,11 +252,11 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                         {[customer.city, customer.postcode].filter(Boolean).join(" · ")}
                       </div>
                     </td>
-                    <td>
+                    <td className="col-extra">
                       <div>{customer.contactName}</div>
                       <div className="text-[0.7rem] text-muted">{customer.email}</div>
                     </td>
-                    <td>
+                    <td className="col-lesser">
                       {customer.meters.length} meters
                       <div className="text-[0.7rem] text-muted">
                         {sites} site{sites === 1 ? "" : "s"}
@@ -270,13 +273,13 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                         </div>
                       ) : null}
                     </td>
-                    <td>{lead ? <StagePill value={lead.stage} /> : <span className="text-muted">—</span>}</td>
+                    <td className="col-lesser">{lead ? <StagePill value={lead.stage} /> : <span className="text-muted">—</span>}</td>
                     <td>{gbp(finance.due)}</td>
-                    <td>{gbp(finance.paid)}</td>
+                    <td className="col-extra">{gbp(finance.paid)}</td>
                     <td className={finance.remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
                       {gbp(finance.remaining)}
                     </td>
-                    <td>
+                    <td className="col-lesser">
                       {customer.notes[0] ? (
                         <>
                           {formatDate(customer.notes[0].createdAt)}
@@ -288,7 +291,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                         <span className="text-muted">—</span>
                       )}
                     </td>
-                    <td>{formatDate(customer.createdAt)}</td>
+                    <td className="col-lesser">{formatDate(customer.createdAt)}</td>
                   </tr>
                 );
               })}
