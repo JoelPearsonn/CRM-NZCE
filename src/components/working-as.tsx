@@ -19,6 +19,7 @@ export function WorkingAsPicker({
       </label>
       <select
         id="working-as"
+        key={currentId ?? "desk"}
         name="agentId"
         defaultValue={currentId ?? ""}
         onChange={(event) => event.currentTarget.form?.requestSubmit()}
