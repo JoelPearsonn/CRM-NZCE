@@ -1,4 +1,5 @@
-import { CSV_IMPORT_HEADERS, FUEL_TYPES, LOA_STATUSES } from "@/lib/constants";
+import { CSV_IMPORT_HEADERS, FUEL_TYPES, LOA_STATUSES, OBJECTION_STATUSES } from "@/lib/constants";
+import { parseCsvDate } from "@/lib/csv-dates";
 import { isEmail } from "@/lib/format";
 
 export type ImportAction = "CREATE_CUSTOMER" | "CREATE_METER" | "UPDATE_METER" | "SKIP";
@@ -21,6 +22,7 @@ export type ImportPreviewRow = {
 
 const FUELS = new Set<string>(FUEL_TYPES.map((item) => item.value));
 const LOAS = new Set<string>(LOA_STATUSES.map((item) => item.value));
+const OBJECTIONS = new Set<string>(OBJECTION_STATUSES.map((item) => item.value));
 
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -88,6 +90,13 @@ export function csvTemplate() {
     "NHH",
     "NOT_REQUESTED",
     "",
+    "2026-04-01",
+    "2027-03-31",
+    "2027-03-31",
+    "Day 24.9p / SC £0.74",
+    "Whole current",
+    "NONE",
+    "",
   ])}\n`;
 }
 
@@ -118,6 +127,7 @@ export function validateImportRow(values: Record<string, string>, line: number):
   const companyName = values.companyName ?? "";
   const contactName = values.contactName ?? "";
   const email = (values.email ?? "").toLowerCase();
+  const phone = values.phone ?? "";
   const fuelType = (values.fuelType ?? "ELECTRIC").toUpperCase();
   const mpan = digitsOnly(values.mpan ?? "") || null;
   const mprn = digitsOnly(values.mprn ?? "") || null;
@@ -125,7 +135,10 @@ export function validateImportRow(values: Record<string, string>, line: number):
 
   if (!companyName) errors.push("Company name is required.");
   if (!contactName) errors.push("Contact name is required.");
-  if (!email || !isEmail(email)) errors.push("A valid email is required.");
+  if ((!email || !isEmail(email)) && !phone) {
+    errors.push("Add an email or a phone — at least one contact method.");
+  }
+  if (email && !isEmail(email)) errors.push("Enter a valid email address.");
   if (!siteName) errors.push("Site name is required — meters sit on a site.");
   if (!FUELS.has(fuelType)) errors.push("Fuel must be ELECTRIC, GAS or DUAL.");
   if (!mpan && !mprn) errors.push("Enter an MPAN and/or MPRN.");
@@ -139,6 +152,18 @@ export function validateImportRow(values: Record<string, string>, line: number):
   }
   if (values.loaStatus && !LOAS.has(values.loaStatus.toUpperCase())) {
     errors.push("LOA status is not a known value.");
+  }
+  if (values.objectionStatus && !OBJECTIONS.has(values.objectionStatus.toUpperCase())) {
+    errors.push("Objection status is not a known value.");
+  }
+  if (values.contractStart && !parseCsvDate(values.contractStart)) {
+    errors.push("Contract start should be YYYY-MM-DD.");
+  }
+  if (values.contractEnd && !parseCsvDate(values.contractEnd)) {
+    errors.push("Contract end should be YYYY-MM-DD.");
+  }
+  if (values.renewalDate && !parseCsvDate(values.renewalDate)) {
+    errors.push("Renewal date should be YYYY-MM-DD.");
   }
 
   return {

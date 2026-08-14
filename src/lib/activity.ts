@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getWorkingAsId } from "@/lib/working-as";
 
@@ -6,9 +7,10 @@ export async function logActivity(
   type: string,
   summary: string,
   actorId?: string | null,
+  db: PrismaClient = prisma,
 ) {
   const resolved = actorId || (await getWorkingAsId());
-  await prisma.activity.create({
+  await db.activity.create({
     data: {
       customerId,
       type,

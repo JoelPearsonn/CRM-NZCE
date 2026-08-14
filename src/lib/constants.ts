@@ -157,6 +157,13 @@ export const CSV_IMPORT_HEADERS = [
   "settlement",
   "loaStatus",
   "salespersonEmail",
+  "contractStart",
+  "contractEnd",
+  "renewalDate",
+  "currentRates",
+  "meterType",
+  "objectionStatus",
+  "objectionNote",
 ] as const;
 
 export function labelFor(

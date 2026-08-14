@@ -25,6 +25,9 @@ export async function saveDeal(
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return { error: "Customer not found." };
+  if (!id && customer.archivedAt) {
+    return { error: "This customer is archived. Restore them before recording a deal." };
+  }
 
   const clash = await liveDealOnSupply({
     dealId: id,
@@ -82,6 +85,11 @@ export async function saveDeal(
         },
       },
     });
+    await recordFinanceChange(existing, {
+      amountDue: data.amountDue,
+      estimatedCommission: data.estimatedCommission,
+      actualPaid: data.actualPaid,
+    });
     await logActivity(
       customerId,
       "DEAL_UPDATED",
@@ -116,6 +124,32 @@ export async function saveDeal(
   revalidatePath(`/customers/${customerId}`);
   revalidatePath("/finance");
   redirect(returnToCustomer(formData, customerId, deal.id));
+}
+
+async function recordFinanceChange(
+  existing: { id: string; amountDue: number | null; estimatedCommission: number | null; actualPaid: number | null },
+  next: { amountDue: number | null; estimatedCommission: number | null; actualPaid: number | null },
+  actorId?: string | null,
+) {
+  const changed =
+    existing.amountDue !== next.amountDue ||
+    existing.estimatedCommission !== next.estimatedCommission ||
+    existing.actualPaid !== next.actualPaid;
+  if (!changed) return false;
+  const actor = actorId === undefined ? await getWorkingAsId() : actorId;
+  await prisma.dealReconciliation.create({
+    data: {
+      dealId: existing.id,
+      actorId: actor,
+      actualPaidOld: existing.actualPaid,
+      actualPaidNew: next.actualPaid,
+      amountDueOld: existing.amountDue,
+      amountDueNew: next.amountDue,
+      estimatedOld: existing.estimatedCommission,
+      estimatedNew: next.estimatedCommission,
+    },
+  });
+  return true;
 }
 
 function uniqueIds(ids: string[]) {
@@ -156,24 +190,19 @@ export async function reconcileDeal(
       actualPaid,
     },
   });
-  await prisma.dealReconciliation.create({
-    data: {
-      dealId: deal.id,
-      actorId,
-      actualPaidOld: deal.actualPaid,
-      actualPaidNew: actualPaid,
-      amountDueOld: deal.amountDue,
-      amountDueNew: amountDue,
-      estimatedOld: deal.estimatedCommission,
-      estimatedNew: estimatedCommission,
-    },
-  });
-  await logActivity(
-    deal.customerId,
-    "FINANCE_RECONCILED",
-    `${deal.supplier} actual paid ${gbpExact(deal.actualPaid)} → ${gbpExact(actualPaid)}.`,
+  const wrote = await recordFinanceChange(
+    deal,
+    { amountDue, estimatedCommission, actualPaid },
     actorId,
   );
+  if (wrote) {
+    await logActivity(
+      deal.customerId,
+      "FINANCE_RECONCILED",
+      `${deal.supplier} actual paid ${gbpExact(deal.actualPaid)} → ${gbpExact(actualPaid)}.`,
+      actorId,
+    );
+  }
   revalidatePath("/");
   revalidatePath("/contracts");
   revalidatePath("/customers");

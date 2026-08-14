@@ -38,6 +38,9 @@ export async function saveLead(
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
   if (!customer) return { error: "Customer not found." };
+  if (!id && customer.archivedAt) {
+    return { error: "This customer is archived. Restore them before opening a lead." };
+  }
 
   const data = {
     customerId,

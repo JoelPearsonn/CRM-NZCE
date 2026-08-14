@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS } from "../src/lib/constants";
+import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
 import { dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
 import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
+import { leadsCsvTemplate, validateLeadRow } from "../src/lib/csv-leads";
+import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 import { liveDealOnSupply } from "../src/lib/deals";
 import { findSupplyClash } from "../src/lib/supply";
 import { withTestDb } from "./helpers/test-db";
@@ -25,12 +27,21 @@ test("import templates download with columns the importer accepts", () => {
   assert.deepEqual(dealRow.errors, []);
   assert.equal(dealRow.supplier, "Octopus Energy");
   assert.equal(dealRow.mpan, "1234567890123");
+
+  const leads = parseCsv(leadsCsvTemplate());
+  assert.deepEqual(leads[0], [...CSV_LEAD_HEADERS]);
+  const leadRow = validateLeadRow(rowToRecord(leads[0], leads[1]), 2);
+  assert.deepEqual(leadRow.errors, []);
+  assert.equal(leadRow.stage, "TENDERING");
+  assert.ok(CSV_IMPORT_HEADERS.includes("renewalDate"));
+  assert.ok(CSV_IMPORT_HEADERS.includes("objectionStatus"));
 });
 
 test("CSV import source never deletes customers or meters", () => {
   const files = [
     path.join(import.meta.dirname, "../src/lib/csv-import-commit.ts"),
     path.join(import.meta.dirname, "../src/app/actions/import.ts"),
+    path.join(import.meta.dirname, "../src/app/actions/import-leads.ts"),
   ];
   for (const file of files) {
     const source = readFileSync(file, "utf8");
@@ -210,5 +221,50 @@ test("two live contracts on one MPAN are rejected", async () => {
     const allowed = clash ? false : true;
     assert.equal(allowed, false);
     assert.equal(await db.deal.count({ where: { meterId: meter.id, status: "LIVE" } }), 1);
+  });
+});
+
+test("renewal reminder tasks skip archived customers", async () => {
+  await withTestDb(async (db) => {
+    const live = await db.customer.create({
+      data: {
+        companyName: "Live Book Ltd",
+        contactName: "Ann Live",
+        email: "ann@live-book.co.uk",
+      },
+    });
+    const archived = await db.customer.create({
+      data: {
+        companyName: "Archived Hall",
+        contactName: "Pat Archive",
+        email: "pat@archived-hall.co.uk",
+        archivedAt: new Date(),
+      },
+    });
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 20);
+    await db.meter.create({
+      data: {
+        customerId: live.id,
+        siteName: "High Street",
+        fuelType: "ELECTRIC",
+        mpan: "1234567890123",
+        renewalDate: soon,
+      },
+    });
+    await db.meter.create({
+      data: {
+        customerId: archived.id,
+        siteName: "Old hall",
+        fuelType: "ELECTRIC",
+        mpan: "1234567890456",
+        renewalDate: soon,
+      },
+    });
+
+    const created = await ensureRenewalReminderTasks(db);
+    assert.equal(created, 1);
+    assert.equal(await db.task.count({ where: { customerId: live.id } }), 1);
+    assert.equal(await db.task.count({ where: { customerId: archived.id } }), 0);
   });
 });

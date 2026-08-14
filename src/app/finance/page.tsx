@@ -28,7 +28,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
   const month = parseMonth(query.month);
 
   const deals = await prisma.deal.findMany({
-    where: { customer: { archivedAt: null } },
+    where: { customer: { archivedAt: null }, status: { not: "CANCELLED" } },
     include: { customer: true, salesperson: true, allocations: { include: { agent: true } } },
     orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
   });

@@ -52,7 +52,7 @@ export default function HelpPage() {
 
         <Guide
           title="Import a list"
-          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals have their own template — same columns as Export deals. Nothing is deleted."
+          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Nothing is deleted."
         >
           <Link href="/import" className="btn btn-ghost">
             Import CSV
@@ -63,11 +63,14 @@ export default function HelpPage() {
           <a href="/api/import/deals-template" className="btn btn-ghost">
             Deals template
           </a>
+          <a href="/api/import/leads-template" className="btn btn-ghost">
+            Leads template
+          </a>
         </Guide>
 
         <Guide
           title="Export the book"
-          body="Customers, meters, deals and leads each have a download button. The columns match the import templates so a round-trip works. If you have a filter on (renewing 30 days, in objection, my book), Export this view downloads only what you can see."
+          body="Customers, meters, deals and leads each have a download button. The columns match the import templates so a round-trip works — including meter dates, rates and objection. If you have a filter on (renewing 30 days, in objection, my book), Export this view downloads only what you can see."
         >
           <Link href="/customers" className="btn btn-ghost">
             Customers

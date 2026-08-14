@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export default async function AgentsPage() {
   const agents = await prisma.agent.findMany({
     include: {
-      _count: { select: { leadAllocations: true, deals: true, meters: true } },
+      _count: { select: { leadAllocations: true, dealAllocations: true, meters: true } },
     },
     orderBy: { name: "asc" },
   });
@@ -54,7 +54,7 @@ export default async function AgentsPage() {
                   <td>{agent.role}</td>
                   <td>{agent._count.leadAllocations}</td>
                   <td>{agent._count.meters}</td>
-                  <td>{agent._count.deals}</td>
+                  <td>{agent._count.dealAllocations}</td>
                 </tr>
               ))}
             </tbody>

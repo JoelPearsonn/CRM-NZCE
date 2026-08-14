@@ -50,6 +50,13 @@ function meterRow(customer: {
   settlement: string | null;
   loaStatus: string;
   salesperson?: { email: string } | null;
+  contractStart?: Date | null;
+  contractEnd?: Date | null;
+  renewalDate?: Date | null;
+  currentRates?: string | null;
+  meterType?: string | null;
+  objectionStatus?: string | null;
+  objectionNote?: string | null;
 }) {
   return [
     customer.companyName,
@@ -72,6 +79,13 @@ function meterRow(customer: {
     meter?.settlement ?? "",
     meter?.loaStatus ?? "",
     meter?.salesperson?.email ?? "",
+    toDateInput(meter?.contractStart ?? null),
+    toDateInput(meter?.contractEnd ?? null),
+    toDateInput(meter?.renewalDate ?? null),
+    meter?.currentRates ?? "",
+    meter?.meterType ?? "",
+    meter?.objectionStatus ?? "",
+    meter?.objectionNote ?? "",
   ];
 }
 

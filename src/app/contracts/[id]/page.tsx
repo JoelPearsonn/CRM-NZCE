@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ReconcileDealForm } from "@/components/customer-finance";
 import { DealStatusPill, FuelPill, PageHeader, RenewalCell } from "@/components/ui";
-import { formatDate, formatMpan, gbpExact } from "@/lib/format";
+import { formatDate, formatDateTime, formatMpan, gbpExact } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
@@ -15,6 +16,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
       lead: true,
       salesperson: true,
       allocations: { include: { agent: true } },
+      reconciliations: { include: { actor: true }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!deal) notFound();
@@ -97,6 +99,23 @@ export default async function DealDetailPage({ params }: IdPageProps) {
             </div>
             <Link href={`/leads/${deal.lead.id}`}>{deal.lead.title}</Link>
           </div>
+        ) : null}
+      </div>
+
+      <div className="card mt-6 p-4">
+        <p className="mb-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+          Reconcile finance
+        </p>
+        <ReconcileDealForm deal={deal} />
+        {deal.reconciliations.length ? (
+          <ol className="mt-4 space-y-1 text-xs text-muted">
+            {deal.reconciliations.map((row) => (
+              <li key={row.id}>
+                {formatDateTime(row.createdAt)} · {row.actor?.name ?? "Desk"} · Actual paid{" "}
+                {gbpExact(row.actualPaidOld)} → {gbpExact(row.actualPaidNew)}
+              </li>
+            ))}
+          </ol>
         ) : null}
       </div>
     </div>

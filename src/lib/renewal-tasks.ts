@@ -4,13 +4,14 @@ import { siteKey } from "@/lib/sites";
 
 const TITLE_PREFIX = "Renewal due —";
 
-export async function ensureRenewalReminderTasks() {
+export async function ensureRenewalReminderTasks(db = prisma) {
   const horizon = new Date();
   horizon.setHours(12, 0, 0, 0);
   horizon.setDate(horizon.getDate() + 90);
 
-  const meters = await prisma.meter.findMany({
+  const meters = await db.meter.findMany({
     where: {
+      customer: { archivedAt: null },
       OR: [{ renewalDate: { lte: horizon } }, { contractEnd: { lte: horizon } }],
     },
     include: { customer: true, salesperson: true },
@@ -23,7 +24,7 @@ export async function ensureRenewalReminderTasks() {
   if (dueMeters.length === 0) return 0;
 
   const customerIds = [...new Set(dueMeters.map((meter) => meter.customerId))];
-  const openTasks = await prisma.task.findMany({
+  const openTasks = await db.task.findMany({
     where: { customerId: { in: customerIds }, status: "OPEN" },
   });
 
@@ -72,7 +73,7 @@ export async function ensureRenewalReminderTasks() {
 
     const supplyNote = group.supplies[0] ? ` · ${group.supplies[0]}` : "";
     const title = `${TITLE_PREFIX} ${group.siteName}${supplyNote}`;
-    await prisma.task.create({
+    await db.task.create({
       data: {
         customerId: group.customerId,
         title,
@@ -85,6 +86,8 @@ export async function ensureRenewalReminderTasks() {
       group.customerId,
       "TASK_CREATED",
       `Renewal reminder opened for ${group.siteName}.`,
+      null,
+      db,
     );
     created += 1;
   }

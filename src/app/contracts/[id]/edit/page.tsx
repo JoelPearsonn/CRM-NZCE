@@ -13,7 +13,10 @@ export default async function EditDealPage({ params }: IdPageProps) {
   if (!deal) notFound();
 
   const [customers, meters, leads, agents] = await Promise.all([
-    prisma.customer.findMany({ orderBy: { companyName: "asc" } }),
+    prisma.customer.findMany({
+      where: { OR: [{ archivedAt: null }, { id: deal.customerId }] },
+      orderBy: { companyName: "asc" },
+    }),
     prisma.meter.findMany({ where: { customerId: deal.customerId }, orderBy: { siteName: "asc" } }),
     prisma.lead.findMany({ where: { customerId: deal.customerId }, orderBy: { title: "asc" } }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),

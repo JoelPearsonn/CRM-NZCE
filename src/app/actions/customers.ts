@@ -144,4 +144,7 @@ export async function archiveCustomer(formData: FormData) {
   refreshCustomer(id);
   revalidatePath("/renewals");
   revalidatePath("/leads");
+  revalidatePath("/contracts");
+  revalidatePath("/finance");
+  revalidatePath("/tasks");
 }

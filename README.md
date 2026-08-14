@@ -45,8 +45,8 @@ DATABASE_URL="file:./dev.db"
 ## How to import
 
 1. Open **Import CSV** (from Customers, or go to `/import`).
-2. Download the **meter template** (or the deals template if you are loading contracts).
-3. Fill company, site, and MPAN or MPRN. For deals, use the same columns as **Export deals**.
+2. Download the **meter template** (or the deals / leads template).
+3. Fill company, site, and MPAN or MPRN. For deals or leads, use the same columns as the matching export.
 4. Preview the rows. Then import.
 5. Existing meters are updated by supply number. Existing deals are updated by customer + supplier + start date. **Nothing is deleted.**
 

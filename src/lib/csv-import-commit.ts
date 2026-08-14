@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { ImportPreviewRow } from "@/lib/csv-import";
+import { parseCsvDate } from "@/lib/csv-dates";
 import { optionalStr, parseIntField } from "@/lib/format";
 
 export type ImportCommitCounts = {
@@ -86,6 +87,14 @@ export async function commitImportRows(
       settlement: optionalStr(values.settlement),
       loaStatus: optionalStr(values.loaStatus)?.toUpperCase() || "NOT_REQUESTED",
       salespersonId: salesperson?.id ?? existing?.salespersonId ?? null,
+      contractStart: parseCsvDate(values.contractStart) ?? existing?.contractStart ?? null,
+      contractEnd: parseCsvDate(values.contractEnd) ?? existing?.contractEnd ?? null,
+      renewalDate: parseCsvDate(values.renewalDate) ?? existing?.renewalDate ?? null,
+      currentRates: optionalStr(values.currentRates) ?? existing?.currentRates ?? null,
+      meterType: optionalStr(values.meterType) ?? existing?.meterType ?? null,
+      objectionStatus:
+        optionalStr(values.objectionStatus)?.toUpperCase() || existing?.objectionStatus || "NONE",
+      objectionNote: optionalStr(values.objectionNote) ?? existing?.objectionNote ?? null,
     };
 
     if (existing) {

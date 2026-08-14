@@ -41,7 +41,9 @@ export default async function DashboardPage() {
       where: { customer: { archivedAt: null } },
       _count: { _all: true },
     }),
-    prisma.deal.findMany({ where: { customer: { archivedAt: null } } }),
+    prisma.deal.findMany({
+      where: { customer: { archivedAt: null }, status: { not: "CANCELLED" } },
+    }),
     prisma.lead.count({
       where: { stage: { in: [...OPEN_LEAD_STAGES] }, customer: { archivedAt: null } },
     }),

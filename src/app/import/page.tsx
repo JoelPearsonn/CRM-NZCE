@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CsvDealImportForm } from "@/components/csv-deal-import";
 import { CsvImportForm } from "@/components/csv-import";
+import { CsvLeadImportForm } from "@/components/csv-lead-import";
 import { PageHeader } from "@/components/ui";
 
 export default function ImportPage() {
@@ -27,6 +28,9 @@ export default function ImportPage() {
             <a href="/api/import/deals-template" className="btn btn-ghost">
               Deals template
             </a>
+            <a href="/api/import/leads-template" className="btn btn-ghost">
+              Leads template
+            </a>
             <Link href="/customers/new" className="btn btn-primary">
               Add one customer
             </Link>
@@ -42,6 +46,10 @@ export default function ImportPage() {
         <div id="deals">
           <h2 className="section-title mb-3">Deals</h2>
           <CsvDealImportForm />
+        </div>
+        <div id="leads">
+          <h2 className="section-title mb-3">Leads</h2>
+          <CsvLeadImportForm />
         </div>
       </div>
     </div>

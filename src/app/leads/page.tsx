@@ -41,6 +41,9 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
             <a href={exportHref("/api/export/leads", leadFilterParams(filters))} className="btn btn-ghost">
               {stage || agent ? "Export this view" : "Export leads"}
             </a>
+            <Link href="/import#leads" className="btn btn-ghost">
+              Import leads
+            </Link>
             <Link href="/leads/new" className="btn btn-primary">
               Open lead
             </Link>
