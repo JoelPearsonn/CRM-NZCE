@@ -1,3 +1,4 @@
+import "../src/lib/demo-sqlite";
 import { PrismaClient } from "@prisma/client";
 import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
