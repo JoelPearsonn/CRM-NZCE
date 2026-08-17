@@ -161,12 +161,18 @@ export async function exportDealsCsv() {
     deal.payoutType,
     deal.payoutType === "RESIDUAL"
       ? ""
-      : deal.payments.length === 2
+      : deal.payments.length
         ? deal.payments.map((row) => row.percent).join("/")
-        : deal.payments.length
-          ? deal.payments.map((row) => row.percent).join("/")
-          : "40/40/20",
+        : "40/40/20",
     deal.residualMonthly ?? "",
+    deal.payoutType === "RESIDUAL" ? "" : toDateInput(deal.payments[0]?.expectedDate),
+    deal.payoutType === "RESIDUAL" ? "" : toDateInput(deal.payments[1]?.expectedDate),
+    deal.payoutType === "RESIDUAL" ? "" : toDateInput(deal.payments[2]?.expectedDate),
+    deal.payoutType === "RESIDUAL" ? "" : (deal.payments[0]?.amountDue ?? ""),
+    deal.payoutType === "RESIDUAL" ? "" : (deal.payments[1]?.amountDue ?? ""),
+    deal.payoutType === "RESIDUAL" ? "" : (deal.payments[2]?.amountDue ?? ""),
+    "",
+    toDateInput(deal.actualPaidDate),
   ]);
   return csvResponse("nzce-deals.csv", toCsv(CSV_DEAL_HEADERS, rows));
 }

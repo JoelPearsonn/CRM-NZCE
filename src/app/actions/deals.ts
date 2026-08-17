@@ -72,6 +72,8 @@ export async function saveDeal(
   }
 
   const residualMonthly = parseMoney(formData.get("residualMonthly"));
+  const dealActualPaid = parseMoney(formData.get("actualPaid"));
+  const dealActualPaidDate = parseDate(formData.get("actualPaidDate"));
   const existingPayments = id
     ? await prisma.dealPayment.findMany({ where: { dealId: id }, orderBy: { sortOrder: "asc" } })
     : [];
@@ -94,7 +96,8 @@ export async function saveDeal(
     dueDate: built.rollup.dueDate,
     amountDue: built.rollup.amountDue,
     estimatedCommission: gross,
-    actualPaid: built.rollup.actualPaid,
+    actualPaid: payoutType === "RESIDUAL" ? built.rollup.actualPaid : dealActualPaid,
+    actualPaidDate: payoutType === "RESIDUAL" ? null : dealActualPaidDate,
     tpiPartner: tpi.tpiPartner,
     tpiPercent: tpi.tpiPercent,
     payoutType,
@@ -226,7 +229,7 @@ export async function reconcileDeal(
   let estimatedCommission = deal.estimatedCommission;
   let actualPaid = deal.actualPaid;
 
-  if (deal.payments.length > 0) {
+  if (deal.payments.length > 0 && deal.payoutType === "RESIDUAL") {
     for (const payment of deal.payments) {
       await prisma.dealPayment.update({
         where: { id: payment.id },
@@ -245,7 +248,30 @@ export async function reconcileDeal(
     actualPaid = rollup.actualPaid;
     await prisma.deal.update({
       where: { id },
-      data: { dueDate: rollup.dueDate, amountDue, actualPaid },
+      data: { dueDate: rollup.dueDate, amountDue, actualPaid, actualPaidDate: null },
+    });
+  } else if (deal.payments.length > 0) {
+    for (const payment of deal.payments) {
+      await prisma.dealPayment.update({
+        where: { id: payment.id },
+        data: {
+          expectedDate: parseDate(formData.get(`paymentDate_${payment.id}`)) ?? payment.expectedDate,
+          amountDue: parseMoney(formData.get(`paymentAmount_${payment.id}`)) ?? payment.amountDue,
+          actualPaid: 0,
+        },
+      });
+    }
+    const fresh = await prisma.dealPayment.findMany({
+      where: { dealId: id },
+      orderBy: { sortOrder: "asc" },
+    });
+    const rollup = rollupPayments(fresh);
+    amountDue = rollup.amountDue;
+    actualPaid = parseMoney(formData.get("actualPaid"));
+    const actualPaidDate = parseDate(formData.get("actualPaidDate"));
+    await prisma.deal.update({
+      where: { id },
+      data: { dueDate: rollup.dueDate, amountDue, actualPaid, actualPaidDate },
     });
   } else {
     amountDue = parseMoney(formData.get("amountDue"));
@@ -258,6 +284,7 @@ export async function reconcileDeal(
         amountDue,
         estimatedCommission,
         actualPaid,
+        actualPaidDate: parseDate(formData.get("actualPaidDate")),
       },
     });
   }

@@ -79,6 +79,7 @@ test("portal serializers never include TPI, commission or payout fields", () => 
     amountDue: 5440,
     estimatedCommission: 6800,
     actualPaid: 0,
+    actualPaidDate: null,
     tpiPartner: "INFINITE",
     tpiPercent: 20,
     payoutType: "SPLIT",

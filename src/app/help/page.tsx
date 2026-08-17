@@ -52,7 +52,7 @@ export default function HelpPage() {
 
         <Guide
           title="Import a list"
-          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Deal import uses the same calculator as Record deal: net is full value minus TPI %, then split or residual legs. Nothing is deleted."
+          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Deal import stores Payment 1 / 2 / 3 and expected dates when those columns are present; otherwise it derives split amounts from full value × percents. Monthly residual is only for older residual deals. Nothing is deleted."
         >
           <Link href="/import" className="btn btn-ghost">
             Import CSV
@@ -115,7 +115,7 @@ export default function HelpPage() {
 
         <Guide
           title="Record a deal"
-          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Payouts are either a split (40 / 40 / 20 or 40 / 60) or a monthly residual from the live date to CED. Two agents on a deal still split 50/50. A meter can only have one live contract."
+          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Sold-deal finance is three split legs (On Sign / On Live / EOC) each with an amount and expected date. Actual commission is one received pair for the whole deal. Monthly residual stays only on older residual deals. Two agents on a deal still split 50/50. A meter can only have one live contract."
         >
           <Link href="/contracts/new" className="btn btn-ghost">
             Record deal
@@ -124,7 +124,7 @@ export default function HelpPage() {
 
         <Guide
           title="Monthly finance"
-          body="Finance opens on this month. Due and paid are by payment stage (On Sign / On Live / EOC) after TPI, not one lump. Pick another month to see those payouts only. It is a screen, not a PDF."
+          body="Finance opens on this month. Due is by each Payment 1 / 2 / 3 expected date. Actual commission is one received amount on the actual payment date — not per leg. It is a screen, not a PDF."
         >
           <Link href="/finance" className="btn btn-ghost">
             This month

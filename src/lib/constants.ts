@@ -97,13 +97,14 @@ export const PAYMENT_STAGES = [
 ] as const;
 
 export const PAYOUT_TYPES = [
-  { value: "SPLIT", label: "Split — 2 or 3 lumps" },
+  { value: "SPLIT", label: "Split — On Sign / On Live / EOC" },
   { value: "RESIDUAL", label: "Monthly residual" },
 ] as const;
 
 export const PAYOUT_PRESETS = [
   { value: "40_40_20", label: "40 / 40 / 20 · sign / live / EOC", percents: [40, 40, 20] },
-  { value: "40_60", label: "40 / 60 · sign / live", percents: [40, 60] },
+  { value: "0_80_20", label: "0 / 80 / 20 · sign / live / EOC", percents: [0, 80, 20] },
+  { value: "40_60", label: "40 / 60 · sign / live", percents: [40, 60, 0] },
   { value: "CUSTOM", label: "Custom %", percents: [40, 40, 20] },
 ] as const;
 
@@ -195,6 +196,14 @@ export const CSV_DEAL_HEADERS = [
   "payoutType",
   "payoutSplit",
   "residualMonthly",
+  "expectedDate1",
+  "expectedDate2",
+  "expectedDate3",
+  "payment1",
+  "payment2",
+  "payment3",
+  "payment1Fixed",
+  "actualPaidDate",
 ] as const;
 
 export const CSV_IMPORT_HEADERS = [

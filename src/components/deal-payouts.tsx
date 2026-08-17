@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Deal, DealPayment } from "@prisma/client";
 import { Field } from "@/components/ui";
 import {
@@ -11,15 +11,19 @@ import {
   tpiPercentFor,
 } from "@/lib/constants";
 import { contractMonths, liveDealPreview } from "@/lib/finance";
-import { formatDate, gbpExact, monthsLabel, toDateInput } from "@/lib/format";
+import { formatDate, gbpExact, monthsLabel, parseMoney, toDateInput } from "@/lib/format";
 
 type DealWithPayments = Deal & { payments?: DealPayment[] };
 
 function presetFromPayments(payments: DealPayment[]) {
   const percents = payments.map((row) => row.percent);
-  if (percents.length === 2 && percents[0] === 40 && percents[1] === 60) return "40_60";
-  if (percents.length === 3 && percents[0] === 40 && percents[1] === 40 && percents[2] === 20) {
-    return "40_40_20";
+  if (percents[0] === 0 && percents[1] === 80 && percents[2] === 20) return "0_80_20";
+  if (percents[0] === 40 && percents[1] === 40 && percents[2] === 20) return "40_40_20";
+  if (
+    (percents.length === 2 && percents[0] === 40 && percents[1] === 60) ||
+    (percents[0] === 40 && percents[1] === 60 && (percents[2] ?? 0) === 0)
+  ) {
+    return "40_60";
   }
   return payments.length ? "CUSTOM" : "40_40_20";
 }
@@ -29,32 +33,48 @@ function rowsForPreset(
   deal?: DealWithPayments,
   start = "",
   end = "",
-): { stage: string; label: string; percent: number; date: string; paid: string }[] {
+): { stage: string; label: string; percent: number; date: string; amount: string }[] {
   const existing = [...(deal?.payments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
   if (preset === "CUSTOM" && existing.length) {
-    return existing.map((row) => ({
+    const rows = existing.map((row, index) => ({
       stage: row.stage,
-      label: row.label,
+      label: row.label || `Payment ${index + 1}`,
       percent: row.percent,
       date: toDateInput(row.expectedDate),
-      paid: row.actualPaid ? String(row.actualPaid) : "",
+      amount: row.amountDue != null ? String(row.amountDue) : "",
     }));
+    while (rows.length < 3) {
+      const index = rows.length;
+      const stage = PAYMENT_STAGES[index]?.value ?? "EOC";
+      rows.push({
+        stage,
+        label: `Payment ${index + 1} · ${PAYMENT_STAGES[index]?.label ?? stage}`,
+        percent: 0,
+        date: "",
+        amount: "",
+      });
+    }
+    return rows.slice(0, 3);
   }
   const percents =
     PAYOUT_PRESETS.find((item) => item.value === preset)?.percents ?? [40, 40, 20];
-  const stages = percents.length === 2 ? ["ON_SIGN", "ON_LIVE"] : ["ON_SIGN", "ON_LIVE", "EOC"];
+  const stages = ["ON_SIGN", "ON_LIVE", "EOC"];
   return percents.map((percent, index) => {
     const prior = existing[index];
     const stage = prior?.stage ?? stages[index] ?? "ON_SIGN";
-    const label = PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? `Payment ${index + 1}`;
+    const label = `Payment ${index + 1} · ${PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? `Payment ${index + 1}`}`;
     const fallbackDate =
-      stage === "EOC" ? end || toDateInput(deal?.contractEnd) : start || toDateInput(deal?.contractStart);
+      percent <= 0
+        ? ""
+        : stage === "EOC"
+          ? end || toDateInput(deal?.contractEnd)
+          : start || toDateInput(deal?.contractStart);
     return {
       stage,
       label: prior?.label ?? label,
       percent,
       date: toDateInput(prior?.expectedDate) || fallbackDate,
-      paid: prior?.actualPaid ? String(prior.actualPaid) : "",
+      amount: prior?.amountDue != null ? String(prior.amountDue) : "",
     };
   });
 }
@@ -125,6 +145,8 @@ export function DealPayoutFields({
   const [rows, setRows] = useState(() =>
     rowsForPreset(presetFromPayments(deal?.payments ?? []), deal, contractStart, contractEnd),
   );
+  const [actualPaid, setActualPaid] = useState(deal?.actualPaid != null ? String(deal.actualPaid) : "");
+  const [actualPaidDate, setActualPaidDate] = useState(toDateInput(deal?.actualPaidDate));
 
   const preview = useMemo(
     () =>
@@ -133,6 +155,8 @@ export function DealPayoutFields({
         tpiPercent,
         payoutType,
         percents: rows.map((row) => Number(row.percent) || 0),
+        amounts: rows.map((row) => parseMoney(row.amount)),
+        dates: rows.map((row) => row.date || null),
         residualMonthly: monthly,
         start: contractStart,
         end: contractEnd,
@@ -140,21 +164,14 @@ export function DealPayoutFields({
     [gross, tpiPercent, payoutType, rows, monthly, contractStart, contractEnd],
   );
 
-  const previousDates = useRef({ start: contractStart, end: contractEnd });
   useEffect(() => {
-    const previous = previousDates.current;
     setRows((current) =>
       current.map((row) => {
-        if (row.stage === "ON_LIVE" && (!row.date || row.date === previous.start)) {
-          return { ...row, date: contractStart };
-        }
-        if (row.stage === "EOC" && (!row.date || row.date === previous.end)) {
-          return { ...row, date: contractEnd };
-        }
-        return row;
+        if (row.percent <= 0 || row.date) return row;
+        if (row.stage === "EOC") return contractEnd ? { ...row, date: contractEnd } : row;
+        return contractStart ? { ...row, date: contractStart } : row;
       }),
     );
-    previousDates.current = { start: contractStart, end: contractEnd };
   }, [contractStart, contractEnd]);
 
   function changeTpi(value: string) {
@@ -293,7 +310,6 @@ export function DealPayoutFields({
                   <th>%</th>
                   <th>Expected</th>
                   <th>Amount due</th>
-                  <th>Actual paid</th>
                 </tr>
               </thead>
               <tbody>
@@ -305,14 +321,15 @@ export function DealPayoutFields({
                         value={row.stage}
                         onChange={(event) => {
                           const stage = event.target.value;
-                          const label =
-                            PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? row.label;
+                          const label = `Payment ${index + 1} · ${
+                            PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? row.label
+                          }`;
                           patch(index, { stage, label });
                         }}
                       >
                         {PAYMENT_STAGES.map((item) => (
                           <option key={item.value} value={item.value}>
-                            {item.label}
+                            Payment {index + 1} · {item.label}
                           </option>
                         ))}
                       </select>
@@ -338,20 +355,48 @@ export function DealPayoutFields({
                         onChange={(event) => patch(index, { date: event.target.value })}
                       />
                     </td>
-                    <td className="font-medium" data-testid={`split-due-${index}`}>
-                      {gbpExact(preview.legs[index]?.amountDue ?? 0)}
-                    </td>
                     <td>
                       <input
-                        name={`paymentPaid_${index}`}
-                        value={row.paid}
-                        onChange={(event) => patch(index, { paid: event.target.value })}
+                        name={`paymentAmount_${index}`}
+                        value={row.amount}
+                        onChange={(event) => patch(index, { amount: event.target.value })}
+                        inputMode="decimal"
+                        placeholder={
+                          preview.legs[index]?.amountDue != null
+                            ? String(preview.legs[index]?.amountDue)
+                            : ""
+                        }
+                        data-testid={`split-due-${index}`}
                       />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field
+              label="Actual commission"
+              name="actualPaid"
+              hint="One received amount for the whole deal — not per payment."
+            >
+              <input
+                id="actualPaid"
+                name="actualPaid"
+                value={actualPaid}
+                onChange={(event) => setActualPaid(event.target.value)}
+                inputMode="decimal"
+              />
+            </Field>
+            <Field label="Actual payment date" name="actualPaidDate">
+              <input
+                id="actualPaidDate"
+                name="actualPaidDate"
+                type="date"
+                value={actualPaidDate}
+                onChange={(event) => setActualPaidDate(event.target.value)}
+              />
+            </Field>
           </div>
         </>
       ) : null}

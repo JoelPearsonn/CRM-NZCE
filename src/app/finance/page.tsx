@@ -64,16 +64,41 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
           },
         ];
       }
-      return deal.payments.map((payment) => ({
+      if (deal.payoutType === "RESIDUAL" || deal.payments.some((payment) => payment.stage === "RESIDUAL")) {
+        return deal.payments.map((payment) => ({
+          ...base,
+          id: `${deal.id}:${payment.id}`,
+          dueDate: payment.expectedDate,
+          amountDue: payment.amountDue,
+          estimatedCommission: payment.amountDue,
+          actualPaid: payment.actualPaid,
+          stage: payment.stage,
+          label: "Monthly residual",
+        }));
+      }
+      const legs = deal.payments.map((payment, index) => ({
         ...base,
         id: `${deal.id}:${payment.id}`,
         dueDate: payment.expectedDate,
         amountDue: payment.amountDue,
         estimatedCommission: payment.amountDue,
-        actualPaid: payment.actualPaid,
+        actualPaid: 0,
         stage: payment.stage,
-        label: payment.stage === "RESIDUAL" ? "Monthly residual" : payment.label,
+        label: `Payment ${index + 1}`,
       }));
+      if ((deal.actualPaid ?? 0) > 0.004 || deal.actualPaidDate) {
+        legs.push({
+          ...base,
+          id: `${deal.id}:received`,
+          dueDate: deal.actualPaidDate,
+          amountDue: 0,
+          estimatedCommission: 0,
+          actualPaid: deal.actualPaid ?? 0,
+          stage: "RECEIVED",
+          label: "Actual commission",
+        });
+      }
+      return legs;
     });
 
   const byMonth = groupByMonth(lines);
@@ -99,7 +124,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
       <PageHeader
         kicker="Monthly report"
         title={month ? `Finance · ${monthTitle}` : "Finance · all months"}
-        description="Due and paid by payment stage (On Sign / On Live / EOC), after TPI. Pick a month to see those payouts only. This is a screen — not a PDF."
+        description="Due by each Payment 1 / 2 / 3 expected date. Actual commission is one received amount on the actual payment date. This is a screen — not a PDF."
       />
 
       <form method="get" className="card mb-6 flex flex-wrap items-end gap-3 p-4">
@@ -155,7 +180,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
         <div className="grid gap-6">
           <Section title={month ? `By payment stage · ${monthTitle}` : "Due / paid by payment stage"}>
             <p className="border-b border-rule px-4 py-2 text-xs text-muted">
-              On Sign, On Live and EOC after TPI — not one lump per deal
+              Payment 1 / 2 / 3 due on their expected dates. Actual commission is one received pair for the deal.
             </p>
             <HorizonBars rows={byStage} valueKey="due" />
             <table className="desk-table">

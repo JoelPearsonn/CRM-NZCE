@@ -24,11 +24,12 @@ export function CsvDealImportForm() {
     >
       <ErrorBanner message={state.error} />
       <p className="text-sm text-muted">
-        Same columns as Export deals. TPI and payouts use the same calculator as Record deal: net is
-        full deal value minus TPI % (Joose + UCR 30, Joose 25, Infinite 20, none 0), then a 40/40/20
-        or 40/60 split, or monthly residual from CSD to CED. Existing contracts are matched by
-        customer + supplier + start date (and MPAN/MPRN when present) and updated. Nothing is
-        deleted. Preview before you import.
+        Same columns as Export deals. TPI uses the same calculator as Record deal: net is full deal
+        value minus TPI % (Joose + UCR 30, Joose 25, Infinite 20, none 0). Payment 1 / 2 / 3 and
+        expected dates are stored when those columns are present; otherwise amounts come from the
+        split percents. Actual commission is one received pair for the deal. Existing contracts are
+        matched by customer + supplier + start date (and MPAN/MPRN when present) and updated. Nothing
+        is deleted. Preview before you import.
       </p>
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="field min-w-[16rem] flex-1">

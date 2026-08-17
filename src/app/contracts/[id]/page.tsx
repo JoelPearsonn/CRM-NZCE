@@ -38,13 +38,15 @@ export default async function DealDetailPage({ params }: IdPageProps) {
     ],
     ["Contract start (CSD)", formatDate(deal.contractStart)],
     ["Contract end (CED)", formatDate(deal.contractEnd)],
+    ["Date sold", formatDate(deal.createdAt)],
     ["Length", monthsLabel(contractMonths(deal.contractStart, deal.contractEnd))],
     ["Payout", deal.payoutType === "RESIDUAL" ? "Monthly residual" : "Split"],
     ["TPI", `${labelFor(TPI_PARTNERS, deal.tpiPartner)}${deal.tpiPercent ? ` · ${deal.tpiPercent}%` : ""}`],
     ["Full deal value", gbpExact(deal.estimatedCommission)],
     ["Net commission", gbpExact(netCommission(deal.estimatedCommission, deal.tpiPercent))],
     ["Amount due", gbpExact(deal.amountDue)],
-    ["Actual paid", gbpExact(deal.actualPaid)],
+    ["Actual commission", gbpExact(deal.actualPaid)],
+    ["Actual payment date", formatDate(deal.actualPaidDate)],
   ] as const;
 
   return (
@@ -120,17 +122,19 @@ export default async function DealDetailPage({ params }: IdPageProps) {
                 <th>%</th>
                 <th>Expected</th>
                 <th>Due</th>
-                <th>Paid</th>
+                {deal.payoutType === "RESIDUAL" ? <th>Paid</th> : null}
               </tr>
             </thead>
             <tbody>
-              {deal.payments.map((payment) => (
+              {deal.payments.map((payment, index) => (
                 <tr key={payment.id}>
-                  <td className="font-medium">{payment.label}</td>
+                  <td className="font-medium">
+                    {deal.payoutType === "RESIDUAL" ? payment.label : `Payment ${index + 1}`}
+                  </td>
                   <td>{payment.percent}%</td>
                   <td>{formatDate(payment.expectedDate)}</td>
                   <td>{gbpExact(payment.amountDue)}</td>
-                  <td>{gbpExact(payment.actualPaid)}</td>
+                  {deal.payoutType === "RESIDUAL" ? <td>{gbpExact(payment.actualPaid)}</td> : null}
                 </tr>
               ))}
             </tbody>

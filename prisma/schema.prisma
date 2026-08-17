@@ -154,6 +154,7 @@ model Deal {
   amountDue           Float?
   estimatedCommission Float?
   actualPaid          Float?
+  actualPaidDate      DateTime?
   tpiPartner          String    @default("NONE")
   tpiPercent          Float     @default(0)
   payoutType          String    @default("SPLIT")

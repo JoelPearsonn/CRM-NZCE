@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import {
   applyExistingDealToPreview,
+  canonicalDealHeader,
   importedDealFinance,
   importedDealGross,
   parseDealCsv,
@@ -35,7 +36,7 @@ export type DealImportState = {
 };
 
 function headerMap(cells: string[]) {
-  return cells.map((cell) => cell.replace(/^\uFEFF/, "").trim());
+  return cells.map((cell) => canonicalDealHeader(cell));
 }
 
 function emailsFrom(value: string) {
@@ -268,6 +269,7 @@ export async function runDealImport(
       amountDue: finance.rollup.amountDue,
       estimatedCommission: gross,
       actualPaid: finance.rollup.actualPaid,
+      actualPaidDate: finance.actualPaidDate,
       tpiPartner: finance.tpiPartner,
       tpiPercent: finance.tpiPercent,
       payoutType: finance.payoutType,

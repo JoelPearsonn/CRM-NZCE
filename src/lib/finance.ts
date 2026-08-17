@@ -64,6 +64,8 @@ export function liveDealPreview(input: {
   tpiPercent: string | number | null | undefined;
   payoutType?: string | null;
   percents?: number[];
+  amounts?: (number | string | null | undefined)[];
+  dates?: (Date | string | null | undefined)[];
   residualMonthly?: string | number | null;
   start?: string | Date | null;
   end?: string | Date | null;
@@ -108,15 +110,21 @@ export function liveDealPreview(input: {
     };
   }
 
-  const percents = input.percents?.length ? input.percents : [40, 40, 20];
-  const amounts = splitByPercent(net, percents);
-  const labels = percents.length === 2 ? ["On Sign", "On Live"] : ["On Sign", "On Live", "EOC"];
-  const legs = percents.map((percent, index) => ({
-    label: labels[index] ?? `Payment ${index + 1}`,
-    percent,
-    amountDue: amounts[index] ?? 0,
-    expectedDate: null as Date | null,
-  }));
+  const percents = [...(input.percents?.length ? input.percents : [40, 40, 20])].slice(0, 3);
+  while (percents.length < 3) percents.push(0);
+  const derived = splitByPercent(net, percents);
+  const labels = ["On Sign", "On Live", "EOC"];
+  const legs = percents.map((percent, index) => {
+    const override = input.amounts?.[index];
+    const parsed =
+      typeof override === "number" ? override : override != null && String(override).trim() ? parseMoney(override) : null;
+    return {
+      label: `Payment ${index + 1} · ${labels[index] ?? `Payment ${index + 1}`}`,
+      percent,
+      amountDue: parsed != null ? parsed : (derived[index] ?? 0),
+      expectedDate: parseLiveDate(input.dates?.[index] ?? null),
+    };
+  });
   return {
     gross,
     tpiPercent,
@@ -179,7 +187,7 @@ export function groupByPaymentStage(deals: (FinanceDeal & { stage?: string; labe
     addDeal(bucket, deal);
     map.set(key, bucket);
   }
-  const order = ["ON_SIGN", "ON_LIVE", "EOC", "RESIDUAL"];
+  const order = ["ON_SIGN", "ON_LIVE", "EOC", "RESIDUAL", "RECEIVED"];
   return [...map.values()].sort((a, b) => {
     const left = order.indexOf(a.key);
     const right = order.indexOf(b.key);

@@ -8,6 +8,8 @@ import {
 } from "@/lib/finance";
 import { parseDate, parseMoney } from "@/lib/format";
 
+export const SPLIT_STAGES = ["ON_SIGN", "ON_LIVE", "EOC"] as const;
+
 export type BuiltPayment = PaymentLike & {
   stage: string;
   label: string;
@@ -16,7 +18,14 @@ export type BuiltPayment = PaymentLike & {
   amountDue: number;
   actualPaid: number;
   sortOrder: number;
+  amountOverride?: number | null;
 };
+
+export function normalizeSplitPercents(raw: number[]) {
+  const parts = raw.slice(0, 3);
+  while (parts.length < 3) parts.push(0);
+  return parts;
+}
 
 function stageLabel(stage: string, fallback: string) {
   return PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? fallback;
@@ -54,7 +63,7 @@ export function parsePayoutPercents(raw: string | null | undefined) {
     parts.every((part) => Number.isFinite(part) && part >= 0)
   ) {
     const total = parts.reduce((sum, part) => sum + part, 0);
-    if (Math.abs(total - 100) <= 0.5) return parts;
+    if (Math.abs(total - 100) <= 0.5) return normalizeSplitPercents(parts);
   }
   return [40, 40, 20];
 }
@@ -115,14 +124,14 @@ export function parseDealPayments(formData: FormData): { error?: string; payment
   if (String(formData.get("payoutType") ?? "SPLIT") === "RESIDUAL") {
     return { payments: [] };
   }
-  const count = Math.min(3, Math.max(2, Number(formData.get("paymentCount")) || 3));
-  const drafts: { stage: string; label: string; percent: number; expectedDate: Date | null; actualPaid: number }[] =
-    [];
+  const count = 3;
+  const drafts: BuiltPayment[] = [];
 
   for (let index = 0; index < count; index += 1) {
-    const stage = String(formData.get(`paymentStage_${index}`) ?? "").trim() || defaultStage(index, count);
+    const stage = String(formData.get(`paymentStage_${index}`) ?? "").trim() || SPLIT_STAGES[index] || "ON_SIGN";
     const label =
-      String(formData.get(`paymentLabel_${index}`) ?? "").trim() || stageLabel(stage, `Payment ${index + 1}`);
+      String(formData.get(`paymentLabel_${index}`) ?? "").trim() ||
+      `Payment ${index + 1} · ${stageLabel(stage, `Payment ${index + 1}`)}`;
     const percent = Number(String(formData.get(`paymentPercent_${index}`) ?? "").replace(/%/g, ""));
     if (!Number.isFinite(percent) || percent < 0) {
       return { error: "Each payout needs a % of net commission.", payments: [] };
@@ -132,7 +141,10 @@ export function parseDealPayments(formData: FormData): { error?: string; payment
       label,
       percent,
       expectedDate: parseDate(formData.get(`paymentDate_${index}`)),
-      actualPaid: parseMoney(formData.get(`paymentPaid_${index}`)) ?? 0,
+      amountDue: 0,
+      actualPaid: 0,
+      sortOrder: index,
+      amountOverride: parseMoney(formData.get(`paymentAmount_${index}`)),
     });
   }
 
@@ -141,7 +153,7 @@ export function parseDealPayments(formData: FormData): { error?: string; payment
     return { error: "Payout percentages must add up to 100%.", payments: [] };
   }
 
-  return { payments: drafts.map((row, sortOrder) => ({ ...row, amountDue: 0, sortOrder })) };
+  return { payments: drafts };
 }
 
 export function applyPayouts(
@@ -156,31 +168,33 @@ export function applyPayouts(
   );
   const payments = drafts.map((row, index) => ({
     ...row,
-    amountDue: amounts[index] ?? 0,
-    actualPaid: row.actualPaid ?? 0,
+    amountDue: row.amountOverride != null ? row.amountOverride : (amounts[index] ?? 0),
+    actualPaid: 0,
     sortOrder: index,
   }));
   return { net, payments, rollup: rollupPayments(payments) };
 }
 
-function defaultStage(index: number, count: number) {
-  if (index === 0) return "ON_SIGN";
-  if (index === 1) return "ON_LIVE";
-  return count === 3 ? "EOC" : "ON_LIVE";
+export function splitPaymentLabel(index: number, stage: string) {
+  return `Payment ${index + 1} · ${stageLabel(stage, `Payment ${index + 1}`)}`;
 }
 
 function splitDrafts(
   percents: number[],
   dates: { sign: Date | null; live: Date | null; eoc: Date | null },
+  explicitDates?: (Date | null | undefined)[],
 ): BuiltPayment[] {
-  const stages = percents.length === 2 ? ["ON_SIGN", "ON_LIVE"] : ["ON_SIGN", "ON_LIVE", "EOC"];
-  return percents.map((percent, index) => {
-    const stage = stages[index] ?? "ON_SIGN";
+  const parts = normalizeSplitPercents(percents);
+  return parts.map((percent, index) => {
+    const stage = SPLIT_STAGES[index] ?? "ON_SIGN";
+    const derived =
+      percent <= 0 ? null : stage === "EOC" ? dates.eoc : stage === "ON_LIVE" ? dates.live : dates.sign;
+    const explicit = explicitDates?.[index];
     return {
       stage,
-      label: stageLabel(stage, `Payment ${index + 1}`),
+      label: splitPaymentLabel(index, stage),
       percent,
-      expectedDate: stage === "EOC" ? dates.eoc : stage === "ON_LIVE" ? dates.live : dates.sign,
+      expectedDate: explicit !== undefined ? explicit : derived,
       amountDue: 0,
       actualPaid: 0,
       sortOrder: index,
@@ -203,7 +217,9 @@ export function payoutLabel(payoutType: string, percents: number[], monthCount: 
   if (payoutType === "RESIDUAL") {
     return monthCount ? `Monthly residual · ${monthCount} months` : "Monthly residual";
   }
-  return percents.join(" / ");
+  const shown = [...percents];
+  while (shown.length > 2 && shown[shown.length - 1] === 0) shown.pop();
+  return shown.join(" / ");
 }
 
 export function buildImportedFinance(input: {
@@ -217,6 +233,10 @@ export function buildImportedFinance(input: {
   contractEnd: Date | null;
   dueDate?: Date | null;
   actualPaid?: number | null;
+  actualPaidDate?: Date | null;
+  expectedDates?: (Date | null | undefined)[];
+  amounts?: (number | null | undefined)[];
+  payment1Fixed?: number | null;
   existingPayments?: { stage: string; expectedDate: Date | null; actualPaid: number | null }[];
 }): {
   error?: string;
@@ -227,7 +247,8 @@ export function buildImportedFinance(input: {
   percents: number[];
   net: number;
   payments: BuiltPayment[];
-  rollup: ReturnType<typeof rollupPayments>;
+  rollup: ReturnType<typeof rollupPayments> & { actualPaidDate: Date | null };
+  actualPaidDate: Date | null;
 } {
   const tpi = resolveTpi(input.tpiPartner, input.tpiPercent);
   const residualMonthly = input.residualMonthly != null && input.residualMonthly > 0 ? input.residualMonthly : null;
@@ -245,7 +266,8 @@ export function buildImportedFinance(input: {
       percents: [],
       net: netCommission(input.estimatedCommission, tpi.tpiPercent),
       payments: [],
-      rollup: { amountDue: 0, actualPaid: 0, dueDate: null },
+      rollup: { amountDue: 0, actualPaid: 0, dueDate: null, actualPaidDate: input.actualPaidDate ?? null },
+      actualPaidDate: input.actualPaidDate ?? null,
     };
   }
   if (payoutType === "RESIDUAL") {
@@ -259,7 +281,8 @@ export function buildImportedFinance(input: {
         percents: [],
         net: netCommission(input.estimatedCommission, tpi.tpiPercent),
         payments: [],
-        rollup: { amountDue: 0, actualPaid: 0, dueDate: null },
+        rollup: { amountDue: 0, actualPaid: 0, dueDate: null, actualPaidDate: input.actualPaidDate ?? null },
+        actualPaidDate: input.actualPaidDate ?? null,
       };
     }
     const built = applyResidual(
@@ -280,24 +303,31 @@ export function buildImportedFinance(input: {
       percents: [],
       net: built.net,
       payments,
-      rollup,
+      rollup: { ...rollup, actualPaidDate: input.actualPaidDate ?? null },
+      actualPaidDate: input.actualPaidDate ?? null,
     };
   }
 
   const percents = parsePayoutPercents(input.payoutSplit);
-  const drafts = splitDrafts(percents, {
-    sign: input.dueDate ?? start,
-    live: start,
-    eoc: end,
+  const drafts = splitDrafts(
+    percents,
+    {
+      sign: input.dueDate ?? start,
+      live: start,
+      eoc: end,
+    },
+    input.expectedDates,
+  );
+  drafts.forEach((draft, index) => {
+    const amount = input.amounts?.[index];
+    if (amount != null) draft.amountOverride = amount;
   });
-  if (input.existingPayments?.length) {
-    for (const draft of drafts) {
-      const prior = input.existingPayments.find((row) => row.stage === draft.stage);
-      if (prior?.actualPaid) draft.actualPaid = prior.actualPaid;
-    }
+  if (input.payment1Fixed != null && drafts[0]) {
+    drafts[0].amountOverride = input.payment1Fixed;
   }
   const built = applyPayouts(input.estimatedCommission, tpi.tpiPercent, drafts);
-  const payments = applyLumpPaid(built.payments, input.actualPaid ?? null);
+  const payments = built.payments.map((row) => ({ ...row, actualPaid: 0 }));
+  const rollup = rollupPayments(payments);
   return {
     tpiPartner: tpi.tpiPartner,
     tpiPercent: tpi.tpiPercent,
@@ -306,6 +336,11 @@ export function buildImportedFinance(input: {
     percents,
     net: built.net,
     payments,
-    rollup: rollupPayments(payments),
+    rollup: {
+      ...rollup,
+      actualPaid: input.actualPaid ?? 0,
+      actualPaidDate: input.actualPaidDate ?? null,
+    },
+    actualPaidDate: input.actualPaidDate ?? null,
   };
 }

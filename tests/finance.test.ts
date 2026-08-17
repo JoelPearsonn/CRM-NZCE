@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { canonicalDealHeader, importedDealFinance } from "../src/lib/csv-deals";
 import {
   applyResidual,
   buildImportedFinance,
@@ -205,8 +206,9 @@ test("deal CSV import uses the same TPI and split calculator as the form", () =>
   assert.equal(parseTpiPartner("Infinite"), "INFINITE");
   assert.equal(parseTpiPartner("Joose + UCR"), "JOOSE_UCR");
   assert.equal(parseTpiPartner("Love Energy Savings"), "NONE");
-  assert.deepEqual(parsePayoutPercents("40/60"), [40, 60]);
-  assert.deepEqual(parsePayoutPercents("50/50"), [50, 50]);
+  assert.deepEqual(parsePayoutPercents("40/60"), [40, 60, 0]);
+  assert.deepEqual(parsePayoutPercents("50/50"), [50, 50, 0]);
+  assert.deepEqual(parsePayoutPercents("0/80/20"), [0, 80, 20]);
 
   const infinite = buildImportedFinance({
     estimatedCommission: 6800,
@@ -285,4 +287,125 @@ test("live calculator: residual months use typed CSD/CED, not a saved deal", () 
   assert.equal(empty.net, 3750);
   assert.equal(empty.legs.length, 0);
   assert.equal(empty.totalDue, 0);
+});
+
+test("40/40/20 import stores the three expected dates and amounts given", () => {
+  const finance = buildImportedFinance({
+    estimatedCommission: 1000,
+    tpiPartner: "NONE",
+    tpiPercent: 0,
+    payoutType: "SPLIT",
+    payoutSplit: "40/40/20",
+    contractStart: new Date("2026-01-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-01-01T12:00:00.000Z"),
+    expectedDates: [
+      new Date("2026-05-01T12:00:00.000Z"),
+      new Date("2026-08-15T12:00:00.000Z"),
+      new Date("2027-03-31T12:00:00.000Z"),
+    ],
+    amounts: [400, 400, 200],
+    actualPaid: 150,
+    actualPaidDate: new Date("2026-06-20T12:00:00.000Z"),
+  });
+  assert.equal(finance.payments.length, 3);
+  assert.deepEqual(
+    finance.payments.map((row) => row.expectedDate?.toISOString().slice(0, 10)),
+    ["2026-05-01", "2026-08-15", "2027-03-31"],
+  );
+  assert.deepEqual(
+    finance.payments.map((row) => row.amountDue),
+    [400, 400, 200],
+  );
+  assert.ok(finance.payments.every((row) => row.actualPaid === 0));
+  assert.equal(finance.rollup.actualPaid, 150);
+  assert.equal(finance.actualPaidDate?.toISOString().slice(0, 10), "2026-06-20");
+});
+
+test("0/80/20 import has payment 1 at zero and no date 1", () => {
+  const finance = buildImportedFinance({
+    estimatedCommission: 1000,
+    tpiPartner: "NONE",
+    tpiPercent: 0,
+    payoutSplit: "0/80/20",
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+    expectedDates: [null, new Date("2026-06-01T12:00:00.000Z"), new Date("2027-03-31T12:00:00.000Z")],
+    amounts: [0, 800, 200],
+  });
+  assert.equal(finance.payments[0]?.amountDue, 0);
+  assert.equal(finance.payments[0]?.expectedDate, null);
+  assert.equal(finance.payments[1]?.amountDue, 800);
+  assert.equal(finance.payments[1]?.expectedDate?.toISOString().slice(0, 10), "2026-06-01");
+  assert.equal(finance.payments[2]?.amountDue, 200);
+});
+
+test("payment1Fixed overrides payment 1 when present", () => {
+  const finance = buildImportedFinance({
+    estimatedCommission: 1000,
+    tpiPartner: "NONE",
+    tpiPercent: 0,
+    payoutSplit: "40/40/20",
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+    amounts: [400, 400, 200],
+    payment1Fixed: 250,
+  });
+  assert.deepEqual(
+    finance.payments.map((row) => row.amountDue),
+    [250, 400, 200],
+  );
+});
+
+test("live calculator uses typed payment amounts instead of £0", () => {
+  const preview = liveDealPreview({
+    gross: 0,
+    tpiPercent: 0,
+    payoutType: "SPLIT",
+    percents: [40, 40, 20],
+    amounts: [400, 400, 200],
+    dates: ["2026-05-01", "2026-08-15", "2027-03-31"],
+  });
+  assert.deepEqual(
+    preview.legs.map((leg) => leg.amountDue),
+    [400, 400, 200],
+  );
+  assert.equal(preview.totalDue, 1000);
+  assert.equal(preview.legs[0]?.expectedDate?.toISOString().slice(0, 10), "2026-05-01");
+});
+
+test("deal CSV accepts signDue aliases and keeps actual paid on the deal", () => {
+  assert.equal(canonicalDealHeader("Expected Payment Date 1"), "expectedDate1");
+  assert.equal(canonicalDealHeader("signDue"), "expectedDate1");
+  assert.equal(canonicalDealHeader("Payment 1 (Fixed)"), "payment1Fixed");
+  assert.equal(canonicalDealHeader("Actual Payment Date"), "actualPaidDate");
+
+  const finance = importedDealFinance({
+    companyName: "Acme Bakery Ltd",
+    email: "accounts@acme-bakery.test",
+    supplier: "Octopus Energy",
+    estimatedCommission: "1000",
+    tpiPartner: "NONE",
+    payoutSplit: "40/40/20",
+    contractStart: "2026-01-01",
+    contractEnd: "2027-01-01",
+    signDue: "2026-05-01",
+    liveDue: "2026-08-15",
+    eocDue: "2027-03-31",
+    payment1: "400",
+    payment2: "400",
+    payment3: "200",
+    actualPaid: "150",
+    actualPaidDate: "2026-06-20",
+  });
+  assert.deepEqual(
+    finance.payments.map((row) => row.expectedDate?.toISOString().slice(0, 10)),
+    ["2026-05-01", "2026-08-15", "2027-03-31"],
+  );
+  assert.deepEqual(
+    finance.payments.map((row) => row.amountDue),
+    [400, 400, 200],
+  );
+  assert.ok(finance.payments.every((row) => row.actualPaid === 0));
+  assert.equal(finance.rollup.actualPaid, 150);
+  assert.equal(finance.actualPaidDate?.toISOString().slice(0, 10), "2026-06-20");
 });

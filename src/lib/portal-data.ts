@@ -7,6 +7,7 @@ export const PORTAL_FORBIDDEN_KEYS = [
   "estimatedCommission",
   "amountDue",
   "actualPaid",
+  "actualPaidDate",
   "payoutType",
   "residualMonthly",
   "payments",

@@ -93,13 +93,15 @@ export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPaym
                 {deal.payoutType === "RESIDUAL" ? null : <th>%</th>}
                 <th>Due date</th>
                 <th>Amount due</th>
-                <th>Actual paid</th>
+                {deal.payoutType === "RESIDUAL" ? <th>Actual paid</th> : null}
               </tr>
             </thead>
             <tbody>
-              {payments.map((payment) => (
+              {payments.map((payment, index) => (
                 <tr key={payment.id}>
-                  <td className="font-medium">{payment.label}</td>
+                  <td className="font-medium">
+                    {deal.payoutType === "RESIDUAL" ? payment.label : `Payment ${index + 1}`}
+                  </td>
                   {deal.payoutType === "RESIDUAL" ? null : <td>{payment.percent}%</td>}
                   <td>
                     <input
@@ -108,17 +110,40 @@ export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPaym
                       defaultValue={toDateInput(payment.expectedDate)}
                     />
                   </td>
-                  <td>{gbpExact(payment.amountDue)}</td>
-                  <td>
-                    <input
-                      name={`paymentPaid_${payment.id}`}
-                      defaultValue={payment.actualPaid || ""}
-                    />
-                  </td>
+                  {deal.payoutType === "RESIDUAL" ? (
+                    <td>{gbpExact(payment.amountDue)}</td>
+                  ) : (
+                    <td>
+                      <input
+                        name={`paymentAmount_${payment.id}`}
+                        defaultValue={payment.amountDue ?? ""}
+                      />
+                    </td>
+                  )}
+                  {deal.payoutType === "RESIDUAL" ? (
+                    <td>
+                      <input
+                        name={`paymentPaid_${payment.id}`}
+                        defaultValue={payment.actualPaid || ""}
+                      />
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
           </table>
+          {deal.payoutType === "RESIDUAL" ? null : (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className="field">
+                <span>Actual commission</span>
+                <input name="actualPaid" defaultValue={deal.actualPaid ?? ""} />
+              </label>
+              <label className="field">
+                <span>Actual payment date</span>
+                <input name="actualPaidDate" type="date" defaultValue={toDateInput(deal.actualPaidDate)} />
+              </label>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid gap-2 lg:grid-cols-5">
@@ -135,8 +160,12 @@ export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPaym
             <input name="estimatedCommission" defaultValue={deal.estimatedCommission ?? ""} />
           </label>
           <label className="field">
-            <span>Actual paid</span>
+            <span>Actual commission</span>
             <input name="actualPaid" defaultValue={deal.actualPaid ?? ""} />
+          </label>
+          <label className="field">
+            <span>Actual payment date</span>
+            <input name="actualPaidDate" type="date" defaultValue={toDateInput(deal.actualPaidDate)} />
           </label>
         </div>
       )}
@@ -212,6 +241,12 @@ export function CustomerFinanceLedger({
                     warn={dealRemaining(deal) > 0}
                   />
                 </div>
+                {deal.payoutType === "RESIDUAL" ? null : (
+                  <p className="px-4 pb-2 text-sm text-muted">
+                    Actual commission {gbpExact(deal.actualPaid)}
+                    {deal.actualPaidDate ? ` · ${formatDate(deal.actualPaidDate)}` : ""}
+                  </p>
+                )}
                 {payments.length ? (
                   <table className="desk-table">
                     <thead>
@@ -220,17 +255,19 @@ export function CustomerFinanceLedger({
                         {deal.payoutType === "RESIDUAL" ? null : <th>%</th>}
                         <th>Due date</th>
                         <th>Amount due</th>
-                        <th>Actual paid</th>
+                        {deal.payoutType === "RESIDUAL" ? <th>Actual paid</th> : null}
                       </tr>
                     </thead>
                     <tbody>
-                      {payments.map((payment) => (
+                      {payments.map((payment, index) => (
                         <tr key={payment.id}>
-                          <td className="font-medium">{payment.label}</td>
+                          <td className="font-medium">
+                            {deal.payoutType === "RESIDUAL" ? payment.label : `Payment ${index + 1}`}
+                          </td>
                           {deal.payoutType === "RESIDUAL" ? null : <td>{payment.percent}%</td>}
                           <td>{formatDate(payment.expectedDate)}</td>
                           <td>{gbpExact(payment.amountDue)}</td>
-                          <td>{gbpExact(payment.actualPaid)}</td>
+                          {deal.payoutType === "RESIDUAL" ? <td>{gbpExact(payment.actualPaid)}</td> : null}
                         </tr>
                       ))}
                     </tbody>
