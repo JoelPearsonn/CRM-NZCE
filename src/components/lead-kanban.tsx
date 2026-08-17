@@ -8,8 +8,8 @@ import { LeadSelect } from "@/components/bulk-allocate";
 import { LeadCardFacts } from "@/components/lead-card-facts";
 import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
 import { LeadLoaActions } from "@/components/send-loa";
-import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage, LEAD_STAGES } from "@/lib/constants";
-import { leadsInColumn } from "@/lib/lead-card";
+import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage } from "@/lib/constants";
+import { leadBoardColumns, leadsInColumn } from "@/lib/lead-card";
 import { resolveLeadBoardStage } from "@/lib/lead-board";
 
 export type LeadCardData = {
@@ -41,7 +41,7 @@ export function LeadKanban({
 }) {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-  const columns = LEAD_STAGES.filter((item) => !stageFilter || item.value === stageFilter);
+  const columns = leadBoardColumns(stageFilter);
 
   function moveLead(leadId: string, stage: string) {
     const lead = leads.find((item) => item.id === leadId);
@@ -57,13 +57,14 @@ export function LeadKanban({
   }
 
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:overflow-x-auto md:pb-4">
+    <div className="lead-board" data-testid="lead-board">
+      <div className="lead-board-row">
       {columns.map((item) => {
         const column = leadsInColumn(leads, item.value);
         return (
           <section
             key={item.value}
-            className="w-full md:w-60 md:shrink-0"
+            className="lead-column"
             data-testid="lead-column"
             data-stage={item.value}
             data-count={column.length}
@@ -145,6 +146,7 @@ export function LeadKanban({
           </section>
         );
       })}
+      </div>
     </div>
   );
 }

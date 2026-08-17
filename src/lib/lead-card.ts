@@ -15,6 +15,10 @@ export function loaBoardFlags(
   return { loaSent, loaReceived };
 }
 
+export function leadBoardColumns(stageFilter = "") {
+  return LEAD_STAGES.filter((item) => !stageFilter || item.value === stageFilter);
+}
+
 export function leadsInColumn<T extends { stage?: string | null; notes?: string | null }>(
   leads: T[],
   stage: string,

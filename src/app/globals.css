@@ -108,7 +108,30 @@ a {
 
 .desk-main {
   flex: 1;
+  min-width: 0;
   padding: 1.5rem;
+}
+
+.lead-board {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.lead-board-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 1rem;
+  width: max-content;
+}
+
+.lead-column {
+  box-sizing: border-box;
+  flex: 0 0 17.5rem;
+  width: 17.5rem;
+  min-width: 16.25rem;
 }
 
 .nav-toggle {
@@ -373,6 +396,10 @@ a {
   .desk-main {
     padding: 1rem max(1rem, env(safe-area-inset-right)) 1.5rem max(1rem, env(safe-area-inset-left));
     overflow-x: hidden;
+  }
+
+  .desk-main:has(.lead-board) {
+    overflow-x: visible;
   }
 
   .master-search {

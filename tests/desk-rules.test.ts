@@ -15,7 +15,7 @@ import {
   OPEN_LEAD_STAGES,
 } from "../src/lib/constants";
 import { LeadCardFacts } from "../src/components/lead-card-facts";
-import { countLeadsByColumn, loaBoardFlags } from "../src/lib/lead-card";
+import { countLeadsByColumn, leadBoardColumns, loaBoardFlags } from "../src/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
@@ -311,6 +311,32 @@ test("lead cards show customer contact and LOA, and the column count matches the
     leads.length,
   );
   assert.equal(LEAD_STAGES.length, 16);
+});
+
+test("lead board keeps all 16 Monday columns including empty Tender Received", () => {
+  const columns = leadBoardColumns("");
+  assert.equal(columns.length, 16);
+  assert.deepEqual(
+    columns.map((item) => item.value),
+    LEAD_STAGES.map((item) => item.value),
+  );
+  assert.ok(columns.some((item) => item.value === "Harry Accuradata Leads"));
+  assert.ok(columns.some((item) => item.value === "Tender Received"));
+  assert.ok(columns.some((item) => item.value === "Won"));
+  assert.ok(columns.some((item) => item.value === "Lost"));
+  assert.ok(columns.some((item) => item.value === "Follow up at a Later Date"));
+  assert.ok(columns.some((item) => item.value === "Joel Follow Up"));
+  const emptyBoard = countLeadsByColumn([]);
+  assert.equal(emptyBoard["Tender Received"], 0);
+  assert.equal(Object.keys(emptyBoard).length, 16);
+  assert.equal(leadBoardColumns("Won").length, 1);
+
+  const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
+  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.lead-column\s*\{[^}]*min-width:\s*16\.25rem/s);
+  assert.match(css, /\.desk-main:has\(\.lead-board\)\s*\{[^}]*overflow-x:\s*visible/s);
+  const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
+  assert.equal(kanban.includes("columns.slice"), false);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {
