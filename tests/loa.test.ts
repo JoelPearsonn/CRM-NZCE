@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 import { isDocusignConfigured, parseDocusignWebhook, type DocusignClient } from "../src/lib/docusign";
 import { buildLoaDocument, loaTabValues } from "../src/lib/loa-document";
@@ -7,8 +9,10 @@ import {
   buildTpiLoaDocument,
   formatLoaDotDate,
   generateTpiLoa,
+  parseTpiLoaKind,
   tpiLoaKindFromDeals,
   tpiLoaKindFromPartner,
+  tpiLoaTemplateLabel,
 } from "../src/lib/tpi-loa";
 import { withTestDb } from "./helpers/test-db";
 
@@ -158,7 +162,7 @@ test("IE LOA fills Acme Bakery onto the Infinite letter", () => {
   const now = new Date(2026, 7, 17);
   const document = buildTpiLoaDocument(acme, "IE", now);
   assert.equal(document.kind, "IE");
-  assert.equal(document.templateLabel, "IE LOA");
+  assert.equal(document.templateLabel, "IE LOA (Infinite)");
   assert.equal(document.companyName, "Acme Bakery Ltd");
   assert.equal(document.tradingName, "Acme Bakes");
   assert.equal(document.contactName, "Sam Baker");
@@ -188,10 +192,10 @@ test("IE LOA fills Acme Bakery onto the Infinite letter", () => {
   assert.equal(document.fileName, "IE-LOA-Acme-Bakery-Ltd.pdf");
 });
 
-test("J LOA fills Acme Bakery onto the Joose letter", () => {
+test("SOFT_LOA fills Acme Bakery onto the Joose letter", () => {
   const document = buildTpiLoaDocument(acme, "JOOSE", new Date(2026, 7, 17));
   assert.equal(document.kind, "JOOSE");
-  assert.equal(document.templateLabel, "J LOA");
+  assert.equal(document.templateLabel, "SOFT_LOA (Joose / Joose+UCR)");
   assert.match(document.appointedName, /Joose Energy Ltd \/ UCR Consultants/);
   assert.match(document.html, /Acme Bakery Ltd/);
   assert.match(document.html, /cannot enter into or terminate contracts without our permission/);
@@ -200,13 +204,16 @@ test("J LOA fills Acme Bakery onto the Joose letter", () => {
   assert.doesNotMatch(document.html, /Infinite Energy Group Holdings Ltd/);
   assert.match(document.pdf.toString("latin1"), /Joose Energy Ltd \/ UCR Consultants/);
   assert.match(document.pdf.toString("latin1"), /Athenaeum House/);
-  assert.equal(document.fileName, "J-LOA-Acme-Bakery-Ltd.pdf");
+  assert.equal(document.fileName, "SOFT_LOA-Acme-Bakery-Ltd.pdf");
 });
 
 test("TPI partner picks IE or Joose, otherwise the user chooses", () => {
   assert.equal(tpiLoaKindFromPartner("INFINITE"), "IE");
   assert.equal(tpiLoaKindFromPartner("JOOSE"), "JOOSE");
   assert.equal(tpiLoaKindFromPartner("JOOSE_UCR"), "JOOSE");
+  assert.equal(parseTpiLoaKind("SOFT_LOA"), "JOOSE");
+  assert.equal(tpiLoaTemplateLabel("IE"), "IE LOA (Infinite)");
+  assert.equal(tpiLoaTemplateLabel("JOOSE"), "SOFT_LOA (Joose / Joose+UCR)");
   assert.equal(tpiLoaKindFromPartner("NONE"), null);
   assert.equal(tpiLoaKindFromPartner("TUS"), null);
   assert.equal(tpiLoaKindFromDeals([{ tpiPartner: "NONE" }, { tpiPartner: "INFINITE" }]), "IE");
@@ -217,6 +224,11 @@ test("TPI partner picks IE or Joose, otherwise the user chooses", () => {
     ]),
     "JOOSE",
   );
+  const ui = readFileSync(path.join(import.meta.dirname, "../src/components/generate-loa.tsx"), "utf8");
+  assert.match(ui, /IE LOA \(Infinite\)/);
+  assert.match(ui, /SOFT_LOA \(Joose \/ Joose\+UCR\)/);
+  assert.equal(ui.includes("J LOA"), false);
+  assert.equal(ui.includes("Generate Joose LOA"), false);
 });
 
 test("Generate LOA marks meters REQUESTED and does not need DocuSign", async () => {

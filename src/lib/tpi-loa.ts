@@ -60,8 +60,15 @@ export function parseTpiLoaKind(raw: string | null | undefined): TpiLoaKind | nu
     .trim()
     .toUpperCase()
     .replace(/[\s+]+/g, "_");
-  if (value === "IE" || value === "INFINITE" || value === "INFINITE_20") return "IE";
-  if (value === "J" || value === "JOOSE" || value === "JOOSE_UCR" || value === "JOOSE_UCR_CONSULTANTS") {
+  if (value === "IE" || value === "INFINITE" || value === "INFINITE_20" || value === "IE_LOA") return "IE";
+  if (
+    value === "J" ||
+    value === "JOOSE" ||
+    value === "JOOSE_UCR" ||
+    value === "JOOSE_UCR_CONSULTANTS" ||
+    value === "SOFT_LOA" ||
+    value === "SOFTLOA"
+  ) {
     return "JOOSE";
   }
   return null;
@@ -87,7 +94,7 @@ export function tpiLoaKindFromDeals(
 }
 
 export function tpiLoaTemplateLabel(kind: TpiLoaKind) {
-  return kind === "IE" ? "IE LOA" : "J LOA";
+  return kind === "IE" ? "IE LOA (Infinite)" : "SOFT_LOA (Joose / Joose+UCR)";
 }
 
 export function buildTpiLoaFields(
@@ -253,7 +260,7 @@ export function buildTpiLoaDocument(
 ): TpiLoaDocument {
   const fields = buildTpiLoaFields(customer, kind, now);
   const safe = fields.companyName.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "") || "customer";
-  const prefix = kind === "IE" ? "IE-LOA" : "J-LOA";
+  const prefix = kind === "IE" ? "IE-LOA" : "SOFT_LOA";
   return {
     ...fields,
     html: buildHtml(fields),
