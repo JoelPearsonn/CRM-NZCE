@@ -13,6 +13,10 @@ import {
   splitAmounts,
   splitByPercent,
 } from "../src/lib/finance";
+import {
+  QUARTERLY_MARKET_UPDATE_NOTE,
+  QUARTERLY_MARKET_UPDATE_NOTE_TITLE,
+} from "../src/lib/constants";
 import { isDeskAdmin, nextQuarterDue, rollQuarterDue } from "../src/lib/desk-reminders";
 import { parseMoney } from "../src/lib/format";
 
@@ -194,6 +198,18 @@ test("only Joel / Admin sees the quarterly market-update reminder", () => {
   assert.equal(isDeskAdmin({ role: "Sales", email: "priya.shah@nzce.co.uk" }), false);
   assert.equal(isDeskAdmin({ role: "Admin", email: "joel.pearson@nzcenergy.co.uk" }), true);
   assert.equal(isDeskAdmin({ role: "Sales", email: "joel.pearson@nzcenergy.co.uk" }), true);
+});
+
+test("quarterly market note is the signed-off client wording", () => {
+  assert.equal(QUARTERLY_MARKET_UPDATE_NOTE_TITLE, "Quarterly market update (May–August 2026)");
+  assert.match(QUARTERLY_MARKET_UPDATE_NOTE, /^What moved\n/);
+  assert.match(QUARTERLY_MARKET_UPDATE_NOTE, /\nShort term\n/);
+  assert.match(QUARTERLY_MARKET_UPDATE_NOTE, /\nMedium term\n/);
+  assert.match(QUARTERLY_MARKET_UPDATE_NOTE, /\nLong term\n/);
+  assert.match(QUARTERLY_MARKET_UPDATE_NOTE, /Winter 2026 power is around £125\/MWh/);
+  assert.equal(QUARTERLY_MARKET_UPDATE_NOTE.includes("TPI"), false);
+  assert.equal(QUARTERLY_MARKET_UPDATE_NOTE.includes("commission"), false);
+  assert.equal(QUARTERLY_MARKET_UPDATE_NOTE.includes("Happy to tighten"), false);
 });
 
 test("live calculator: residual months use typed CSD/CED, not a saved deal", () => {
