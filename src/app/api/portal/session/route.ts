@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticatePortal } from "@/app/actions/portal";
-import { clearPortalCookie, getPortalAccount } from "@/lib/portal-auth";
+import { authenticatePortal, clearPortalCookie, getPortalAccount } from "@/lib/portal-auth";
 import { portalSessionOf } from "@/lib/portal-data";
 
 export async function GET() {
@@ -20,6 +19,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ signedIn: false, error: result.error }, { status: 401 });
   }
   return NextResponse.json(portalSessionOf(result.account));
+}
 
 export async function DELETE() {
   await clearPortalCookie();
