@@ -101,18 +101,6 @@ export const DESK_ADMIN_EMAIL = "joel.pearson@nzcenergy.co.uk";
 
 export const QUARTERLY_MARKET_UPDATE_KEY = "QUARTERLY_MARKET_UPDATE";
 export const QUARTERLY_MARKET_UPDATE_TITLE = "Send quarterly market update to all customers";
-export const QUARTERLY_MARKET_UPDATE_NOTE_TITLE = "Quarterly market update (May–August 2026)";
-export const QUARTERLY_MARKET_UPDATE_NOTE = `What moved
-Wholesale gas and power softened through July, then jumped in August as US–Iran / Middle East risk came back. Winter 2026 power is around £125/MWh; Summer 2027 is still cheaper at about £83/MWh. Mid-August day-ahead spiked near £149/MWh on heat, low wind and nuclear outages — that was a prompt shock, not the new fixed-rate. UK carbon sat near highs (£56–62/t) on talk of linking the UK and EU schemes. The domestic price cap rose in July (wholesale allowance +28%) — not your bill, but the same wholesale move sits under commercial quotes.
-
-Short term
-If you’re on a fixed contract, that August spike didn’t hit you. If you’re flexible or out of contract, it did. Don’t treat one heatwave day as the renewal price.
-
-Medium term
-Winter 26 is the expensive season. If a site renews in the next 6–12 months, we’re comparing a dear winter against a cheaper 2027 summer. European storage is still thinner than last year, so volatility into winter is likely.
-
-Long term
-The curve is still cheaper further out. Capacity Market costs for 2026/27 cleared much lower than recent years, which helps non-commodity over time. Power is still set by gas, so geopolitics don’t drop out of the story.`;
 
 export const UK_SUPPLIERS = [
   "British Gas",
