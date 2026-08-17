@@ -1,63 +1,56 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
 import { runLeadImport, type LeadImportState } from "@/app/actions/import-leads";
 import { ErrorBanner } from "@/components/ui";
+import { useImportAction } from "@/components/use-csv-import";
 
 const empty: LeadImportState = {};
 
 export function CsvLeadImportForm() {
-  const [state, action, pending] = useActionState(runLeadImport, empty);
-  const [csvText, setCsvText] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [dirty, setDirty] = useState(true);
+  const { csvText, fileName, onFileChange, state, pending, canCommit, submit } = useImportAction(
+    runLeadImport,
+    empty,
+  );
   const preview = state.preview;
-  const canCommit = Boolean(preview && csvText && !dirty && !state.committed);
-
-  useEffect(() => {
-    if (state.preview) setDirty(false);
-  }, [state.preview]);
 
   return (
-    <form action={action} className="card p-5">
+    <form
+      className="card p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit("preview");
+      }}
+    >
       <ErrorBanner message={state.error} />
       <p className="text-sm text-muted">
         Same columns as Export leads. Existing leads are matched by customer + title and updated.
         Nothing is deleted. Preview before you import.
       </p>
-      <input type="hidden" name="csv" value={csvText} />
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="field min-w-[16rem] flex-1">
           <span>Leads CSV</span>
           <input
-            name="file"
             type="file"
             accept=".csv,text/csv"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) {
-                setCsvText("");
-                setFileName("");
-                setDirty(true);
-                return;
-              }
-              setFileName(file.name);
-              setCsvText(await file.text());
-              setDirty(true);
-            }}
+            onChange={(event) => void onFileChange(event.target.files?.[0])}
           />
           {fileName ? <span className="text-[0.7rem] text-muted">{fileName}</span> : null}
         </label>
-        <button className="btn btn-ghost" name="intent" value="preview" disabled={pending || !csvText}>
+        <button className="btn btn-ghost" type="submit" disabled={pending || !csvText}>
           {pending ? "Reading…" : "Preview"}
         </button>
-        <button className="btn btn-primary" name="intent" value="commit" disabled={pending || !canCommit}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          disabled={pending || !canCommit}
+          onClick={() => void submit("commit")}
+        >
           {pending ? "Importing…" : "Import leads"}
         </button>
       </div>
 
       {state.committed ? (
-        <p className="mt-4 text-sm text-moss">
+        <p className="mt-4 text-sm text-moss" data-testid="lead-import-committed">
           Imported {state.committed.createLeads} new lead
           {state.committed.createLeads === 1 ? "" : "s"}, updated {state.committed.updateLeads}{" "}
           existing, {state.committed.createCustomers} new customer
@@ -66,7 +59,7 @@ export function CsvLeadImportForm() {
       ) : null}
 
       {preview ? (
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 overflow-x-auto" data-testid="lead-import-preview">
           <p className="mb-2 text-sm">
             Preview · {preview.createLeads} new leads · {preview.updateLeads} updates ·{" "}
             {preview.createCustomers} new customers · {preview.blocked} blocked

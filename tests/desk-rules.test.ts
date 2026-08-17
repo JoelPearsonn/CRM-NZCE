@@ -5,6 +5,9 @@ import { test } from "node:test";
 import { leadMatchesSearch } from "../src/lib/book-filters";
 import { pickEnterDestination } from "../src/lib/master-search";
 import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
+import { runImport } from "../src/app/actions/import";
+import { runDealImport } from "../src/app/actions/import-deals";
+import { runLeadImport } from "../src/app/actions/import-leads";
 import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
 import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
@@ -106,6 +109,39 @@ test("import templates download with columns the importer accepts", () => {
   assert.equal(leadRow.stage, "TENDERING");
   assert.ok(CSV_IMPORT_HEADERS.includes("renewalDate"));
   assert.ok(CSV_IMPORT_HEADERS.includes("objectionStatus"));
+});
+
+test("import actions return a visible preview from the sample templates", async () => {
+  const empty = new FormData();
+  empty.set("intent", "preview");
+  const missing = await runImport({}, empty);
+  assert.equal(missing.error, "Choose a CSV file.");
+  assert.equal(missing.preview, undefined);
+
+  const meters = new FormData();
+  meters.set("csv", csvTemplate());
+  meters.set("intent", "preview");
+  const meterState = await runImport({}, meters);
+  assert.equal(meterState.error, undefined);
+  assert.ok(meterState.preview);
+  assert.ok((meterState.preview?.rows.length ?? 0) >= 1);
+  assert.equal(meterState.committed, undefined);
+
+  const deals = new FormData();
+  deals.set("csv", dealsCsvTemplate());
+  deals.set("intent", "preview");
+  const dealState = await runDealImport({}, deals);
+  assert.equal(dealState.error, undefined);
+  assert.ok(dealState.preview);
+  assert.ok((dealState.preview?.rows.length ?? 0) >= 1);
+
+  const leads = new FormData();
+  leads.set("csv", leadsCsvTemplate());
+  leads.set("intent", "preview");
+  const leadState = await runLeadImport({}, leads);
+  assert.equal(leadState.error, undefined);
+  assert.ok(leadState.preview);
+  assert.ok((leadState.preview?.rows.length ?? 0) >= 1);
 });
 
 test("CSV import source never deletes customers or meters", () => {

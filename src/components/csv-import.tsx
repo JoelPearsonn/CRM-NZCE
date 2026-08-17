@@ -1,58 +1,51 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
 import { runImport, type ImportState } from "@/app/actions/import";
 import { ErrorBanner } from "@/components/ui";
+import { useImportAction } from "@/components/use-csv-import";
 
 const empty: ImportState = {};
 
 export function CsvImportForm() {
-  const [state, action, pending] = useActionState(runImport, empty);
-  const [csvText, setCsvText] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [dirty, setDirty] = useState(true);
+  const { csvText, fileName, onFileChange, state, pending, canCommit, submit } = useImportAction(
+    runImport,
+    empty,
+  );
   const preview = state.preview;
-  const canCommit = Boolean(preview && csvText && !dirty && !state.committed);
-
-  useEffect(() => {
-    if (state.preview) setDirty(false);
-  }, [state.preview]);
 
   return (
-    <form action={action} className="card p-5">
+    <form
+      className="card p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit("preview");
+      }}
+    >
       <ErrorBanner message={state.error} />
       <p className="text-sm text-muted">
         Upload the NZCE template. Existing customers are matched by email or company name. Meters
         are matched by MPAN or MPRN and updated — nothing is deleted. Preview the rows before you
         import.
       </p>
-      <input type="hidden" name="csv" value={csvText} />
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <label className="field min-w-[16rem] flex-1">
           <span>CSV file</span>
           <input
-            name="file"
             type="file"
             accept=".csv,text/csv"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) {
-                setCsvText("");
-                setFileName("");
-                setDirty(true);
-                return;
-              }
-              setFileName(file.name);
-              setCsvText(await file.text());
-              setDirty(true);
-            }}
+            onChange={(event) => void onFileChange(event.target.files?.[0])}
           />
           {fileName ? <span className="text-[0.7rem] text-muted">{fileName}</span> : null}
         </label>
-        <button className="btn btn-ghost" name="intent" value="preview" disabled={pending || !csvText}>
+        <button className="btn btn-ghost" type="submit" disabled={pending || !csvText}>
           {pending ? "Reading…" : "Preview"}
         </button>
-        <button className="btn btn-primary" name="intent" value="commit" disabled={pending || !canCommit}>
+        <button
+          className="btn btn-primary"
+          type="button"
+          disabled={pending || !canCommit}
+          onClick={() => void submit("commit")}
+        >
           {pending ? "Importing…" : "Import"}
         </button>
       </div>
@@ -61,7 +54,7 @@ export function CsvImportForm() {
       ) : null}
 
       {state.committed ? (
-        <p className="mt-4 text-sm text-moss">
+        <p className="mt-4 text-sm text-moss" data-testid="meter-import-committed">
           Imported {state.committed.createCustomers} customer
           {state.committed.createCustomers === 1 ? "" : "s"}, {state.committed.createMeters} new
           meter{state.committed.createMeters === 1 ? "" : "s"}, updated{" "}
@@ -71,7 +64,7 @@ export function CsvImportForm() {
       ) : null}
 
       {preview ? (
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 overflow-x-auto" data-testid="meter-import-preview">
           <p className="mb-2 text-sm">
             Preview · {preview.createCustomers} new customers · {preview.createMeters} new meters ·{" "}
             {preview.updateMeters} updates · {preview.blocked} blocked
