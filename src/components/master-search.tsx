@@ -82,7 +82,11 @@ export function MasterSearch() {
   }
 
   return (
-    <div ref={boxRef} className="master-search relative w-full max-w-xl">
+    <div
+      ref={boxRef}
+      className="master-search relative min-w-0 w-full max-w-2xl flex-1"
+      data-testid="master-search"
+    >
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -91,8 +95,11 @@ export function MasterSearch() {
           if (hit) openHit(hit);
         }}
       >
-        <label className="sr-only" htmlFor="master-search">
-          Master search
+        <label
+          className="mb-0.5 block text-[0.68rem] font-semibold tracking-[0.12em] text-muted uppercase"
+          htmlFor="master-search"
+        >
+          Search the book
         </label>
         <input
           id="master-search"
@@ -100,7 +107,7 @@ export function MasterSearch() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => visible && setOpen(true)}
-          placeholder="Search name, MPAN, MPRN, email, company…"
+          placeholder="Customer, contact, MPAN, MPRN, email…"
           autoComplete="off"
           className="h-11 w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-base text-ink outline-none focus:border-brass md:text-sm"
         />

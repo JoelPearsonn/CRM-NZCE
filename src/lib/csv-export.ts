@@ -1,6 +1,7 @@
 import {
   customerArchiveWhere,
   customerMatchesFilters,
+  leadMatchesSearch,
   meterMatchesFilters,
   type BookFilters,
   type LeadFilters,
@@ -170,22 +171,23 @@ export async function exportDealsCsv() {
   return csvResponse("nzce-deals.csv", toCsv(CSV_DEAL_HEADERS, rows));
 }
 
-export async function exportLeadsCsv(filters: LeadFilters = { stage: "", agent: "" }) {
+export async function exportLeadsCsv(filters: LeadFilters = { stage: "", agent: "", q: "" }) {
   const leads = await prisma.lead.findMany({
     where: {
       customer: { archivedAt: null },
       ...(filters.stage ? { stage: filters.stage } : {}),
     },
     include: {
-      customer: true,
+      customer: { include: { meters: { select: { mpan: true, mprn: true, siteName: true } } } },
       allocations: { include: { agent: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
   const rows = leads
-    .filter((lead) =>
-      filters.agent ? lead.allocations.some((row) => row.agentId === filters.agent) : true,
-    )
+    .filter((lead) => {
+      if (filters.agent && !lead.allocations.some((row) => row.agentId === filters.agent)) return false;
+      return leadMatchesSearch(lead, filters.q);
+    })
     .map((lead) => [
       lead.customer.companyName,
       lead.customer.email,

@@ -9,6 +9,7 @@ export type BookFilters = {
 export type LeadFilters = {
   stage: string;
   agent: string;
+  q: string;
 };
 
 type Query = Record<string, string | string[] | undefined> | URLSearchParams;
@@ -33,6 +34,7 @@ export function parseLeadFilters(query: Query): LeadFilters {
   return {
     stage: q(query, "stage"),
     agent: q(query, "agent"),
+    q: q(query, "q"),
   };
 }
 
@@ -50,7 +52,46 @@ export function leadFilterParams(filters: LeadFilters) {
   const params = new URLSearchParams();
   if (filters.stage) params.set("stage", filters.stage);
   if (filters.agent) params.set("agent", filters.agent);
+  if (filters.q) params.set("q", filters.q);
   return params;
+}
+
+export function leadMatchesSearch(
+  lead: {
+    title: string;
+    notes?: string | null;
+    customer: {
+      companyName: string;
+      tradingName?: string | null;
+      contactName: string;
+      email: string;
+      meters?: { mpan: string | null; mprn: string | null; siteName: string | null }[];
+    };
+    allocations?: { agent: { name: string } }[];
+  },
+  raw: string,
+) {
+  const query = raw.trim();
+  if (!query) return true;
+  const needle = query.toLowerCase();
+  const digits = query.replace(/\D/g, "");
+  const fields = [
+    lead.title,
+    lead.notes,
+    lead.customer.companyName,
+    lead.customer.tradingName,
+    lead.customer.contactName,
+    lead.customer.email,
+    ...(lead.customer.meters ?? []).flatMap((meter) => [meter.siteName, meter.mpan, meter.mprn]),
+    ...(lead.allocations ?? []).map((row) => row.agent.name),
+  ];
+  if (fields.some((field) => field && field.toLowerCase().includes(needle))) return true;
+  if (digits.length >= 4) {
+    return (lead.customer.meters ?? []).some(
+      (meter) => (meter.mpan && meter.mpan.includes(digits)) || (meter.mprn && meter.mprn.includes(digits)),
+    );
+  }
+  return false;
 }
 
 export function exportHref(path: string, params: URLSearchParams) {

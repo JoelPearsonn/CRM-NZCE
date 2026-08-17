@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { BulkAllocate, LeadSelect } from "@/components/bulk-allocate";
-import { AllocateAgents, StageSelect } from "@/components/lead-controls";
+import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
 import { EmptyState, PageHeader, StagePill } from "@/components/ui";
-import { exportHref, leadFilterParams, parseLeadFilters } from "@/lib/book-filters";
+import { exportHref, leadFilterParams, leadMatchesSearch, parseLeadFilters } from "@/lib/book-filters";
 import { isTenderLeadStage, LEAD_STAGES } from "@/lib/constants";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
@@ -10,13 +10,15 @@ import { prisma } from "@/lib/prisma";
 export default async function LeadsPage({ searchParams }: SearchPageProps) {
   const query = await searchParams;
   const filters = parseLeadFilters(query);
-  const { stage, agent } = filters;
+  const { stage, agent, q } = filters;
 
   const [leads, agents] = await Promise.all([
     prisma.lead.findMany({
       where: { customer: { archivedAt: null } },
       include: {
-        customer: true,
+        customer: {
+          include: { meters: { select: { mpan: true, mprn: true, siteName: true } } },
+        },
         allocations: { include: { agent: true } },
       },
       orderBy: { updatedAt: "desc" },
@@ -27,7 +29,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
   const filtered = leads.filter((lead) => {
     if (stage && lead.stage !== stage) return false;
     if (agent && !lead.allocations.some((allocation) => allocation.agentId === agent)) return false;
-    return true;
+    return leadMatchesSearch(lead, q);
   });
 
   return (
@@ -35,11 +37,11 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
       <PageHeader
         kicker="Pipeline"
         title="Leads"
-        description="Filter by stage or agent. Move a card or allocate one or more people."
+        description="Search the board, then filter by stage or agent. Allocate sits behind each card so the column stays short."
         actions={
           <>
             <a href={exportHref("/api/export/leads", leadFilterParams(filters))} className="btn btn-ghost">
-              {stage || agent ? "Export this view" : "Export leads"}
+              {stage || agent || q ? "Export this view" : "Export leads"}
             </a>
             <Link href="/import#leads" className="btn btn-ghost">
               Import leads
@@ -53,18 +55,18 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
 
       <div className="mb-4 flex flex-wrap gap-2">
         {[
-          { href: "/leads", label: "All" },
-          { href: "/leads?stage=TENDERING", label: "Tendering" },
-          { href: "/leads?stage=LOA_REQUESTED", label: "LOA requested" },
-          { href: "/leads?stage=QUOTED", label: "Quoted" },
-          { href: "/leads?stage=SOLD", label: "Sold" },
+          { stage: "", label: "All" },
+          { stage: "TENDERING", label: "Tendering" },
+          { stage: "LOA_REQUESTED", label: "LOA requested" },
+          { stage: "QUOTED", label: "Quoted" },
+          { stage: "SOLD", label: "Sold" },
         ].map((view) => {
-          const current = stage ? `/leads?stage=${stage}` : "/leads";
-          const active = !agent && view.href === current;
+          const href = exportHref("/leads", leadFilterParams({ ...filters, stage: view.stage, agent: "" }));
+          const active = !agent && stage === view.stage;
           return (
             <Link
-              key={view.href}
-              href={view.href}
+              key={view.label}
+              href={href}
               className={`btn text-[0.75rem] ${active ? "btn-brass" : "btn-ghost"}`}
             >
               {view.label}
@@ -73,7 +75,16 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
         })}
       </div>
 
-      <form className="card mb-4 grid gap-3 p-4 md:grid-cols-3" method="get">
+      <form className="card mb-4 grid gap-3 p-4 md:grid-cols-4" method="get" data-testid="leads-search">
+        <label className="field md:col-span-2">
+          <span>Search this board</span>
+          <input
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="Company, contact, MPAN, MPRN…"
+          />
+        </label>
         <label className="field">
           <span>Stage</span>
           <select name="stage" defaultValue={stage}>
@@ -96,7 +107,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 md:col-span-4">
           <button type="submit" className="btn btn-brass flex-1 sm:flex-none">
             Apply
           </button>
@@ -115,6 +126,13 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           secondaryHref="/customers/new"
           secondaryLabel="Add customer first"
         />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          title="No leads match"
+          body="Nothing on this board matches that search or filter. Clear it to see the full pipeline."
+          actionHref="/leads"
+          actionLabel="Clear search"
+        />
       ) : (
         <BulkAllocate agents={agents}>
         <div className="flex flex-col gap-4 md:flex-row md:overflow-x-auto md:pb-4">
@@ -131,7 +149,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
                     <div className="card px-3 py-6 text-center text-xs text-muted">Empty</div>
                   ) : (
                     column.map((lead) => (
-                      <article key={lead.id} className="card p-3">
+                      <article key={lead.id} className="card p-3" data-testid="lead-card">
                         <div className="mb-1 flex items-start justify-between gap-2">
                           <LeadSelect leadId={lead.id} />
                         </div>
@@ -159,16 +177,11 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
                             outcomeReason={lead.outcomeReason}
                           />
                         </div>
-                        <div className="mt-2 border-t border-rule pt-2">
-                          <p className="mb-1 text-[0.65rem] font-semibold tracking-[0.08em] text-muted uppercase">
-                            Allocate
-                          </p>
-                          <AllocateAgents
-                            leadId={lead.id}
-                            agents={agents}
-                            selectedIds={lead.allocations.map((allocation) => allocation.agentId)}
-                          />
-                        </div>
+                        <AllocateDisclosure
+                          leadId={lead.id}
+                          agents={agents}
+                          selectedIds={lead.allocations.map((allocation) => allocation.agentId)}
+                        />
                       </article>
                     ))
                   )}

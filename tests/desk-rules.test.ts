@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { leadMatchesSearch } from "../src/lib/book-filters";
 import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
 import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
@@ -336,4 +337,24 @@ test("renewal reminder tasks skip archived customers", async () => {
     assert.equal(await db.task.count({ where: { customerId: live.id } }), 1);
     assert.equal(await db.task.count({ where: { customerId: archived.id } }), 0);
   });
+});
+
+test("leads board search matches company, contact and MPAN", () => {
+  const lead = {
+    title: "Harbour electric renewal",
+    notes: null,
+    customer: {
+      companyName: "Harbour View Hotels Ltd",
+      tradingName: null,
+      contactName: "Claire Debenham",
+      email: "claire@harbour.test",
+      meters: [{ mpan: "002160013300112233445", mprn: null, siteName: "Marine Parade" }],
+    },
+    allocations: [{ agent: { name: "Priya Shah" } }],
+  };
+  assert.equal(leadMatchesSearch(lead, ""), true);
+  assert.equal(leadMatchesSearch(lead, "harbour"), true);
+  assert.equal(leadMatchesSearch(lead, "Claire"), true);
+  assert.equal(leadMatchesSearch(lead, "002160013300"), true);
+  assert.equal(leadMatchesSearch(lead, "bakery"), false);
 });
