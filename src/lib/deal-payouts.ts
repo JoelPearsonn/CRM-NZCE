@@ -270,7 +270,7 @@ export function buildImportedFinance(input: {
       residualMonthly,
       input.existingPayments ?? [],
     );
-    const payments = applyLumpPaid(built.payments, input.actualPaid);
+    const payments = applyLumpPaid(built.payments, input.actualPaid ?? null);
     const rollup = rollupPayments(payments);
     return {
       tpiPartner: tpi.tpiPartner,
@@ -297,7 +297,7 @@ export function buildImportedFinance(input: {
     }
   }
   const built = applyPayouts(input.estimatedCommission, tpi.tpiPercent, drafts);
-  const payments = applyLumpPaid(built.payments, input.actualPaid);
+  const payments = applyLumpPaid(built.payments, input.actualPaid ?? null);
   return {
     tpiPartner: tpi.tpiPartner,
     tpiPercent: tpi.tpiPercent,
