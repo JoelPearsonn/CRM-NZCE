@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { leadMatchesSearch } from "../src/lib/book-filters";
+import { pickEnterDestination } from "../src/lib/master-search";
 import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
 import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
@@ -357,4 +358,48 @@ test("leads board search matches company, contact and MPAN", () => {
   assert.equal(leadMatchesSearch(lead, "Claire"), true);
   assert.equal(leadMatchesSearch(lead, "002160013300"), true);
   assert.equal(leadMatchesSearch(lead, "bakery"), false);
+});
+
+test("header search Enter opens the best match, or the results page", () => {
+  const customer = {
+    id: "c1",
+    type: "customer" as const,
+    title: "Harbour View Hotels Ltd",
+    subtitle: "Claire Debenham · claire@harbour.test",
+    href: "/customers/c1",
+  };
+  const lead = {
+    id: "l1",
+    type: "lead" as const,
+    title: "Hotel group 2026 renewal",
+    subtitle: "Harbour View Hotels Ltd · TENDERING",
+    href: "/leads/l1",
+  };
+  const meter = {
+    id: "m1",
+    type: "meter" as const,
+    title: "MPAN 00 216 001 3300 112 233 445",
+    subtitle: "Harbour View Hotels Ltd · Marine Parade",
+    href: "/customers/c1",
+  };
+  const book = { customers: [customer], meters: [meter], leads: [lead], deals: [] };
+
+  assert.deepEqual(pickEnterDestination({ customers: [], meters: [], leads: [], deals: [] }, "xx", "/"), {
+    none: true,
+  });
+  assert.equal(pickEnterDestination({ ...book, meters: [], leads: [] }, "Harbour", "/").href, "/customers/c1");
+  assert.equal(pickEnterDestination(book, "Harbour View", "/").href, "/customers/c1");
+  assert.equal(pickEnterDestination(book, "Hotel group", "/leads").href, "/leads/l1");
+  assert.equal(pickEnterDestination(book, "Hotel group", "/").href, "/leads/l1");
+
+  const oak = {
+    customers: [
+      { ...customer, id: "o1", title: "Oak Lodge", href: "/customers/o1" },
+      { ...customer, id: "o2", title: "Oak Hall", href: "/customers/o2" },
+    ],
+    meters: [],
+    leads: [],
+    deals: [],
+  };
+  assert.deepEqual(pickEnterDestination(oak, "Oak", "/"), { resultsPage: true });
 });

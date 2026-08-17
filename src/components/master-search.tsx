@@ -1,26 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LoaPill, ObjectionPill } from "@/components/ui";
-
-type SearchHit = {
-  id: string;
-  type: "customer" | "meter" | "lead" | "deal";
-  title: string;
-  subtitle: string;
-  href: string;
-  loaStatus?: string | null;
-  objectionStatus?: string | null;
-};
-
-type SearchResponse = {
-  customers: SearchHit[];
-  meters: SearchHit[];
-  leads: SearchHit[];
-  deals: SearchHit[];
-};
+import {
+  flattenHits,
+  pickEnterDestination,
+  searchResultsHref,
+  type SearchHit,
+  type SearchResponse,
+} from "@/lib/master-search";
 
 const groups: { key: keyof SearchResponse; label: string; type: SearchHit["type"] }[] = [
   { key: "customers", label: "Customers", type: "customer" },
@@ -29,20 +19,21 @@ const groups: { key: keyof SearchResponse; label: string; type: SearchHit["type"
   { key: "deals", label: "Contracts", type: "deal" },
 ];
 
-function firstHit(results: SearchResponse | null): SearchHit | null {
-  if (!results) return null;
-  for (const group of groups) {
-    const hit = results[group.key][0];
-    if (hit) return hit;
-  }
-  return null;
+async function fetchSearch(q: string, type: string): Promise<SearchResponse | null> {
+  const params = new URLSearchParams({ q });
+  if (type) params.set("type", type);
+  const response = await fetch(`/api/search?${params}`);
+  if (!response.ok) return null;
+  return (await response.json()) as SearchResponse;
 }
 
 export function MasterSearch() {
   const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState("");
   const [type, setType] = useState("");
   const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [resultQuery, setResultQuery] = useState("");
   const boxRef = useRef<HTMLDivElement>(null);
@@ -59,11 +50,9 @@ export function MasterSearch() {
     const q = query.trim();
     if (q.length < 2) return;
     const handle = window.setTimeout(async () => {
-      const params = new URLSearchParams({ q });
-      if (type) params.set("type", type);
-      const response = await fetch(`/api/search?${params}`);
-      if (!response.ok) return;
-      setResults((await response.json()) as SearchResponse);
+      const data = await fetchSearch(q, type);
+      if (!data) return;
+      setResults(data);
       setResultQuery(q);
       setOpen(true);
     }, 180);
@@ -71,14 +60,39 @@ export function MasterSearch() {
   }, [query, type]);
 
   const visible = query.trim().length < 2 ? null : results;
-  const total = visible
-    ? groups.reduce((sum, group) => sum + visible[group.key].length, 0)
-    : 0;
+  const total = visible ? flattenHits(visible).length : 0;
 
   function openHit(hit: SearchHit) {
     setOpen(false);
     setQuery("");
     router.push(hit.href);
+  }
+
+  async function goToMatch(raw: string) {
+    const q = raw.trim();
+    if (q.length < 2) {
+      setOpen(true);
+      return;
+    }
+    setPending(true);
+    const data =
+      resultQuery === q && results
+        ? results
+        : await fetchSearch(q, type);
+    if (data) {
+      setResults(data);
+      setResultQuery(q);
+    }
+    const picked = pickEnterDestination(data ?? { customers: [], meters: [], leads: [], deals: [] }, q, pathname);
+    if ("href" in picked) {
+      openHit(picked.hit);
+    } else if ("resultsPage" in picked) {
+      setOpen(false);
+      router.push(searchResultsHref(q));
+    } else {
+      setOpen(true);
+    }
+    setPending(false);
   }
 
   return (
@@ -88,11 +102,10 @@ export function MasterSearch() {
       data-testid="master-search"
     >
       <form
+        action="/search"
         onSubmit={(event) => {
           event.preventDefault();
-          if (resultQuery !== query.trim()) return;
-          const hit = firstHit(visible);
-          if (hit) openHit(hit);
+          void goToMatch(query);
         }}
       >
         <label
@@ -103,12 +116,14 @@ export function MasterSearch() {
         </label>
         <input
           id="master-search"
+          name="q"
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onFocus={() => visible && setOpen(true)}
           placeholder="Customer, contact, MPAN, MPRN, email…"
           autoComplete="off"
+          disabled={pending}
           className="h-11 w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-base text-ink outline-none focus:border-brass md:text-sm"
         />
       </form>
@@ -133,7 +148,9 @@ export function MasterSearch() {
               </button>
             ))}
           </div>
-          {total === 0 ? (
+          {pending ? (
+            <p className="px-3 py-4 text-sm text-muted">Opening…</p>
+          ) : total === 0 ? (
             <p className="px-3 py-4 text-sm text-muted">No matches on the desk.</p>
           ) : (
             groups.map((group) => {
