@@ -334,9 +334,11 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
   assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
   assert.match(css, /\.lead-column\s*\{[^}]*min-width:\s*16\.25rem/s);
-  assert.match(css, /\.desk-main:has\(\.lead-board\)\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.desk-main:has\(\.lead-board\)\s*\{[^}]*overflow-x:\s*auto/s);
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
+  assert.equal(kanban.includes("column.length === 0"), true);
+  assert.match(kanban, /columns\.map/);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {

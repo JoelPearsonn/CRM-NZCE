@@ -113,9 +113,12 @@ a {
 }
 
 .lead-board {
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: visible;
   padding-bottom: 1rem;
 }
 
@@ -399,7 +402,7 @@ a {
   }
 
   .desk-main:has(.lead-board) {
-    overflow-x: visible;
+    overflow-x: auto;
   }
 
   .master-search {

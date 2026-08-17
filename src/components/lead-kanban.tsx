@@ -57,7 +57,7 @@ export function LeadKanban({
   }
 
   return (
-    <div className="lead-board" data-testid="lead-board">
+    <div className="lead-board" data-testid="lead-board" data-column-count={columns.length}>
       <div className="lead-board-row">
       {columns.map((item) => {
         const column = leadsInColumn(leads, item.value);
