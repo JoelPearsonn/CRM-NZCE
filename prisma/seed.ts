@@ -3,6 +3,7 @@ import { applyPayouts, applyResidual, type BuiltPayment } from "../src/lib/deal-
 import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
 import { ensureQuarterlyMarketReminder } from "../src/lib/desk-reminders";
+import { ensurePortalAccounts } from "../src/lib/portal-seed";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 
 const prisma = new PrismaClient();
@@ -485,6 +486,7 @@ export async function seedDesk() {
     await ensureDemoReconciliations();
     await ensureJoelAdmin();
     await ensureQuarterlyMarketReminder();
+    await ensurePortalAccounts();
     await ensureRenewalReminderTasks();
     await ensureDemoOutcomes();
     await ensureDemoArchive();
@@ -1266,6 +1268,7 @@ export async function seedDesk() {
   await ensureDemoReconciliations();
   await ensureJoelAdmin();
   await ensureQuarterlyMarketReminder();
+  await ensurePortalAccounts();
   await ensureRenewalReminderTasks();
   await ensureDemoOutcomes();
   await ensureDemoArchive();

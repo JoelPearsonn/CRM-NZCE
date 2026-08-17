@@ -17,6 +17,9 @@ export function ShellFrame({
   currentId: string | null;
 }) {
   const pathname = usePathname();
+  if (pathname.startsWith("/portal")) {
+    return <>{children}</>;
+  }
   if (pathname.includes("/print")) {
     return <div className="min-h-screen bg-paper print-sheet">{children}</div>;
   }

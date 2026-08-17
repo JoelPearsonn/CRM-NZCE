@@ -168,6 +168,15 @@ export default function HelpPage() {
         </Guide>
 
         <Guide
+          title="Customer portal"
+          body="Customers can sign in at /portal to see only their own contracts, meters and renewal dates. The portal never shows TPI, commission or broker payouts. Wilf’s public site can attach to /api/portal (session, me, contracts, meters, renewals). The staff desk is unchanged."
+        >
+          <Link href="/portal/login" className="btn btn-ghost">
+            Preview portal
+          </Link>
+        </Guide>
+
+        <Guide
           title="Archive, do not delete"
           body="If a customer should leave the default book, archive them. They disappear from lists and search, but the record stays. Restore puts them back. There is no delete button on live data."
         >
