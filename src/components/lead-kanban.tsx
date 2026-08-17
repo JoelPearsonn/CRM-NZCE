@@ -6,6 +6,7 @@ import type { Agent } from "@prisma/client";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
 import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
+import { LeadLoaActions } from "@/components/send-loa";
 import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage, LEAD_STAGES } from "@/lib/constants";
 import { resolveLeadBoardStage } from "@/lib/lead-board";
 
@@ -18,6 +19,7 @@ export type LeadCardData = {
   customerId: string;
   companyName: string;
   allocations: { agentId: string }[];
+  loa?: { sigLink: string | null; status: string; channel: string } | null;
 };
 
 export function LeadKanban({
@@ -112,6 +114,7 @@ export function LeadKanban({
                         outcomeReason={lead.outcomeReason}
                       />
                     </div>
+                    <LeadLoaActions customerId={lead.customerId} leadId={lead.id} latest={lead.loa} />
                     <AllocateDisclosure
                       leadId={lead.id}
                       agents={agents}

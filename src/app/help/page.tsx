@@ -7,7 +7,7 @@ export default function HelpPage() {
       <PageHeader
         kicker="Desk guide"
         title="How to use this desk"
-        description="Plain English for the NZCE book. Nothing here sends email, makes a PDF, or talks to monday.com."
+        description="Plain English for the NZCE book. Nothing here talks to monday.com. An LOA PDF can be filled on the desk; DocuSign only sends when it is connected."
       />
 
       <div className="grid gap-5">
@@ -77,6 +77,15 @@ export default function HelpPage() {
           </Link>
           <Link href="/leads" className="btn btn-ghost">
             Leads
+          </Link>
+        </Guide>
+
+        <Guide
+          title="Send an LOA"
+          body="Open the customer (or a lead) and use Send LOA. The letter fills from the company, contact and every MPAN/MPRN. Preview it, then send. If DocuSign is not connected you download the PDF and supplies are marked requested — nothing is emailed. When DocuSign is connected the contact is emailed, the envelope and sig link are stored, and a completed envelope marks supplies received. You can still upload the signed copy on the existing Signed LOA panel."
+        >
+          <Link href="/customers" className="btn btn-ghost">
+            Open customers
           </Link>
         </Guide>
 

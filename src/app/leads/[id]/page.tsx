@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
+import { SendLoaPanel } from "@/components/send-loa";
 import { FuelPill, PageHeader, Section, StagePill, TenderStatusPill } from "@/components/ui";
 import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage } from "@/lib/constants";
+import { isDocusignConfigured } from "@/lib/docusign";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
@@ -15,7 +17,7 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
     prisma.lead.findUnique({
       where: { id },
       include: {
-        customer: true,
+        customer: { include: { meters: true, loaEnvelopes: { orderBy: { createdAt: "desc" }, take: 1 } } },
         allocations: { include: { agent: true } },
         deals: true,
         tenderResponses: { orderBy: [{ status: "asc" }, { receivedOn: "desc" }] },
@@ -35,6 +37,9 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         description={`${lead.customer.companyName}${lead.source ? ` · ${lead.source}` : ""}`}
         actions={
           <>
+            <Link href={`/customers/${lead.customerId}#loa`} className="btn btn-ghost">
+              Send LOA
+            </Link>
             <Link href={`/customers/${lead.customerId}`} className="btn btn-ghost">
               Customer
             </Link>
@@ -77,6 +82,17 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
             />
           </div>
         </Section>
+      </div>
+
+      <div className="mt-4">
+        <SendLoaPanel
+          customerId={lead.customerId}
+          leadId={lead.id}
+          companyName={lead.customer.companyName}
+          meterCount={lead.customer.meters.length}
+          configured={isDocusignConfigured()}
+          latest={lead.customer.loaEnvelopes[0] ?? null}
+        />
       </div>
 
       {lead.notes ? (

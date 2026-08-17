@@ -51,6 +51,7 @@ model Customer {
   tasks           Task[]
   activities      Activity[]
   portalAccount   CustomerAccount?
+  loaEnvelopes    LoaEnvelope[]
 }
 
 model CustomerAccount {
@@ -122,6 +123,7 @@ model Lead {
   allocations     LeadAllocation[]
   deals           Deal[]
   tenderResponses TenderResponse[]
+  loaEnvelopes    LoaEnvelope[]
 
   @@index([customerId])
   @@index([stage])
@@ -308,6 +310,28 @@ model Activity {
   actor    Agent?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([customerId, createdAt])
+}
+
+model LoaEnvelope {
+  id            String    @id @default(cuid())
+  customerId    String
+  leadId        String?
+  envelopeId    String?
+  sigLink       String?
+  status        String    @default("PREPARED")
+  channel       String    @default("DOWNLOAD")
+  sentAt        DateTime?
+  completedAt   DateTime?
+  pdfFileName   String?
+  pdfStoredName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+  @@index([envelopeId])
 }
 
 model DeskReminder {

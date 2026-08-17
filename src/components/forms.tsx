@@ -235,7 +235,7 @@ export function MeterForm({
         <Field
           label="Signed LOA copy"
           name="loaFile"
-          hint="Store the signed file here. This does not generate an LOA or send it to DocuSign."
+          hint="Store the signed file here. Use Send LOA on the customer to fill and send the letter."
         >
           <input id="loaFile" name="loaFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" />
           {meter?.loaFileName ? (

@@ -62,14 +62,14 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 - CSV import and export (round-trip columns)
 - Soft-archive a customer (hidden from the default book, recoverable — no hard delete)
 - Call notes, plus store a recording or transcript file (no live phone)
-- Store a signed LOA copy (the desk does not generate an LOA)
+- Fill and preview an NZCE Letter of Authority from the customer and meters; send via DocuSign when connected, or download if it is not
+- Store a signed LOA copy (status, signed-on, who signed, upload)
 - Tasks, activity, and a how-to page in plain English
 
 ## What is out
 
 - monday.com, or any other CRM sync
-- DocuSign
-- Gmail send (you can log an email by hand)
+- Gmail send (you can log an email by hand; DocuSign can email an LOA when connected)
 - Tender-email generation
 - Monthly report PDFs
 - Hard delete of live customer data

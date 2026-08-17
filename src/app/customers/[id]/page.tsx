@@ -4,6 +4,7 @@ import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-fi
 import { CustomerTenderBook } from "@/components/customer-tenders";
 import { EmailForm, NoteForm, RecordingForm, TaskForm } from "@/components/desk-forms";
 import { MeterLoaForm } from "@/components/meter-loa";
+import { SendLoaPanel } from "@/components/send-loa";
 import { MeterObjectionForm } from "@/components/meter-objection";
 import { TenderCompare } from "@/components/tender-compare";
 import {
@@ -19,6 +20,7 @@ import {
 import { archiveCustomer } from "@/app/actions/customers";
 import { toggleTask } from "@/app/actions/desk";
 import { CALL_NOTE_KINDS, isTenderLeadStage, labelFor } from "@/lib/constants";
+import { isDocusignConfigured } from "@/lib/docusign";
 import { resolveLeadBoardStage } from "@/lib/lead-board";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
@@ -55,6 +57,7 @@ export default async function CustomerDetailPage({
         emails: { orderBy: { loggedAt: "desc" } },
         tasks: { include: { assignee: true }, orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { include: { actor: true }, orderBy: { createdAt: "desc" } },
+        loaEnvelopes: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
@@ -86,6 +89,9 @@ export default async function CustomerDetailPage({
             </Link>
             <Link href={`/leads/new?customerId=${customer.id}`} className="btn btn-ghost">
               Open lead
+            </Link>
+            <Link href={`/customers/${customer.id}#loa`} className="btn btn-ghost">
+              Send LOA
             </Link>
             <Link href={`/customers/${customer.id}/print`} className="btn btn-ghost">
               Print summary
@@ -210,12 +216,22 @@ export default async function CustomerDetailPage({
           )}
           {customer.meters.length > 0 ? (
             <>
+              <div className="border-t border-rule px-4 py-4">
+                <SendLoaPanel
+                  customerId={customer.id}
+                  companyName={customer.companyName}
+                  meterCount={customer.meters.length}
+                  configured={isDocusignConfigured()}
+                  latest={customer.loaEnvelopes[0] ?? null}
+                />
+              </div>
               <div className="border-t border-rule">
                 <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
                   Signed LOA
                 </p>
                 <p className="px-4 pt-1 text-xs text-muted">
-                  Mark signed and store the copy. This does not generate an LOA or send it to DocuSign.
+                  After a send, mark signed and store the copy here. DocuSign completion sets received
+                  and keeps these fields.
                 </p>
                 {customer.meters.map((meter) => (
                   <MeterLoaForm key={meter.id} meter={meter} />

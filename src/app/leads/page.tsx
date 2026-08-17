@@ -14,7 +14,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
   const { stage, agent, q } = filters;
   await ensureLeadBoardStages();
 
-  const [leads, agents] = await Promise.all([
+  const [leads, agents, envelopes] = await Promise.all([
     prisma.lead.findMany({
       where: { customer: { archivedAt: null } },
       include: {
@@ -26,7 +26,12 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
       orderBy: { updatedAt: "desc" },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    prisma.loaEnvelope.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
+  const latestLoa = new Map<string, (typeof envelopes)[number]>();
+  for (const item of envelopes) {
+    if (!latestLoa.has(item.customerId)) latestLoa.set(item.customerId, item);
+  }
 
   const filtered = leads.filter((lead) => {
     if (stage && resolveLeadBoardStage(lead) !== stage) return false;
@@ -123,16 +128,20 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
         <LeadKanban
           stageFilter={stage}
           agents={agents}
-          leads={filtered.map((lead) => ({
-            id: lead.id,
-            title: lead.title,
-            stage: lead.stage,
-            notes: lead.notes,
-            outcomeReason: lead.outcomeReason,
-            customerId: lead.customerId,
-            companyName: lead.customer.companyName,
-            allocations: lead.allocations.map((allocation) => ({ agentId: allocation.agentId })),
-          }))}
+          leads={filtered.map((lead) => {
+            const loa = latestLoa.get(lead.customerId);
+            return {
+              id: lead.id,
+              title: lead.title,
+              stage: lead.stage,
+              notes: lead.notes,
+              outcomeReason: lead.outcomeReason,
+              customerId: lead.customerId,
+              companyName: lead.customer.companyName,
+              allocations: lead.allocations.map((allocation) => ({ agentId: allocation.agentId })),
+              loa: loa ? { sigLink: loa.sigLink, status: loa.status, channel: loa.channel } : null,
+            };
+          })}
         />
       </BulkAllocate>
     </div>
