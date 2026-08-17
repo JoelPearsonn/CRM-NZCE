@@ -26,6 +26,7 @@ html,
 body {
   background: var(--color-paper);
   color: var(--color-ink);
+  overflow-x: visible;
 }
 
 body {
@@ -114,14 +115,23 @@ a {
 
 .desk-main:has(.lead-board-shell) {
   overflow-x: visible;
+  overflow-y: visible;
+}
+
+.lead-page {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: visible;
 }
 
 .lead-board-shell {
   box-sizing: border-box;
-  width: calc(100% + 3rem);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
-  margin-left: -1.5rem;
-  margin-right: -1.5rem;
+  overflow-x: visible;
 }
 
 .lead-jump {
@@ -132,7 +142,7 @@ a {
   flex-wrap: wrap;
   gap: 0.35rem;
   background: var(--color-paper);
-  padding: 0.5rem 1.5rem 0.75rem;
+  padding: 0.5rem 0 0.75rem;
   border-bottom: 1px solid var(--color-rule);
 }
 
@@ -154,9 +164,28 @@ a {
 .lead-board {
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
+  height: calc(100dvh - 14rem);
   overflow-x: scroll;
-  padding: 1rem 1.5rem 1rem;
+  overflow-y: hidden;
+  scrollbar-width: auto;
+  scrollbar-color: #8a6716 #ebe4d4;
+  padding: 0.75rem 0 0.15rem;
+}
+
+.lead-board::-webkit-scrollbar {
+  height: 12px;
+  width: 12px;
+}
+
+.lead-board::-webkit-scrollbar-track {
+  background: #ebe4d4;
+}
+
+.lead-board::-webkit-scrollbar-thumb {
+  background: #8a6716;
+  border-radius: 6px;
 }
 
 .lead-board-row {
@@ -165,13 +194,26 @@ a {
   flex-wrap: nowrap;
   gap: 0.75rem;
   width: max-content;
+  min-width: max-content;
+  height: 100%;
 }
 
 .lead-column {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   flex: 0 0 240px;
   width: 240px;
   min-width: 240px;
+  max-width: 240px;
+  height: 100%;
+}
+
+.lead-column-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .nav-toggle {
@@ -440,18 +482,11 @@ a {
 
   .desk-main:has(.lead-board-shell) {
     overflow-x: visible;
+    overflow-y: visible;
   }
 
-  .lead-board-shell {
-    width: calc(100% + 2rem);
-    margin-left: -1rem;
-    margin-right: -1rem;
-  }
-
-  .lead-jump,
   .lead-board {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    height: calc(100dvh - 16rem);
   }
 
   .master-search {

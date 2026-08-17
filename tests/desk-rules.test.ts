@@ -338,10 +338,13 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
 
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
   assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*scroll/s);
-  assert.doesNotMatch(css, /\.lead-board\s*\{[^}]*overflow-y:/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*overflow-y:\s*hidden/s);
+  assert.match(css, /\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
   assert.match(css, /\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
   assert.match(css, /\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
+  assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*visible/s);
   assert.match(css, /\.desk-main:has\(\.lead-board-shell\)\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.lead-page\s*\{[^}]*overflow-x:\s*visible/s);
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
   assert.equal(kanban.includes("column.length === 0"), true);

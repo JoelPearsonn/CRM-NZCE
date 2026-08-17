@@ -116,7 +116,7 @@ export function LeadKanban({
                     {column.length}
                   </span>
                 </div>
-                <div className="min-h-16 space-y-2 rounded-sm border border-dashed border-transparent p-0.5">
+                <div className="lead-column-cards min-h-16 space-y-2 rounded-sm border border-dashed border-transparent p-0.5">
                   {column.length === 0 ? (
                     <div className="card px-3 py-6 text-center text-xs text-muted">Empty</div>
                   ) : (
