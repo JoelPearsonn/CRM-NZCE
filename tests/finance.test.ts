@@ -13,6 +13,7 @@ import {
   splitAmounts,
   splitByPercent,
 } from "../src/lib/finance";
+import { isDeskAdmin, nextQuarterDue, rollQuarterDue } from "../src/lib/desk-reminders";
 import { parseMoney } from "../src/lib/format";
 
 test("50/50 split math: two agents take half each", () => {
@@ -173,6 +174,26 @@ test("live calculator: full value minus TPI, then split legs, before save", () =
     preview.legs.map((leg) => leg.amountDue),
     [2176, 2176, 1088],
   );
+});
+
+test("quarterly reminder due dates are 1 Jan / 1 Apr / 1 Jul / 1 Oct", () => {
+  assert.equal(nextQuarterDue(new Date("2026-08-17T12:00:00.000Z")).toISOString().slice(0, 10), "2026-10-01");
+  assert.equal(nextQuarterDue(new Date("2026-10-01T12:00:00.000Z")).toISOString().slice(0, 10), "2026-10-01");
+  assert.equal(nextQuarterDue(new Date("2026-01-01T12:00:00.000Z")).toISOString().slice(0, 10), "2026-01-01");
+  assert.equal(nextQuarterDue(new Date("2026-12-02T12:00:00.000Z")).toISOString().slice(0, 10), "2027-01-01");
+});
+
+test("marking the quarterly reminder done rolls to the next quarter", () => {
+  const oct = new Date("2026-10-01T12:00:00.000Z");
+  assert.equal(rollQuarterDue(oct, new Date("2026-08-17T12:00:00.000Z")).toISOString().slice(0, 10), "2027-01-01");
+  assert.equal(rollQuarterDue(new Date("2026-07-01T12:00:00.000Z"), new Date("2026-08-17T12:00:00.000Z")).toISOString().slice(0, 10), "2026-10-01");
+});
+
+test("only Joel / Admin sees the quarterly market-update reminder", () => {
+  assert.equal(isDeskAdmin(null), false);
+  assert.equal(isDeskAdmin({ role: "Sales", email: "priya.shah@nzce.co.uk" }), false);
+  assert.equal(isDeskAdmin({ role: "Admin", email: "joel.pearson@nzcenergy.co.uk" }), true);
+  assert.equal(isDeskAdmin({ role: "Sales", email: "joel.pearson@nzcenergy.co.uk" }), true);
 });
 
 test("live calculator: residual months use typed CSD/CED, not a saved deal", () => {

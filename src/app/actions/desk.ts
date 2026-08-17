@@ -3,8 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { CALL_NOTE_KINDS } from "@/lib/constants";
+import { rollQuarterDue } from "@/lib/desk-reminders";
 import { isEmail, optionalStr, parseDate, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export type ActionState = { error?: string };
 
@@ -101,5 +103,20 @@ export async function toggleTask(formData: FormData) {
     await logActivity(task.customerId, "TASK_COMPLETED", `Follow-up completed: ${task.title}.`);
   }
   refreshCustomer(task.customerId);
+  revalidatePath("/tasks");
+}
+
+export async function completeDeskReminder(formData: FormData) {
+  const admin = await getWorkingAsAdmin();
+  if (!admin) return;
+  const id = str(formData.get("id"));
+  if (!id) return;
+  const reminder = await prisma.deskReminder.findUnique({ where: { id } });
+  if (!reminder) return;
+  await prisma.deskReminder.update({
+    where: { id },
+    data: { dueDate: rollQuarterDue(reminder.dueDate, new Date()) },
+  });
+  revalidatePath("/");
   revalidatePath("/tasks");
 }

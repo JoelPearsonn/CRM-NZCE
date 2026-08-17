@@ -95,7 +95,12 @@ export const DEAL_STATUSES = [
   { value: "CANCELLED", label: "Cancelled" },
 ] as const;
 
-export const AGENT_ROLES = ["Sales", "Operations", "Finance"] as const;
+export const AGENT_ROLES = ["Admin", "Sales", "Operations", "Finance"] as const;
+
+export const DESK_ADMIN_EMAIL = "joel.pearson@nzcenergy.co.uk";
+
+export const QUARTERLY_MARKET_UPDATE_KEY = "QUARTERLY_MARKET_UPDATE";
+export const QUARTERLY_MARKET_UPDATE_TITLE = "Send quarterly market update to all customers";
 
 export const UK_SUPPLIERS = [
   "British Gas",

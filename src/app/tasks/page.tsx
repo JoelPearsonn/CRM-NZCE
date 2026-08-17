@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { toggleTask } from "@/app/actions/desk";
+import { QuarterlyMarketReminder } from "@/components/desk-reminder";
 import { EmptyState, PageHeader, Section } from "@/components/ui";
+import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
 import { formatDate } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
+import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export default async function TasksInboxPage() {
   await ensureRenewalReminderTasks();
+  const admin = await getWorkingAsAdmin();
+  const quarterlyReminder = admin ? await ensureQuarterlyMarketReminder() : null;
   const tasks = await prisma.task.findMany({
     where: { customer: { archivedAt: null } },
     include: { customer: true, assignee: true },
@@ -25,6 +30,8 @@ export default async function TasksInboxPage() {
         title="Tasks inbox"
         description="Every chase across the book. Overdue rows are marked so they don’t sit on a customer record unseen."
       />
+
+      {quarterlyReminder ? <QuarterlyMarketReminder reminder={quarterlyReminder} /> : null}
 
       <div className="mb-6 grid gap-3 md:grid-cols-3">
         <Stat label="Open" value={String(open.length)} hint="Still to do" />

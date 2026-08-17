@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { applyPayouts, applyResidual, type BuiltPayment } from "../src/lib/deal-payouts";
 import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
+import { ensureQuarterlyMarketReminder } from "../src/lib/desk-reminders";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 
 const prisma = new PrismaClient();
@@ -456,6 +457,20 @@ async function seedOakfieldTenders() {
   });
 }
 
+async function ensureJoelAdmin() {
+  const email = "joel.pearson@nzcenergy.co.uk";
+  const existing = await prisma.agent.findUnique({ where: { email } });
+  if (existing) {
+    if (existing.role !== "Admin") {
+      await prisma.agent.update({ where: { id: existing.id }, data: { role: "Admin" } });
+    }
+    return;
+  }
+  await prisma.agent.create({
+    data: { name: "Joel Pearson", email, role: "Admin" },
+  });
+}
+
 export async function seedDesk() {
   const existing = await prisma.agent.count();
   if (existing > 0) {
@@ -468,6 +483,8 @@ export async function seedDesk() {
     await ensureDemoTpiNames();
     await ensureDemoInbox();
     await ensureDemoReconciliations();
+    await ensureJoelAdmin();
+    await ensureQuarterlyMarketReminder();
     await ensureRenewalReminderTasks();
     await ensureDemoOutcomes();
     await ensureDemoArchive();
@@ -1247,13 +1264,15 @@ export async function seedDesk() {
   await ensureDemoTpiNames();
   await ensureDemoInbox();
   await ensureDemoReconciliations();
+  await ensureJoelAdmin();
+  await ensureQuarterlyMarketReminder();
   await ensureRenewalReminderTasks();
   await ensureDemoOutcomes();
   await ensureDemoArchive();
   await ensureDemoCallKinds();
   await ensureDemoRecording();
 
-  console.log("Seeded NZCE desk: 4 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
+  console.log("Seeded NZCE desk: 5 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
 }
 
 async function ensureDemoOutcomes() {

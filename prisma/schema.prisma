@@ -294,3 +294,12 @@ model Activity {
 
   @@index([customerId, createdAt])
 }
+
+model DeskReminder {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  title     String
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

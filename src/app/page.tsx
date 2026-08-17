@@ -9,10 +9,13 @@ import {
   Section,
   StagePill,
 } from "@/components/ui";
+import { QuarterlyMarketReminder } from "@/components/desk-reminder";
 import { LEAD_STAGES, OPEN_LEAD_STAGES } from "@/lib/constants";
+import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
+import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export default async function DashboardPage() {
   const liveCustomers = await prisma.customer.count({ where: { archivedAt: null } });
@@ -21,6 +24,8 @@ export default async function DashboardPage() {
   }
 
   await ensureRenewalReminderTasks();
+  const admin = await getWorkingAsAdmin();
+  const quarterlyReminder = admin ? await ensureQuarterlyMarketReminder() : null;
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 90);
 
@@ -64,6 +69,8 @@ export default async function DashboardPage() {
         title="Renewals, pipeline, commission"
         description="What is coming off contract, which supplies are in objection, where the book sits, and what finance is still owed."
       />
+
+      {quarterlyReminder ? <QuarterlyMarketReminder reminder={quarterlyReminder} /> : null}
 
       <div className="mb-6 grid gap-3 md:grid-cols-5">
         <Stat label="Customers" value={String(customerCount)} hint={`${meterCount} meters on supply`} />

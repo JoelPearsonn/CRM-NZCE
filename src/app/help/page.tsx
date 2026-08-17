@@ -145,7 +145,7 @@ export default function HelpPage() {
 
         <Guide
           title="Renewals and follow-ups"
-          body="Renewals shows 30 / 60 / 90 days. Month diary is the same book on a wall calendar. The desk also opens a renewal task when a site is inside 90 days, if one is not already there. The tasks inbox is every chase across the book."
+          body="Renewals shows 30 / 60 / 90 days. Month diary is the same book on a wall calendar. The desk also opens a renewal task when a site is inside 90 days, if one is not already there. The tasks inbox is every chase across the book. When you are working as Joel (Admin), a quarterly reminder sits on the Desk and in Tasks to send a market update to all customers — mark it done and it rolls to the next quarter. Nothing is emailed."
         >
           <Link href="/renewals" className="btn btn-ghost">
             Renewals
