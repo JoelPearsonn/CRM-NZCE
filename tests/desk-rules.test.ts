@@ -4,7 +4,14 @@ import path from "node:path";
 import { test } from "node:test";
 import { leadMatchesSearch } from "../src/lib/book-filters";
 import { pickEnterDestination } from "../src/lib/master-search";
-import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS, LEAD_STAGES } from "../src/lib/constants";
+import {
+  CSV_DEAL_HEADERS,
+  CSV_IMPORT_HEADERS,
+  CSV_LEAD_HEADERS,
+  isClosedLeadStage,
+  LEAD_STAGES,
+  OPEN_LEAD_STAGES,
+} from "../src/lib/constants";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
@@ -135,10 +142,19 @@ test("lead board columns match Monday Customer Board groups and import mapping",
     ],
   );
   assert.equal(LEAD_STAGES.length, 16);
+  assert.equal(OPEN_LEAD_STAGES.includes("Won"), false);
+  assert.equal(OPEN_LEAD_STAGES.includes("Lost"), false);
+  assert.equal(isClosedLeadStage("Won"), true);
+  assert.equal(isClosedLeadStage("Lost"), true);
+  assert.equal(isClosedLeadStage("SOLD"), true);
+  assert.equal(isClosedLeadStage("Hot lead Joel"), false);
+  assert.equal(isClosedLeadStage("Harry Accuradata Leads"), false);
 
   assert.equal(resolveLeadBoardStage({ stage: "NEW", notes: null }), "Potential Lead Joel");
   assert.equal(resolveLeadBoardStage({ stage: "LOA_REQUESTED", notes: null }), "Sent For Tender");
   assert.equal(resolveLeadBoardStage({ stage: "TENDERING", notes: null }), "Sent For Tender");
+  assert.equal(resolveLeadBoardStage({ stage: "QUOTED", notes: null }), "Proposal Sent");
+  assert.equal(resolveLeadBoardStage({ stage: "SOLD", notes: null }), "Won");
   assert.equal(resolveLeadBoardStage({ stage: "LOST", notes: null }), "Lost");
   assert.equal(resolveLeadBoardStage({ stage: "CONTACTED", notes: null }), "Potential Lead Joel");
   assert.equal(
@@ -186,6 +202,30 @@ test("lead board columns match Monday Customer Board groups and import mapping",
     2,
   );
   assert.equal(legacyLoa.stage, "Sent For Tender");
+
+  const legacyQuoted = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "Quote pack",
+      stage: "QUOTED",
+      notes: "",
+    },
+    2,
+  );
+  assert.equal(legacyQuoted.stage, "Proposal Sent");
+
+  const legacySold = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "Won site",
+      stage: "SOLD",
+      notes: "",
+    },
+    2,
+  );
+  assert.equal(legacySold.stage, "Won");
 
   const fromNotes = validateLeadRow(
     {

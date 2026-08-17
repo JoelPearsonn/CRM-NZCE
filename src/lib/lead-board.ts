@@ -11,7 +11,7 @@ export const LEGACY_LEAD_STAGE_MAP: Record<string, LeadStage> = {
   CONTACTED: "Potential Lead Joel",
   LOA_REQUESTED: "Sent For Tender",
   TENDERING: "Sent For Tender",
-  QUOTED: "Tender Received",
+  QUOTED: "Proposal Sent",
   SOLD: "Won",
   LOST: "Lost",
 };

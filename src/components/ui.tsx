@@ -9,6 +9,7 @@ import {
   labelFor,
 } from "@/lib/constants";
 import { daysUntil, formatDate, renewalTone } from "@/lib/format";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 
 export function PageHeader({
   kicker,
@@ -117,6 +118,7 @@ export function FuelPill({ value }: { value: string }) {
 }
 
 export function StagePill({ value }: { value: string }) {
+  const stage = resolveLeadBoardStage({ stage: value });
   const tones: Record<string, string> = {
     "Potential Lead Joel": "bg-[#e7e4dc] text-ink",
     "Potential Lead Pauly": "bg-[#d9e4ef] text-[#1e3a54]",
@@ -137,9 +139,9 @@ export function StagePill({ value }: { value: string }) {
   };
   return (
     <span
-      className={`pill normal-case tracking-normal whitespace-normal leading-tight ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}
+      className={`pill normal-case tracking-normal whitespace-normal leading-tight ${tones[stage] ?? "bg-[#e7e4dc] text-ink"}`}
     >
-      {labelFor(LEAD_STAGES, value)}
+      {labelFor(LEAD_STAGES, stage)}
     </span>
   );
 }
