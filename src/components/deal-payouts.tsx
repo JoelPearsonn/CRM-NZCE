@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Deal, DealPayment } from "@prisma/client";
 import { Field } from "@/components/ui";
 import {
@@ -10,8 +10,8 @@ import {
   TPI_PARTNERS,
   tpiPercentFor,
 } from "@/lib/constants";
-import { contractMonths, netCommission, residualDates, splitByPercent } from "@/lib/finance";
-import { gbpExact, monthsLabel, toDateInput } from "@/lib/format";
+import { contractMonths, liveDealPreview } from "@/lib/finance";
+import { formatDate, gbpExact, monthsLabel, toDateInput } from "@/lib/format";
 
 type DealWithPayments = Deal & { payments?: DealPayment[] };
 
@@ -27,6 +27,8 @@ function presetFromPayments(payments: DealPayment[]) {
 function rowsForPreset(
   preset: string,
   deal?: DealWithPayments,
+  start = "",
+  end = "",
 ): { stage: string; label: string; percent: number; date: string; paid: string }[] {
   const existing = [...(deal?.payments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
   if (preset === "CUSTOM" && existing.length) {
@@ -46,11 +48,7 @@ function rowsForPreset(
     const stage = prior?.stage ?? stages[index] ?? "ON_SIGN";
     const label = PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? `Payment ${index + 1}`;
     const fallbackDate =
-      stage === "EOC"
-        ? toDateInput(deal?.contractEnd)
-        : stage === "ON_LIVE"
-          ? toDateInput(deal?.contractStart)
-          : toDateInput(deal?.dueDate ?? deal?.contractStart);
+      stage === "EOC" ? end || toDateInput(deal?.contractEnd) : start || toDateInput(deal?.contractStart);
     return {
       stage,
       label: prior?.label ?? label,
@@ -61,10 +59,21 @@ function rowsForPreset(
   });
 }
 
-export function ContractDateFields({ deal }: { deal?: Deal }) {
-  const [start, setStart] = useState(toDateInput(deal?.contractStart));
-  const [end, setEnd] = useState(toDateInput(deal?.contractEnd));
-  const months = contractMonths(start ? new Date(`${start}T12:00:00.000Z`) : null, end ? new Date(`${end}T12:00:00.000Z`) : null);
+export function ContractDateFields({
+  start,
+  end,
+  onStart,
+  onEnd,
+}: {
+  start: string;
+  end: string;
+  onStart: (value: string) => void;
+  onEnd: (value: string) => void;
+}) {
+  const months = contractMonths(
+    start ? new Date(`${start}T12:00:00.000Z`) : null,
+    end ? new Date(`${end}T12:00:00.000Z`) : null,
+  );
 
   return (
     <>
@@ -74,7 +83,7 @@ export function ContractDateFields({ deal }: { deal?: Deal }) {
           name="contractStart"
           type="date"
           value={start}
-          onChange={(event) => setStart(event.target.value)}
+          onChange={(event) => onStart(event.target.value)}
         />
       </Field>
       <Field label="Contract end (CED)" name="contractEnd">
@@ -83,7 +92,7 @@ export function ContractDateFields({ deal }: { deal?: Deal }) {
           name="contractEnd"
           type="date"
           value={end}
-          onChange={(event) => setEnd(event.target.value)}
+          onChange={(event) => onEnd(event.target.value)}
         />
       </Field>
       <div className="field">
@@ -98,20 +107,55 @@ export function ContractDateFields({ deal }: { deal?: Deal }) {
   );
 }
 
-export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
+export function DealPayoutFields({
+  deal,
+  contractStart,
+  contractEnd,
+}: {
+  deal?: DealWithPayments;
+  contractStart: string;
+  contractEnd: string;
+}) {
   const [tpi, setTpi] = useState(deal?.tpiPartner ?? "NONE");
   const [tpiPercent, setTpiPercent] = useState(String(deal?.tpiPercent ?? tpiPercentFor(deal?.tpiPartner)));
   const [gross, setGross] = useState(deal?.estimatedCommission != null ? String(deal.estimatedCommission) : "");
   const [payoutType, setPayoutType] = useState(deal?.payoutType === "RESIDUAL" ? "RESIDUAL" : "SPLIT");
   const [monthly, setMonthly] = useState(deal?.residualMonthly != null ? String(deal.residualMonthly) : "");
   const [preset, setPreset] = useState(presetFromPayments(deal?.payments ?? []));
-  const [rows, setRows] = useState(() => rowsForPreset(presetFromPayments(deal?.payments ?? []), deal));
-
-  const net = netCommission(Number(gross) || 0, Number(tpiPercent) || 0);
-  const amounts = useMemo(
-    () => splitByPercent(net, rows.map((row) => Number(row.percent) || 0)),
-    [net, rows],
+  const [rows, setRows] = useState(() =>
+    rowsForPreset(presetFromPayments(deal?.payments ?? []), deal, contractStart, contractEnd),
   );
+
+  const preview = useMemo(
+    () =>
+      liveDealPreview({
+        gross,
+        tpiPercent,
+        payoutType,
+        percents: rows.map((row) => Number(row.percent) || 0),
+        residualMonthly: monthly,
+        start: contractStart,
+        end: contractEnd,
+      }),
+    [gross, tpiPercent, payoutType, rows, monthly, contractStart, contractEnd],
+  );
+
+  const previousDates = useRef({ start: contractStart, end: contractEnd });
+  useEffect(() => {
+    const previous = previousDates.current;
+    setRows((current) =>
+      current.map((row) => {
+        if (row.stage === "ON_LIVE" && (!row.date || row.date === previous.start)) {
+          return { ...row, date: contractStart };
+        }
+        if (row.stage === "EOC" && (!row.date || row.date === previous.end)) {
+          return { ...row, date: contractEnd };
+        }
+        return row;
+      }),
+    );
+    previousDates.current = { start: contractStart, end: contractEnd };
+  }, [contractStart, contractEnd]);
 
   function changeTpi(value: string) {
     setTpi(value);
@@ -120,12 +164,14 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
 
   function changePreset(value: string) {
     setPreset(value);
-    setRows(rowsForPreset(value, deal));
+    setRows(rowsForPreset(value, deal, contractStart, contractEnd));
   }
 
   function patch(index: number, next: Partial<(typeof rows)[number]>) {
     setRows((current) => current.map((row, i) => (i === index ? { ...row, ...next } : row)));
   }
+
+  const tpiLabel = TPI_PARTNERS.find((item) => item.value === tpi)?.label ?? "TPI";
 
   return (
     <div className="md:col-span-2 grid gap-4">
@@ -153,19 +199,48 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
             onChange={(event) => setTpiPercent(event.target.value)}
           />
         </Field>
-        <Field label="Full deal value (£)" name="estimatedCommission" hint="Gross commission before TPI.">
+        <Field label="Full deal value (£)" name="estimatedCommission" hint="Gross commission before TPI. Commas and £ are fine.">
           <input
             id="estimatedCommission"
             name="estimatedCommission"
             value={gross}
             onChange={(event) => setGross(event.target.value)}
+            inputMode="decimal"
+            placeholder="6,800"
           />
         </Field>
       </div>
-      <p className="text-sm text-muted">
-        Net commission after TPI: <span className="font-semibold text-ink">{gbpExact(net)}</span>
-        {Number(tpiPercent) > 0 ? ` · ${tpiPercent}% to the TPI` : " · none / direct"}
-      </p>
+
+      <div
+        data-testid="deal-calculator"
+        className="grid gap-2 rounded-sm border border-rule bg-card px-4 py-3 text-sm"
+      >
+        <p className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+          Live calculator
+        </p>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-muted">Full deal value</span>
+          <span>{gbpExact(preview.gross)}</span>
+        </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="text-muted">
+            TPI{preview.tpiPercent ? ` · ${tpiLabel} ${preview.tpiPercent}%` : " · none / direct"}
+          </span>
+          <span>{preview.tpiAmount ? `−${gbpExact(preview.tpiAmount)}` : gbpExact(0)}</span>
+        </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-rule pt-2">
+          <span className="font-medium">Net commission</span>
+          <span className="font-semibold text-ink" data-testid="net-commission">
+            {gbpExact(preview.net)}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span className="font-medium">Amount due</span>
+          <span className="font-semibold text-ink" data-testid="amount-due">
+            {gbpExact(preview.totalDue)}
+          </span>
+        </div>
+      </div>
 
       <Field label="Payout type" name="payoutType">
         <select
@@ -183,7 +258,13 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
       </Field>
 
       {payoutType === "RESIDUAL" ? (
-        <ResidualPreview deal={deal} net={net} monthly={monthly} onMonthly={setMonthly} />
+        <ResidualPreview
+          monthly={monthly}
+          onMonthly={setMonthly}
+          legs={preview.legs}
+          totalDue={preview.totalDue}
+          hasDates={Boolean(contractStart && contractEnd)}
+        />
       ) : null}
 
       {payoutType === "SPLIT" ? (
@@ -257,7 +338,9 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
                         onChange={(event) => patch(index, { date: event.target.value })}
                       />
                     </td>
-                    <td className="font-medium">{gbpExact(amounts[index] ?? 0)}</td>
+                    <td className="font-medium" data-testid={`split-due-${index}`}>
+                      {gbpExact(preview.legs[index]?.amountDue ?? 0)}
+                    </td>
                     <td>
                       <input
                         name={`paymentPaid_${index}`}
@@ -277,24 +360,18 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
 }
 
 function ResidualPreview({
-  deal,
-  net,
   monthly,
   onMonthly,
+  legs,
+  totalDue,
+  hasDates,
 }: {
-  deal?: DealWithPayments;
-  net: number;
   monthly: string;
   onMonthly: (value: string) => void;
+  legs: { label: string; amountDue: number; expectedDate: Date | null }[];
+  totalDue: number;
+  hasDates: boolean;
 }) {
-  const dates =
-    deal?.contractStart && deal?.contractEnd
-      ? residualDates(deal.contractStart, deal.contractEnd)
-      : [];
-  const typed = Number(monthly);
-  const perMonth =
-    typed > 0 ? typed : dates.length ? Math.round((net / dates.length) * 100) / 100 : 0;
-
   return (
     <div className="grid gap-3">
       <Field
@@ -307,21 +384,41 @@ function ResidualPreview({
           name="residualMonthly"
           value={monthly}
           onChange={(event) => onMonthly(event.target.value)}
+          inputMode="decimal"
+          placeholder="Leave blank to split net evenly"
         />
       </Field>
-      <p className="text-sm text-muted">
-        {dates.length
-          ? `${dates.length} monthly residuals · ${gbpExact(perMonth)} each · first ${
-              dates[0] ? new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric", timeZone: "UTC" }).format(dates[0]) : "—"
-            } · last ${
-              dates[dates.length - 1]
-                ? new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric", timeZone: "UTC" }).format(
-                    dates[dates.length - 1] as Date,
-                  )
-                : "—"
-            }`
-          : "Set CSD (live date) and CED above. The schedule is built when you save."}
-      </p>
+      {hasDates && legs.length ? (
+        <div className="overflow-x-auto">
+          <table className="desk-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Due date</th>
+                <th>Amount due</th>
+              </tr>
+            </thead>
+            <tbody>
+              {legs.map((leg, index) => (
+                <tr key={`${leg.label}-${index}`}>
+                  <td>{leg.label}</td>
+                  <td>{formatDate(leg.expectedDate)}</td>
+                  <td className="font-medium">{gbpExact(leg.amountDue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-sm">
+            {legs.length} monthly residuals · total amount due{" "}
+            <span className="font-semibold">{gbpExact(totalDue)}</span>
+          </p>
+        </div>
+      ) : (
+        <p className="text-sm text-muted">
+          Set CSD (live date) and CED above. Each month’s amount due appears here as you type — you do
+          not need to save first.
+        </p>
+      )}
     </div>
   );
 }

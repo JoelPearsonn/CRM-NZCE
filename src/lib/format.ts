@@ -79,7 +79,9 @@ export function parseIntField(value: FormDataEntryValue | null) {
 }
 
 export function parseMoney(value: FormDataEntryValue | null) {
-  const raw = String(value ?? "").trim().replace(/[£,]/g, "");
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/[£,%\s]/g, "");
   if (!raw) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isNaN(parsed) ? null : parsed;

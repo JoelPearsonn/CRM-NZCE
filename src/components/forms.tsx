@@ -457,6 +457,8 @@ export function DealForm({
   selectedAgentIds?: string[];
 }) {
   const [state, action, pending] = useActionState(saveDeal, empty as DealState);
+  const [contractStart, setContractStart] = useState(toDateInput(deal?.contractStart));
+  const [contractEnd, setContractEnd] = useState(toDateInput(deal?.contractEnd));
   const customerId = deal?.customerId ?? presetCustomerId ?? "";
   return (
     <form
@@ -555,11 +557,16 @@ export function DealForm({
           ))}
         </div>
       </div>
-      <ContractDateFields deal={deal} />
+      <ContractDateFields
+        start={contractStart}
+        end={contractEnd}
+        onStart={setContractStart}
+        onEnd={setContractEnd}
+      />
       <Field label="Renewal date" name="renewalDate" hint="Defaults to CED if you leave it blank.">
         <input id="renewalDate" name="renewalDate" type="date" defaultValue={toDateInput(deal?.renewalDate)} />
       </Field>
-      <DealPayoutFields deal={deal} />
+      <DealPayoutFields deal={deal} contractStart={contractStart} contractEnd={contractEnd} />
       <div className="md:col-span-2">
         <Field label="Notes" name="notes">
           <textarea id="notes" name="notes" rows={3} defaultValue={deal?.notes ?? ""} />

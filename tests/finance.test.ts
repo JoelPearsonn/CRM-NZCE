@@ -6,12 +6,14 @@ import {
   filterDealsByMonth,
   groupByAgent,
   groupByPaymentStage,
+  liveDealPreview,
   monthKey,
   netCommission,
   residualDates,
   splitAmounts,
   splitByPercent,
 } from "../src/lib/finance";
+import { parseMoney } from "../src/lib/format";
 
 test("50/50 split math: two agents take half each", () => {
   const slice = splitAmounts(
@@ -146,4 +148,51 @@ test("one agent keeps the full amount", () => {
   const slice = splitAmounts({ amountDue: 4600, actualPaid: 4600, estimatedCommission: 4600 }, 1);
   assert.equal(slice.amountDue, 4600);
   assert.equal(slice.actualPaid, 4600);
+});
+
+test("parseMoney reads UK deal values the form used to treat as zero", () => {
+  assert.equal(Number.isNaN(Number("6,800")), true);
+  assert.equal(parseMoney("6,800"), 6800);
+  assert.equal(parseMoney("£6,800"), 6800);
+  assert.equal(parseMoney("£ 6,800.00"), 6800);
+  assert.equal(parseMoney("20%"), 20);
+});
+
+test("live calculator: full value minus TPI, then split legs, before save", () => {
+  const preview = liveDealPreview({
+    gross: "£6,800",
+    tpiPercent: "20%",
+    payoutType: "SPLIT",
+    percents: [40, 40, 20],
+  });
+  assert.equal(preview.gross, 6800);
+  assert.equal(preview.tpiAmount, 1360);
+  assert.equal(preview.net, 5440);
+  assert.equal(preview.totalDue, 5440);
+  assert.deepEqual(
+    preview.legs.map((leg) => leg.amountDue),
+    [2176, 2176, 1088],
+  );
+});
+
+test("live calculator: residual months use typed CSD/CED, not a saved deal", () => {
+  const preview = liveDealPreview({
+    gross: "3,750",
+    tpiPercent: "0",
+    payoutType: "RESIDUAL",
+    start: "2025-09-01",
+    end: "2026-09-01",
+  });
+  assert.equal(preview.net, 3750);
+  assert.equal(preview.legs.length, 12);
+  assert.equal(preview.legs[0]?.amountDue, 312.5);
+  assert.equal(preview.totalDue, 3750);
+  const empty = liveDealPreview({
+    gross: "3,750",
+    tpiPercent: "0",
+    payoutType: "RESIDUAL",
+  });
+  assert.equal(empty.net, 3750);
+  assert.equal(empty.legs.length, 0);
+  assert.equal(empty.totalDue, 0);
 });

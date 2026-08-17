@@ -1,3 +1,5 @@
+import { parseMoney } from "@/lib/format";
+
 export type FinanceDeal = {
   amountDue?: number | null;
   estimatedCommission?: number | null;
@@ -23,6 +25,106 @@ export function netCommission(
 ) {
   const rate = Math.min(100, Math.max(0, tpiPercent ?? 0));
   return roundPence((gross ?? 0) * (1 - rate / 100));
+}
+
+export type LivePayoutLeg = {
+  label: string;
+  percent: number;
+  amountDue: number;
+  expectedDate: Date | null;
+};
+
+export type LiveDealPreview = {
+  gross: number;
+  tpiPercent: number;
+  tpiAmount: number;
+  net: number;
+  totalDue: number;
+  legs: LivePayoutLeg[];
+};
+
+function parseLiveDate(value: string | Date | null | undefined) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const date = new Date(`${value}T12:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function residualMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+/** Live form preview — same net / split / residual math as save, including UK money text. */
+export function liveDealPreview(input: {
+  gross: string | number | null | undefined;
+  tpiPercent: string | number | null | undefined;
+  payoutType?: string | null;
+  percents?: number[];
+  residualMonthly?: string | number | null;
+  start?: string | Date | null;
+  end?: string | Date | null;
+}): LiveDealPreview {
+  const gross = typeof input.gross === "number" ? input.gross : (parseMoney(input.gross ?? null) ?? 0);
+  const tpiPercent =
+    typeof input.tpiPercent === "number" ? input.tpiPercent : (parseMoney(input.tpiPercent ?? null) ?? 0);
+  const net = netCommission(gross, tpiPercent);
+  const tpiAmount = roundPence(Math.max(0, gross - net));
+
+  if ((input.payoutType ?? "SPLIT") === "RESIDUAL") {
+    const start = parseLiveDate(input.start);
+    const end = parseLiveDate(input.end);
+    if (!start || !end) {
+      return { gross, tpiPercent, tpiAmount, net, totalDue: 0, legs: [] };
+    }
+    const monthly =
+      typeof input.residualMonthly === "number"
+        ? input.residualMonthly
+        : parseMoney(input.residualMonthly ?? null);
+    const dates = residualDates(start, end);
+    const amounts =
+      monthly != null && monthly > 0
+        ? dates.map(() => monthly)
+        : splitByPercent(
+            net,
+            dates.map(() => 100 / Math.max(1, dates.length)),
+          );
+    const legs = dates.map((date, index) => ({
+      label: residualMonthLabel(date),
+      percent: monthly != null && monthly > 0 ? 0 : roundPence(100 / Math.max(1, dates.length)),
+      amountDue: amounts[index] ?? 0,
+      expectedDate: date,
+    }));
+    return {
+      gross,
+      tpiPercent,
+      tpiAmount,
+      net,
+      totalDue: roundPence(legs.reduce((sum, leg) => sum + leg.amountDue, 0)),
+      legs,
+    };
+  }
+
+  const percents = input.percents?.length ? input.percents : [40, 40, 20];
+  const amounts = splitByPercent(net, percents);
+  const labels = percents.length === 2 ? ["On Sign", "On Live"] : ["On Sign", "On Live", "EOC"];
+  const legs = percents.map((percent, index) => ({
+    label: labels[index] ?? `Payment ${index + 1}`,
+    percent,
+    amountDue: amounts[index] ?? 0,
+    expectedDate: null as Date | null,
+  }));
+  return {
+    gross,
+    tpiPercent,
+    tpiAmount,
+    net,
+    totalDue: roundPence(legs.reduce((sum, leg) => sum + leg.amountDue, 0)),
+    legs,
+  };
 }
 
 export function splitByPercent(net: number, percents: number[]) {
