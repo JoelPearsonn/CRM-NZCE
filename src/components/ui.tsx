@@ -118,15 +118,30 @@ export function FuelPill({ value }: { value: string }) {
 
 export function StagePill({ value }: { value: string }) {
   const tones: Record<string, string> = {
-    NEW: "bg-[#e7e4dc] text-ink",
-    CONTACTED: "bg-[#d9e4ef] text-[#1e3a54]",
-    LOA_REQUESTED: "bg-warn-soft text-warn",
-    TENDERING: "bg-[#f3e2c8] text-[#7a4b10]",
-    QUOTED: "bg-[#dce8f5] text-[#204060]",
-    SOLD: "bg-moss-soft text-moss",
-    LOST: "bg-danger-soft text-danger",
+    "Potential Lead Joel": "bg-[#e7e4dc] text-ink",
+    "Potential Lead Pauly": "bg-[#d9e4ef] text-[#1e3a54]",
+    "Steve Madden Leads": "bg-[#e4e0f0] text-[#3d3560]",
+    "Potential Lead Rory": "bg-[#dce8f5] text-[#204060]",
+    "Hot lead Joel": "bg-warn-soft text-warn",
+    "Harry Accuradata Leads": "bg-[#efe4d2] text-[#6b4a18]",
+    "Hot Leads Rory": "bg-[#f3e2c8] text-[#7a4b10]",
+    "Sent For Tender": "bg-[#f3e2c8] text-[#7a4b10]",
+    "Tender Received": "bg-[#dce8f5] text-[#204060]",
+    "Set Up Call Completed": "bg-[#d7e8de] text-moss",
+    "Proposal Sent": "bg-[#e4e0f0] text-[#3d3560]",
+    Won: "bg-moss-soft text-moss",
+    Lost: "bg-danger-soft text-danger",
+    "Follow up at a Later Date": "bg-[#e7e4dc] text-ink",
+    "Rory Follow up": "bg-[#d9e4ef] text-[#1e3a54]",
+    "Joel Follow Up": "bg-[#efe4d2] text-[#6b4a18]",
   };
-  return <span className={`pill ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}>{labelFor(LEAD_STAGES, value)}</span>;
+  return (
+    <span
+      className={`pill normal-case tracking-normal whitespace-normal leading-tight ${tones[value] ?? "bg-[#e7e4dc] text-ink"}`}
+    >
+      {labelFor(LEAD_STAGES, value)}
+    </span>
+  );
 }
 
 export function LoaPill({ value }: { value: string }) {

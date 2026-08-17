@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Agent } from "@prisma/client";
 import { allocateLeadAgents, updateLeadStage } from "@/app/actions/leads";
-import { LEAD_STAGES, LOST_REASONS, WON_REASONS } from "@/lib/constants";
+import { isWonLeadStage, LEAD_STAGES, LOST_REASONS, WON_REASONS } from "@/lib/constants";
 
 export function OutcomeReasonField({
   id,
@@ -19,7 +19,7 @@ export function OutcomeReasonField({
   compact?: boolean;
 }) {
   const [value, setValue] = useState(defaultValue ?? "");
-  const presets = stage === "SOLD" ? WON_REASONS : LOST_REASONS;
+  const presets = isWonLeadStage(stage) ? WON_REASONS : LOST_REASONS;
   return (
     <div className="grid gap-1.5">
       <div className="flex flex-wrap gap-1">
@@ -39,10 +39,9 @@ export function OutcomeReasonField({
       <input
         id={id}
         name={name}
-        required
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder={stage === "SOLD" ? "Why was this won?" : "Why was this lost?"}
+        placeholder={isWonLeadStage(stage) ? "Why was this won?" : "Why was this lost?"}
         className={compact ? "w-full border border-rule bg-card px-2 py-1 text-xs" : undefined}
       />
     </div>
@@ -52,14 +51,12 @@ export function OutcomeReasonField({
 export function StageSelect({
   leadId,
   stage,
-  outcomeReason,
 }: {
   leadId: string;
   stage: string;
   outcomeReason?: string | null;
 }) {
   const [next, setNext] = useState(stage);
-  const needsReason = next === "SOLD" || next === "LOST";
 
   return (
     <form action={updateLeadStage} className="grid gap-1.5">
@@ -72,11 +69,8 @@ export function StageSelect({
         name="stage"
         value={next}
         onChange={(event) => {
-          const value = event.target.value;
-          setNext(value);
-          if (value !== "SOLD" && value !== "LOST") {
-            event.currentTarget.form?.requestSubmit();
-          }
+          setNext(event.target.value);
+          event.currentTarget.form?.requestSubmit();
         }}
         className="w-full border border-rule bg-card px-2 py-1 text-xs"
       >
@@ -86,22 +80,6 @@ export function StageSelect({
           </option>
         ))}
       </select>
-      {needsReason ? (
-        <>
-          <label className="sr-only" htmlFor={`reason-${leadId}`}>
-            {next === "SOLD" ? "Won reason" : "Lost reason"}
-          </label>
-          <OutcomeReasonField
-            key={next}
-            id={`reason-${leadId}`}
-            name="outcomeReason"
-            stage={next}
-            defaultValue={outcomeReason}
-            compact
-          />
-          <button className="btn btn-brass px-2 py-1 text-[0.7rem]">Save stage</button>
-        </>
-      ) : null}
     </form>
   );
 }

@@ -15,7 +15,10 @@ import { ErrorBanner, Field } from "@/components/ui";
 import {
   AGENT_ROLES,
   DEAL_STATUSES,
+  DEFAULT_LEAD_STAGE,
   FUEL_TYPES,
+  isClosedLeadStage,
+  isWonLeadStage,
   LEAD_STAGES,
   LOA_STATUSES,
   METER_TYPES,
@@ -25,6 +28,7 @@ import {
   UK_SUPPLIERS,
 } from "@/lib/constants";
 import { toDateInput } from "@/lib/format";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 
 const empty: CustomerState = {};
 
@@ -334,8 +338,8 @@ export function LeadForm({
   presetCustomerId?: string;
 }) {
   const [state, action, pending] = useActionState(saveLead, empty as LeadState);
-  const [stage, setStage] = useState(lead?.stage ?? "NEW");
-  const needsReason = stage === "SOLD" || stage === "LOST";
+  const [stage, setStage] = useState<string>(resolveLeadBoardStage(lead ?? { stage: DEFAULT_LEAD_STAGE }));
+  const needsReason = isClosedLeadStage(stage);
   return (
     <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">
       {lead ? <input type="hidden" name="id" value={lead.id} /> : null}
@@ -374,9 +378,9 @@ export function LeadForm({
       {needsReason ? (
         <div className="md:col-span-2">
           <Field
-            label={stage === "SOLD" ? "Won reason" : "Lost reason"}
+            label={isWonLeadStage(stage) ? "Won reason" : "Lost reason"}
             name="outcomeReason"
-            hint="Pick a common reason or type your own. Required when a lead is sold or lost."
+            hint="Optional — why this was won or lost."
           >
             <OutcomeReasonField
               key={stage}

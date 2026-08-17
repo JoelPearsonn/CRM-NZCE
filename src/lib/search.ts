@@ -1,4 +1,6 @@
+import { LEAD_STAGES, labelFor } from "@/lib/constants";
 import { formatMpan } from "@/lib/format";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 import type { SearchResponse } from "@/lib/master-search";
 import { prisma } from "@/lib/prisma";
 
@@ -97,7 +99,7 @@ export async function searchBook(q: string, type = ""): Promise<SearchResponse> 
       id: lead.id,
       type: "lead" as const,
       title: lead.title,
-      subtitle: `${lead.customer.companyName} · ${lead.stage.replaceAll("_", " ")}`,
+      subtitle: `${lead.customer.companyName} · ${labelFor(LEAD_STAGES, resolveLeadBoardStage(lead))}`,
       href: `/leads/${lead.id}`,
     })),
     deals: deals.map((deal) => ({

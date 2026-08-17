@@ -4,7 +4,8 @@ import path from "node:path";
 import { test } from "node:test";
 import { leadMatchesSearch } from "../src/lib/book-filters";
 import { pickEnterDestination } from "../src/lib/master-search";
-import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
+import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS, LEAD_STAGES } from "../src/lib/constants";
+import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
 import { runLeadImport } from "../src/app/actions/import-leads";
@@ -106,9 +107,120 @@ test("import templates download with columns the importer accepts", () => {
   assert.deepEqual(leads[0], [...CSV_LEAD_HEADERS]);
   const leadRow = validateLeadRow(rowToRecord(leads[0], leads[1]), 2);
   assert.deepEqual(leadRow.errors, []);
-  assert.equal(leadRow.stage, "TENDERING");
+  assert.equal(leadRow.stage, "Sent For Tender");
   assert.ok(CSV_IMPORT_HEADERS.includes("renewalDate"));
   assert.ok(CSV_IMPORT_HEADERS.includes("objectionStatus"));
+});
+
+test("lead board columns match Monday Customer Board groups and import mapping", async () => {
+  assert.deepEqual(
+    LEAD_STAGES.map((item) => item.label),
+    [
+      "Potential Lead Joel",
+      "Potential Lead Pauly",
+      "Steve Madden Leads",
+      "Potential Lead Rory",
+      "Hot lead Joel",
+      "Harry Accuradata Leads",
+      "Hot Leads Rory",
+      "Sent For Tender",
+      "Tender Received",
+      "Set Up Call Completed",
+      "Proposal Sent",
+      "Won",
+      "Lost",
+      "Follow up at a Later Date",
+      "Rory Follow up",
+      "Joel Follow Up",
+    ],
+  );
+  assert.equal(LEAD_STAGES.length, 16);
+
+  assert.equal(resolveLeadBoardStage({ stage: "NEW", notes: null }), "Potential Lead Joel");
+  assert.equal(resolveLeadBoardStage({ stage: "LOA_REQUESTED", notes: null }), "Sent For Tender");
+  assert.equal(resolveLeadBoardStage({ stage: "TENDERING", notes: null }), "Sent For Tender");
+  assert.equal(resolveLeadBoardStage({ stage: "LOST", notes: null }), "Lost");
+  assert.equal(resolveLeadBoardStage({ stage: "CONTACTED", notes: null }), "Potential Lead Joel");
+  assert.equal(
+    resolveLeadBoardStage({ stage: "NEW", notes: "Monday group: Proposal Sent" }),
+    "Proposal Sent",
+  );
+  assert.equal(
+    resolveLeadBoardStage({ stage: "", notes: "Called.\nMonday group: Hot lead Joel" }),
+    "Hot lead Joel",
+  );
+
+  const monday = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "Electric renewal",
+      stage: "Proposal Sent",
+      notes: "",
+    },
+    2,
+  );
+  assert.deepEqual(monday.errors, []);
+  assert.equal(monday.stage, "Proposal Sent");
+
+  const legacyNew = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "Gas enquiry",
+      stage: "NEW",
+      notes: "",
+    },
+    2,
+  );
+  assert.equal(legacyNew.stage, "Potential Lead Joel");
+
+  const legacyLoa = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "LOA out",
+      stage: "LOA_REQUESTED",
+      notes: "",
+    },
+    2,
+  );
+  assert.equal(legacyLoa.stage, "Sent For Tender");
+
+  const fromNotes = validateLeadRow(
+    {
+      companyName: "Acme Bakery Ltd",
+      email: "sam@acme-bakery.test",
+      title: "Quote pack",
+      stage: "",
+      notes: "Monday group: Proposal Sent",
+    },
+    2,
+  );
+  assert.deepEqual(fromNotes.errors, []);
+  assert.equal(fromNotes.stage, "Proposal Sent");
+
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({
+      data: {
+        companyName: "Acme Bakery Ltd",
+        contactName: "Sam Baker",
+        email: "sam@acme-bakery.test",
+      },
+    });
+    const lead = await db.lead.create({
+      data: {
+        customerId: customer.id,
+        title: "Electric renewal",
+        stage: "NEW",
+        notes: "Monday group: Proposal Sent",
+      },
+    });
+    const moved = await ensureLeadBoardStages(db);
+    assert.ok(moved >= 1);
+    const updated = await db.lead.findUnique({ where: { id: lead.id } });
+    assert.equal(updated?.stage, "Proposal Sent");
+  });
 });
 
 test("import actions return a visible preview from the sample templates", async () => {

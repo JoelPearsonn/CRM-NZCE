@@ -4,6 +4,7 @@ import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
 import { ensureQuarterlyMarketReminder } from "../src/lib/desk-reminders";
 import { ensurePortalAccounts } from "../src/lib/portal-seed";
+import { ensureLeadBoardStages } from "../src/lib/lead-board";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 
 const prisma = new PrismaClient();
@@ -489,6 +490,7 @@ export async function seedDesk() {
     await ensurePortalAccounts();
     await ensureRenewalReminderTasks();
     await ensureDemoOutcomes();
+    await ensureLeadBoardStages();
     await ensureDemoArchive();
     await ensureDemoCallKinds();
     await ensureDemoRecording();
@@ -950,9 +952,9 @@ export async function seedDesk() {
     data: {
       customerId: riverside.id,
       title: "Care group dual-fuel renewal",
-      stage: "SOLD",
+      stage: "Won",
       source: "Existing book",
-      notes: "Three-site book sold onto E.ON / British Gas 12-month.",
+      notes: "Three-site book sold onto E.ON / British Gas 12-month.\nMonday group: Won",
       outcomeReason: "Incumbent beat on a 12-month E.ON / British Gas.",
       allocations: { create: [{ agentId: james.id }] },
     },
@@ -961,9 +963,9 @@ export async function seedDesk() {
     data: {
       customerId: oakfield.id,
       title: "Academy electric retender",
-      stage: "QUOTED",
+      stage: "NEW",
       source: "Inbound",
-      notes: "Waiting on governors to sign off Octopus vs EDF.",
+      notes: "Waiting on governors to sign off Octopus vs EDF.\nMonday group: Proposal Sent",
       allocations: { create: [{ agentId: priya.id }] },
     },
   });
@@ -971,9 +973,9 @@ export async function seedDesk() {
     data: {
       customerId: harbour.id,
       title: "Hotel group 2026 renewal",
-      stage: "SOLD",
+      stage: "Won",
       source: "Existing book",
-      notes: "Four supplies across Brighton and Hove.",
+      notes: "Four supplies across Brighton and Hove.\nMonday group: Won",
       outcomeReason: "Governors signed the EDF dual-fuel basket.",
       allocations: { create: [{ agentId: priya.id }, { agentId: helen.id }] },
     },
@@ -982,9 +984,9 @@ export async function seedDesk() {
     data: {
       customerId: bakery.id,
       title: "Bakery first conversation",
-      stage: "CONTACTED",
+      stage: "Hot lead Joel",
       source: "Cold call",
-      notes: "Samira asked for a callback after the Easter rush.",
+      notes: "Samira asked for a callback after the Easter rush.\nMonday group: Hot lead Joel",
       allocations: { create: [{ agentId: tom.id }] },
     },
   });
@@ -992,9 +994,9 @@ export async function seedDesk() {
     data: {
       customerId: bakery.id,
       title: "Night-shift site enquiry",
-      stage: "LOST",
+      stage: "Lost",
       source: "Cold call",
-      notes: "Second site — they stayed with the incumbent.",
+      notes: "Second site — they stayed with the incumbent.\nMonday group: Lost",
       outcomeReason: "Stayed with incumbent on price.",
       allocations: { create: [{ agentId: tom.id }] },
     },
@@ -1003,9 +1005,9 @@ export async function seedDesk() {
     data: {
       customerId: mersey.id,
       title: "HH warehouse book",
-      stage: "SOLD",
+      stage: "Won",
       source: "Referral",
-      notes: "Two HH MPANs onto SmartestEnergy.",
+      notes: "Two HH MPANs onto SmartestEnergy.\nMonday group: Won",
       outcomeReason: "HH book sold onto SmartestEnergy.",
       allocations: { create: [{ agentId: tom.id }] },
     },
@@ -1014,9 +1016,9 @@ export async function seedDesk() {
     data: {
       customerId: parish.id,
       title: "Parish hall gas",
-      stage: "NEW",
+      stage: "Potential Lead Joel",
       source: "Website",
-      notes: "Small AQ, charity rates requested.",
+      notes: "Small AQ, charity rates requested.\nMonday group: Potential Lead Joel",
       allocations: { create: [{ agentId: james.id }] },
     },
   });
@@ -1024,9 +1026,9 @@ export async function seedDesk() {
     data: {
       customerId: steel.id,
       title: "Works HH + gas retender",
-      stage: "TENDERING",
+      stage: "Sent For Tender",
       source: "Existing book",
-      notes: "Contract ends in 12 days. Quotes in from Total, SSE, Smartest.",
+      notes: "Contract ends in 12 days. Quotes in from Total, SSE, Smartest.\nMonday group: Sent For Tender",
       allocations: { create: [{ agentId: james.id }, { agentId: priya.id }] },
     },
   });
@@ -1034,9 +1036,9 @@ export async function seedDesk() {
     data: {
       customerId: coastal.id,
       title: "Holiday park renewal",
-      stage: "LOA_REQUESTED",
+      stage: "Sent For Tender",
       source: "Existing book",
-      notes: "LOA out to Becky. Three supplies, seasonal load.",
+      notes: "LOA out to Becky. Three supplies, seasonal load.\nMonday group: Sent For Tender",
       allocations: { create: [{ agentId: helen.id }, { agentId: tom.id }] },
     },
   });
@@ -1271,6 +1273,7 @@ export async function seedDesk() {
   await ensurePortalAccounts();
   await ensureRenewalReminderTasks();
   await ensureDemoOutcomes();
+  await ensureLeadBoardStages();
   await ensureDemoArchive();
   await ensureDemoCallKinds();
   await ensureDemoRecording();
@@ -1279,7 +1282,9 @@ export async function seedDesk() {
 }
 
 async function ensureDemoOutcomes() {
-  const sold = await prisma.lead.findMany({ where: { stage: "SOLD", outcomeReason: null } });
+  const sold = await prisma.lead.findMany({
+    where: { stage: { in: ["SOLD", "Won"] }, outcomeReason: null },
+  });
   const reasons: Record<string, string> = {
     "Care group dual-fuel renewal": "Incumbent beat on a 12-month E.ON / British Gas.",
     "Hotel group 2026 renewal": "Governors signed the EDF dual-fuel basket.",
@@ -1290,7 +1295,7 @@ async function ensureDemoOutcomes() {
     await prisma.lead.update({ where: { id: lead.id }, data: { outcomeReason: reason } });
   }
 
-  const lost = await prisma.lead.findFirst({ where: { stage: "LOST" } });
+  const lost = await prisma.lead.findFirst({ where: { stage: { in: ["LOST", "Lost"] } } });
   if (lost) {
     if (!lost.outcomeReason) {
       await prisma.lead.update({
@@ -1309,9 +1314,9 @@ async function ensureDemoOutcomes() {
     data: {
       customerId: bakery.id,
       title: "Night-shift site enquiry",
-      stage: "LOST",
+      stage: "Lost",
       source: "Cold call",
-      notes: "Second site — they stayed with the incumbent.",
+      notes: "Second site — they stayed with the incumbent.\nMonday group: Lost",
       outcomeReason: "Stayed with incumbent on price.",
       allocations: { create: [{ agentId: tom.id }] },
     },

@@ -12,6 +12,7 @@ import {
 import { QuarterlyMarketReminder } from "@/components/desk-reminder";
 import { LEAD_STAGES, OPEN_LEAD_STAGES } from "@/lib/constants";
 import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
+import { ensureLeadBoardStages } from "@/lib/lead-board";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
@@ -24,6 +25,7 @@ export default async function DashboardPage() {
   }
 
   await ensureRenewalReminderTasks();
+  await ensureLeadBoardStages();
   const admin = await getWorkingAsAdmin();
   const quarterlyReminder = admin ? await ensureQuarterlyMarketReminder() : null;
   const horizon = new Date();
@@ -74,7 +76,7 @@ export default async function DashboardPage() {
 
       <div className="mb-6 grid gap-3 md:grid-cols-5">
         <Stat label="Customers" value={String(customerCount)} hint={`${meterCount} meters on supply`} />
-        <Stat label="Open leads" value={String(openLeadCount)} hint="Not sold or lost" />
+        <Stat label="Open leads" value={String(openLeadCount)} hint="Not won or lost" />
         <Stat label="Commission due" value={gbp(due)} hint={`${gbp(estimated)} estimated`} />
         <Stat label="Paid" value={gbp(paid)} hint={`${gbp(estimated - paid)} still expected`} />
         <Stat

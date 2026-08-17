@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
+import { isClosedLeadStage } from "@/lib/constants";
 import { parseCsv, rowToRecord, validateLeadRow, type LeadPreviewRow } from "@/lib/csv-leads";
 import { optionalStr, str } from "@/lib/format";
+import { withMondayGroupNote } from "@/lib/lead-board";
 import { prisma } from "@/lib/prisma";
 
 export type LeadImportState = {
@@ -150,9 +152,8 @@ export async function runLeadImport(
       title: row.title,
       stage: row.stage,
       source: optionalStr(values.source),
-      notes: optionalStr(values.notes),
-      outcomeReason:
-        row.stage === "SOLD" || row.stage === "LOST" ? optionalStr(values.outcomeReason) : null,
+      notes: withMondayGroupNote(optionalStr(values.notes), row.stage),
+      outcomeReason: isClosedLeadStage(row.stage) ? optionalStr(values.outcomeReason) : null,
     };
 
     if (existing) {

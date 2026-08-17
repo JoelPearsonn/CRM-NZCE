@@ -1,17 +1,28 @@
 export const LEAD_STAGES = [
-  { value: "NEW", label: "New" },
-  { value: "CONTACTED", label: "Contacted" },
-  { value: "LOA_REQUESTED", label: "LOA requested" },
-  { value: "TENDERING", label: "Tendering" },
-  { value: "QUOTED", label: "Quoted" },
-  { value: "SOLD", label: "Sold" },
-  { value: "LOST", label: "Lost" },
+  { value: "Potential Lead Joel", label: "Potential Lead Joel" },
+  { value: "Potential Lead Pauly", label: "Potential Lead Pauly" },
+  { value: "Steve Madden Leads", label: "Steve Madden Leads" },
+  { value: "Potential Lead Rory", label: "Potential Lead Rory" },
+  { value: "Hot lead Joel", label: "Hot lead Joel" },
+  { value: "Harry Accuradata Leads", label: "Harry Accuradata Leads" },
+  { value: "Hot Leads Rory", label: "Hot Leads Rory" },
+  { value: "Sent For Tender", label: "Sent For Tender" },
+  { value: "Tender Received", label: "Tender Received" },
+  { value: "Set Up Call Completed", label: "Set Up Call Completed" },
+  { value: "Proposal Sent", label: "Proposal Sent" },
+  { value: "Won", label: "Won" },
+  { value: "Lost", label: "Lost" },
+  { value: "Follow up at a Later Date", label: "Follow up at a Later Date" },
+  { value: "Rory Follow up", label: "Rory Follow up" },
+  { value: "Joel Follow Up", label: "Joel Follow Up" },
 ] as const;
 
 export type LeadStage = (typeof LEAD_STAGES)[number]["value"];
 
+export const DEFAULT_LEAD_STAGE: LeadStage = "Potential Lead Joel";
+
 export const OPEN_LEAD_STAGES = LEAD_STAGES.filter(
-  (stage) => stage.value !== "SOLD" && stage.value !== "LOST",
+  (stage) => stage.value !== "Won" && stage.value !== "Lost",
 ).map((stage) => stage.value);
 
 export const FUEL_TYPES = [
@@ -54,10 +65,22 @@ export const TENDER_STATUSES = [
   { value: "EXPIRED", label: "Expired" },
 ] as const;
 
-export const TENDER_LEAD_STAGES = ["TENDERING", "QUOTED"] as const;
+export const TENDER_LEAD_STAGES = ["Sent For Tender", "Tender Received", "TENDERING", "QUOTED"] as const;
 
 export function isTenderLeadStage(stage: string) {
   return (TENDER_LEAD_STAGES as readonly string[]).includes(stage);
+}
+
+export function isWonLeadStage(stage: string) {
+  return stage === "Won" || stage === "SOLD";
+}
+
+export function isLostLeadStage(stage: string) {
+  return stage === "Lost" || stage === "LOST";
+}
+
+export function isClosedLeadStage(stage: string) {
+  return isWonLeadStage(stage) || isLostLeadStage(stage);
 }
 
 export const TPI_PARTNERS = [

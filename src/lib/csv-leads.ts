@@ -1,6 +1,7 @@
-import { CSV_LEAD_HEADERS, LEAD_STAGES } from "@/lib/constants";
+import { CSV_LEAD_HEADERS } from "@/lib/constants";
 import { csvLine, parseCsv, rowToRecord } from "@/lib/csv-import";
 import { isEmail } from "@/lib/format";
+import { isKnownLeadStageInput, resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
 
 export type LeadImportAction = "CREATE_LEAD" | "UPDATE_LEAD" | "SKIP";
 
@@ -17,14 +18,12 @@ export type LeadPreviewRow = {
   values: Record<string, string>;
 };
 
-const STAGES = new Set<string>(LEAD_STAGES.map((item) => item.value));
-
 export function leadsCsvTemplate() {
   return `${csvLine(CSV_LEAD_HEADERS)}\n${csvLine([
     "Example Bakery Ltd",
     "samira@example-bakery.co.uk",
     "Bakery electric renewal",
-    "TENDERING",
+    "Sent For Tender",
     "Referral",
     "",
     "tom.brennan@nzce.co.uk",
@@ -37,14 +36,15 @@ export function validateLeadRow(values: Record<string, string>, line: number): L
   const companyName = values.companyName ?? "";
   const email = (values.email ?? "").toLowerCase();
   const title = values.title ?? "";
-  const stage = (values.stage ?? "NEW").toUpperCase();
+  const rawStage = values.stage ?? "";
+  const notes = values.notes ?? "";
+  const stage = resolveLeadBoardStage({ stage: rawStage, notes });
 
   if (!companyName) errors.push("Company name is required.");
   if (!email || !isEmail(email)) errors.push("A valid email is required to match the customer.");
   if (!title) errors.push("Lead title is required.");
-  if (!STAGES.has(stage)) errors.push("Stage is not a known pipeline value.");
-  if ((stage === "SOLD" || stage === "LOST") && !(values.outcomeReason ?? "").trim()) {
-    errors.push(stage === "SOLD" ? "Say why this was won." : "Say why this was lost.");
+  if (rawStage && !isKnownLeadStageInput(rawStage, notes)) {
+    errors.push("Stage is not a known pipeline value.");
   }
 
   return {
@@ -57,7 +57,7 @@ export function validateLeadRow(values: Record<string, string>, line: number): L
     customerMatch: null,
     leadMatch: null,
     errors,
-    values: { ...values, email, stage },
+    values: { ...values, email, stage, notes: withMondayGroupNote(notes, stage) },
   };
 }
 

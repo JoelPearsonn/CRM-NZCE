@@ -111,7 +111,7 @@ model Lead {
   id         String   @id @default(cuid())
   customerId String
   title      String
-  stage      String   @default("NEW")
+  stage      String   @default("Potential Lead Joel")
   source         String?
   notes          String?
   outcomeReason  String?

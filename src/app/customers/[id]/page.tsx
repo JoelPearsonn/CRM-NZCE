@@ -19,6 +19,7 @@ import {
 import { archiveCustomer } from "@/app/actions/customers";
 import { toggleTask } from "@/app/actions/desk";
 import { CALL_NOTE_KINDS, isTenderLeadStage, labelFor } from "@/lib/constants";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import { groupMetersBySite } from "@/lib/sites";
@@ -285,7 +286,7 @@ export default async function CustomerDetailPage({
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {isTenderLeadStage(lead.stage) ? (
+                    {isTenderLeadStage(resolveLeadBoardStage(lead)) ? (
                       <Link
                         href={`/customers/${customer.id}?leadId=${lead.id}#tenders`}
                         className="btn btn-brass text-[0.7rem]"
@@ -293,7 +294,7 @@ export default async function CustomerDetailPage({
                         Add response
                       </Link>
                     ) : null}
-                    <StagePill value={lead.stage} />
+                    <StagePill value={resolveLeadBoardStage(lead)} />
                   </div>
                 </li>
               ))}

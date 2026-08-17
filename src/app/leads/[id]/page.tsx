@@ -2,13 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { FuelPill, PageHeader, Section, StagePill, TenderStatusPill } from "@/components/ui";
-import { isTenderLeadStage } from "@/lib/constants";
+import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage } from "@/lib/constants";
+import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeadDetailPage({ params }: IdPageProps) {
   const { id } = await params;
+  await ensureLeadBoardStages();
   const [lead, agents] = await Promise.all([
     prisma.lead.findUnique({
       where: { id },
@@ -22,7 +24,8 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
   ]);
   if (!lead) notFound();
-  const canAddTender = isTenderLeadStage(lead.stage);
+  const boardStage = resolveLeadBoardStage(lead);
+  const canAddTender = isTenderLeadStage(boardStage);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -43,7 +46,7 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
       />
 
       <div className="mb-4 flex items-center gap-3">
-        <StagePill value={lead.stage} />
+        <StagePill value={boardStage} />
         <span className="text-xs text-muted">Updated {formatDateTime(lead.updatedAt)}</span>
       </div>
 
@@ -52,13 +55,12 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
           <div className="p-4">
             <StageSelect
               leadId={lead.id}
-              stage={lead.stage}
+              stage={boardStage}
               outcomeReason={lead.outcomeReason}
             />
-            {lead.outcomeReason ? (
+            {lead.outcomeReason && isClosedLeadStage(boardStage) ? (
               <p className="mt-2 text-sm">
-                {lead.stage === "LOST" ? "Lost" : lead.stage === "SOLD" ? "Won" : "Reason"}:{" "}
-                {lead.outcomeReason}
+                {isWonLeadStage(boardStage) ? "Won" : "Lost"}: {lead.outcomeReason}
               </p>
             ) : null}
             <p className="mt-2 text-xs text-muted">
@@ -101,8 +103,8 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         >
           {lead.tenderResponses.length === 0 ? (
             <p className="p-4 text-sm text-muted">
-              This lead is {lead.stage === "TENDERING" ? "in tendering" : "quoted"}. Log supplier
-              quotes on the customer — no email is sent from here.
+              This lead is in {boardStage}. Log supplier quotes on the customer — no email is sent
+              from here.
             </p>
           ) : (
             <ul className="divide-y divide-rule">

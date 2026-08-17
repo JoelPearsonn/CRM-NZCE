@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
-import { LEAD_STAGES, labelFor } from "@/lib/constants";
+import { DEFAULT_LEAD_STAGE, LEAD_STAGES, isClosedLeadStage, labelFor } from "@/lib/constants";
 import { optionalStr, str } from "@/lib/format";
+import { resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
 import { prisma } from "@/lib/prisma";
 
 export type ActionState = { error?: string };
@@ -23,7 +24,10 @@ export async function saveLead(
   const id = optionalStr(formData.get("id"));
   const customerId = str(formData.get("customerId"));
   const title = str(formData.get("title"));
-  const stage = str(formData.get("stage")) || "NEW";
+  const stage = resolveLeadBoardStage({
+    stage: str(formData.get("stage")) || DEFAULT_LEAD_STAGE,
+    notes: optionalStr(formData.get("notes")),
+  });
   const outcomeReason = optionalStr(formData.get("outcomeReason"));
   const agentIds = agentIdsFrom(formData);
 
@@ -31,9 +35,6 @@ export async function saveLead(
   if (!title) return { error: "Give the lead a title." };
   if (!LEAD_STAGES.some((item) => item.value === stage)) {
     return { error: "Choose a valid pipeline stage." };
-  }
-  if ((stage === "SOLD" || stage === "LOST") && !outcomeReason) {
-    return { error: stage === "SOLD" ? "Say why this was won." : "Say why this was lost." };
   }
 
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
@@ -47,8 +48,8 @@ export async function saveLead(
     title,
     stage,
     source: optionalStr(formData.get("source")),
-    notes: optionalStr(formData.get("notes")),
-    outcomeReason: stage === "SOLD" || stage === "LOST" ? outcomeReason : null,
+    notes: withMondayGroupNote(optionalStr(formData.get("notes")), stage),
+    outcomeReason: isClosedLeadStage(stage) ? outcomeReason : null,
   };
 
   if (id) {
@@ -99,16 +100,20 @@ export async function saveLead(
 
 export async function updateLeadStage(formData: FormData) {
   const id = str(formData.get("id"));
-  const stage = str(formData.get("stage"));
+  const requested = str(formData.get("stage"));
   const outcomeReason = optionalStr(formData.get("outcomeReason"));
-  if (!id || !LEAD_STAGES.some((item) => item.value === stage)) return;
-  if ((stage === "SOLD" || stage === "LOST") && !outcomeReason) return;
+  if (!id) return;
+  const existing = await prisma.lead.findUnique({ where: { id } });
+  if (!existing) return;
+  const stage = resolveLeadBoardStage({ stage: requested, notes: existing.notes });
+  if (!LEAD_STAGES.some((item) => item.value === stage)) return;
 
   const lead = await prisma.lead.update({
     where: { id },
     data: {
       stage,
-      outcomeReason: stage === "SOLD" || stage === "LOST" ? outcomeReason : null,
+      notes: withMondayGroupNote(existing.notes, stage),
+      outcomeReason: isClosedLeadStage(stage) ? outcomeReason ?? existing.outcomeReason : null,
     },
     include: { customer: true },
   });
