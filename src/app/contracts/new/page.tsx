@@ -27,7 +27,7 @@ export default async function NewDealPage({ searchParams }: SearchPageProps) {
       <PageHeader
         kicker="Sold"
         title="Record contract"
-        description="Finance fields sit on the deal: due date, amount due, estimated commission, actual paid."
+        description="Put CSD, CED, TPI and the full deal value. Net commission and each payout’s amount due update on the form before you save."
       />
       <DealForm
         customers={customers}
