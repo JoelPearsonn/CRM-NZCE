@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { GenerateLoaButton, GenerateLoaPanel } from "@/components/generate-loa";
 import { AllocateAgents, StageSelect } from "@/components/lead-controls";
 import { SendLoaPanel } from "@/components/send-loa";
 import { FuelPill, PageHeader, Section, StagePill, TenderStatusPill } from "@/components/ui";
@@ -9,6 +10,7 @@ import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
 
 export default async function LeadDetailPage({ params }: IdPageProps) {
   const { id } = await params;
@@ -17,7 +19,13 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
     prisma.lead.findUnique({
       where: { id },
       include: {
-        customer: { include: { meters: true, loaEnvelopes: { orderBy: { createdAt: "desc" }, take: 1 } } },
+        customer: {
+          include: {
+            meters: true,
+            loaEnvelopes: { orderBy: { createdAt: "desc" }, take: 1 },
+            deals: { select: { tpiPartner: true, updatedAt: true }, orderBy: { updatedAt: "desc" } },
+          },
+        },
         allocations: { include: { agent: true } },
         deals: true,
         tenderResponses: { orderBy: [{ status: "asc" }, { receivedOn: "desc" }] },
@@ -28,6 +36,7 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
   if (!lead) notFound();
   const boardStage = resolveLeadBoardStage(lead);
   const canAddTender = isTenderLeadStage(boardStage);
+  const loaKind = tpiLoaKindFromDeals([...lead.deals, ...lead.customer.deals]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -37,6 +46,11 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         description={`${lead.customer.companyName}${lead.source ? ` · ${lead.source}` : ""}`}
         actions={
           <>
+            <GenerateLoaButton
+              customerId={lead.customerId}
+              leadId={lead.id}
+              kind={loaKind}
+            />
             <Link href={`/customers/${lead.customerId}#loa`} className="btn btn-ghost">
               Send LOA
             </Link>
@@ -82,6 +96,15 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
             />
           </div>
         </Section>
+      </div>
+
+      <div className="mt-4">
+        <GenerateLoaPanel
+          customerId={lead.customerId}
+          leadId={lead.id}
+          companyName={lead.customer.companyName}
+          suggestedKind={loaKind}
+        />
       </div>
 
       <div className="mt-4">

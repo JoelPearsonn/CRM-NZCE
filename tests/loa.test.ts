@@ -3,6 +3,13 @@ import { test } from "node:test";
 import { isDocusignConfigured, parseDocusignWebhook, type DocusignClient } from "../src/lib/docusign";
 import { buildLoaDocument, loaTabValues } from "../src/lib/loa-document";
 import { completeLoaEnvelope, sendCustomerLoa } from "../src/lib/loa-send";
+import {
+  buildTpiLoaDocument,
+  formatLoaDotDate,
+  generateTpiLoa,
+  tpiLoaKindFromDeals,
+  tpiLoaKindFromPartner,
+} from "../src/lib/tpi-loa";
 import { withTestDb } from "./helpers/test-db";
 
 const acme = {
@@ -144,6 +151,112 @@ test("Send LOA with a mocked DocuSign client stores the envelope and sig link", 
     const metersAfter = await db.meter.findMany({ where: { customerId: customer.id } });
     assert.ok(metersAfter.every((meter) => meter.loaStatus === "RECEIVED"));
     assert.ok(metersAfter.every((meter) => meter.loaSignedBy === "Sam Baker"));
+  });
+});
+
+test("IE LOA fills Acme Bakery onto the Infinite letter", () => {
+  const now = new Date(2026, 7, 17);
+  const document = buildTpiLoaDocument(acme, "IE", now);
+  assert.equal(document.kind, "IE");
+  assert.equal(document.templateLabel, "IE LOA");
+  assert.equal(document.companyName, "Acme Bakery Ltd");
+  assert.equal(document.tradingName, "Acme Bakes");
+  assert.equal(document.contactName, "Sam Baker");
+  assert.equal(document.email, "sam@acme-bakery.test");
+  assert.equal(document.phone, "0117 000 0000");
+  assert.equal(document.addressLine1, "1 High Street");
+  assert.equal(document.city, "Bristol");
+  assert.equal(document.postcode, "BS1 1AA");
+  assert.equal(document.country, "United Kingdom");
+  assert.equal(document.companyNumber, "");
+  assert.equal(document.position, "");
+  assert.equal(document.loaDate, "17.08.2026");
+  assert.equal(formatLoaDotDate(now), "17.08.2026");
+  assert.equal(document.validMonths, 12);
+  assert.match(document.appointedName, /Infinite Energy Group Holdings Ltd/);
+  assert.match(document.html, /Acme Bakery Ltd/);
+  assert.match(document.html, /Sam Baker/);
+  assert.match(document.html, /1 High Street/);
+  assert.match(document.html, /Infinite Energy Group Holdings Ltd/);
+  assert.match(document.html, /12 months/);
+  assert.match(document.html, /7 Bell Yard, London WC2A 2JR/);
+  assert.doesNotMatch(document.html, /Joose Energy Ltd/);
+  assert.match(document.pdf.toString("latin1"), /^%PDF-1.4/);
+  assert.match(document.pdf.toString("latin1"), /Acme Bakery Ltd/);
+  assert.match(document.pdf.toString("latin1"), /Infinite Energy Group Holdings Ltd/);
+  assert.match(document.pdf.toString("latin1"), /7 Bell Yard/);
+  assert.equal(document.fileName, "IE-LOA-Acme-Bakery-Ltd.pdf");
+});
+
+test("J LOA fills Acme Bakery onto the Joose letter", () => {
+  const document = buildTpiLoaDocument(acme, "JOOSE", new Date(2026, 7, 17));
+  assert.equal(document.kind, "JOOSE");
+  assert.equal(document.templateLabel, "J LOA");
+  assert.match(document.appointedName, /Joose Energy Ltd \/ UCR Consultants/);
+  assert.match(document.html, /Acme Bakery Ltd/);
+  assert.match(document.html, /cannot enter into or terminate contracts without our permission/);
+  assert.match(document.html, /Joose Energy Ltd/);
+  assert.match(document.html, /Athenaeum House, Newcastle Road, Sunderland SR5 1JT/);
+  assert.doesNotMatch(document.html, /Infinite Energy Group Holdings Ltd/);
+  assert.match(document.pdf.toString("latin1"), /Joose Energy Ltd \/ UCR Consultants/);
+  assert.match(document.pdf.toString("latin1"), /Athenaeum House/);
+  assert.equal(document.fileName, "J-LOA-Acme-Bakery-Ltd.pdf");
+});
+
+test("TPI partner picks IE or Joose, otherwise the user chooses", () => {
+  assert.equal(tpiLoaKindFromPartner("INFINITE"), "IE");
+  assert.equal(tpiLoaKindFromPartner("JOOSE"), "JOOSE");
+  assert.equal(tpiLoaKindFromPartner("JOOSE_UCR"), "JOOSE");
+  assert.equal(tpiLoaKindFromPartner("NONE"), null);
+  assert.equal(tpiLoaKindFromPartner("TUS"), null);
+  assert.equal(tpiLoaKindFromDeals([{ tpiPartner: "NONE" }, { tpiPartner: "INFINITE" }]), "IE");
+  assert.equal(
+    tpiLoaKindFromDeals([
+      { tpiPartner: "JOOSE", updatedAt: new Date("2026-08-01") },
+      { tpiPartner: "INFINITE", updatedAt: new Date("2026-07-01") },
+    ]),
+    "JOOSE",
+  );
+});
+
+test("Generate LOA marks meters REQUESTED and does not need DocuSign", async () => {
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({
+      data: {
+        ...acme,
+        meters: {
+          create: [{ siteName: "Shop floor", fuelType: "ELECTRIC", mpan: "1234567890123" }],
+        },
+        deals: {
+          create: {
+            supplier: "Example Energy",
+            fuelType: "ELECTRIC",
+            tpiPartner: "INFINITE",
+            tpiPercent: 20,
+          },
+        },
+      },
+    });
+
+    const result = await generateTpiLoa({ customerId: customer.id, db });
+    assert.equal(result.error, undefined);
+    assert.equal(result.kind, "IE");
+    assert.equal(result.document?.companyName, "Acme Bakery Ltd");
+    assert.match(result.document?.html ?? "", /Infinite Energy Group Holdings Ltd/);
+
+    const meters = await db.meter.findMany({ where: { customerId: customer.id } });
+    assert.ok(meters.every((meter) => meter.loaStatus === "REQUESTED"));
+  });
+});
+
+test("Generate LOA works with no meters when the user picks Joose", async () => {
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({ data: acme });
+    const result = await generateTpiLoa({ customerId: customer.id, kind: "JOOSE", db });
+    assert.equal(result.error, undefined);
+    assert.equal(result.kind, "JOOSE");
+    assert.match(result.document?.html ?? "", /Acme Bakery Ltd/);
+    assert.match(result.document?.html ?? "", /Joose Energy Ltd \/ UCR Consultants/);
   });
 });
 

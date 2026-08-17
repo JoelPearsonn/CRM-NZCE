@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-finance";
 import { CustomerTenderBook } from "@/components/customer-tenders";
 import { EmailForm, NoteForm, RecordingForm, TaskForm } from "@/components/desk-forms";
+import { GenerateLoaButton, GenerateLoaPanel } from "@/components/generate-loa";
 import { MeterLoaForm } from "@/components/meter-loa";
 import { SendLoaPanel } from "@/components/send-loa";
 import { MeterObjectionForm } from "@/components/meter-objection";
@@ -27,6 +28,7 @@ import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import { groupMetersBySite } from "@/lib/sites";
 import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
 import { getWorkingAsId } from "@/lib/working-as";
 
 export default async function CustomerDetailPage({
@@ -67,6 +69,7 @@ export default async function CustomerDetailPage({
   if (!customer) notFound();
 
   const finance = financeTotals(customer.deals);
+  const loaKind = tpiLoaKindFromDeals(customer.deals);
 
   return (
     <div>
@@ -90,6 +93,7 @@ export default async function CustomerDetailPage({
             <Link href={`/leads/new?customerId=${customer.id}`} className="btn btn-ghost">
               Open lead
             </Link>
+            <GenerateLoaButton customerId={customer.id} kind={loaKind} />
             <Link href={`/customers/${customer.id}#loa`} className="btn btn-ghost">
               Send LOA
             </Link>
@@ -111,6 +115,14 @@ export default async function CustomerDetailPage({
           it back on the lists.
         </p>
       ) : null}
+
+      <div className="mb-6">
+        <GenerateLoaPanel
+          customerId={customer.id}
+          companyName={customer.companyName}
+          suggestedKind={loaKind}
+        />
+      </div>
 
       <div className="mb-6">
         <FinanceSnapshot
