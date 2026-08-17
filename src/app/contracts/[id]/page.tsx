@@ -43,7 +43,14 @@ export default async function DealDetailPage({ params }: IdPageProps) {
     ["Payout", deal.payoutType === "RESIDUAL" ? "Monthly residual" : "Split"],
     ["TPI", `${labelFor(TPI_PARTNERS, deal.tpiPartner)}${deal.tpiPercent ? ` · ${deal.tpiPercent}%` : ""}`],
     ["Full deal value", gbpExact(deal.estimatedCommission)],
-    ["Net commission", gbpExact(netCommission(deal.estimatedCommission, deal.tpiPercent))],
+    [
+      "Net commission",
+      gbpExact(
+        deal.payoutType === "RESIDUAL"
+          ? netCommission(deal.estimatedCommission, deal.tpiPercent)
+          : deal.estimatedCommission,
+      ),
+    ],
     ["Amount due", gbpExact(deal.amountDue)],
     ["Actual commission", gbpExact(deal.actualPaid)],
     ["Actual payment date", formatDate(deal.actualPaidDate)],

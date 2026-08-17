@@ -42,6 +42,7 @@ export function parseTpiPartner(raw: string | null | undefined) {
   if (value === "joose_ucr" || value === "joose + ucr" || value === "joose+ucr") return "JOOSE_UCR";
   if (value === "joose") return "JOOSE";
   if (value === "infinite" || value === "infinite_20" || value === "infinite energy 20%") return "INFINITE";
+  if (value === "tus") return "TUS";
   const known = TPI_PARTNERS.find(
     (item) => item.value.toLowerCase() === value || item.label.toLowerCase() === value,
   );
@@ -63,7 +64,12 @@ export function parsePayoutPercents(raw: string | null | undefined) {
     parts.every((part) => Number.isFinite(part) && part >= 0)
   ) {
     const total = parts.reduce((sum, part) => sum + part, 0);
-    if (Math.abs(total - 100) <= 0.5) return normalizeSplitPercents(parts);
+    if (Math.abs(total - 100) <= 0.5) {
+      // Keep zeros in place. 0/80/20 stays On Live + EOC; 80/0/20 stays On Sign + EOC.
+      // A 2-part string only pads EOC (40/60 → 40/60/0). It must not become 80/20 → On Sign + On Live
+      // when the Monday row was 0/80/20.
+      return normalizeSplitPercents(parts);
+    }
   }
   return [40, 40, 20];
 }
@@ -158,10 +164,10 @@ export function parseDealPayments(formData: FormData): { error?: string; payment
 
 export function applyPayouts(
   gross: number | null,
-  tpiPercent: number,
+  _tpiPercent: number,
   drafts: BuiltPayment[],
 ): { net: number; payments: BuiltPayment[]; rollup: ReturnType<typeof rollupPayments> } {
-  const net = netCommission(gross, tpiPercent);
+  const net = gross ?? 0;
   const amounts = splitByPercent(
     net,
     drafts.map((row) => row.percent),
@@ -217,9 +223,7 @@ export function payoutLabel(payoutType: string, percents: number[], monthCount: 
   if (payoutType === "RESIDUAL") {
     return monthCount ? `Monthly residual · ${monthCount} months` : "Monthly residual";
   }
-  const shown = [...percents];
-  while (shown.length > 2 && shown[shown.length - 1] === 0) shown.pop();
-  return shown.join(" / ");
+  return normalizeSplitPercents(percents).join(" / ");
 }
 
 export function buildImportedFinance(input: {
@@ -264,7 +268,7 @@ export function buildImportedFinance(input: {
       payoutType,
       residualMonthly,
       percents: [],
-      net: netCommission(input.estimatedCommission, tpi.tpiPercent),
+      net: input.estimatedCommission ?? 0,
       payments: [],
       rollup: { amountDue: 0, actualPaid: 0, dueDate: null, actualPaidDate: input.actualPaidDate ?? null },
       actualPaidDate: input.actualPaidDate ?? null,
@@ -325,7 +329,7 @@ export function buildImportedFinance(input: {
   if (input.payment1Fixed != null && drafts[0]) {
     drafts[0].amountOverride = input.payment1Fixed;
   }
-  const built = applyPayouts(input.estimatedCommission, tpi.tpiPercent, drafts);
+  const built = applyPayouts(input.estimatedCommission, 0, drafts);
   const payments = built.payments.map((row) => ({ ...row, actualPaid: 0 }));
   const rollup = rollupPayments(payments);
   return {

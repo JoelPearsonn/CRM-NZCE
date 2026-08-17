@@ -7,6 +7,7 @@ import {
   type LeadFilters,
 } from "@/lib/book-filters";
 import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "@/lib/constants";
+import { normalizeSplitPercents } from "@/lib/deal-payouts";
 import { toDateInput } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -162,7 +163,7 @@ export async function exportDealsCsv() {
     deal.payoutType === "RESIDUAL"
       ? ""
       : deal.payments.length
-        ? deal.payments.map((row) => row.percent).join("/")
+        ? normalizeSplitPercents(deal.payments.map((row) => row.percent)).join("/")
         : "40/40/20",
     deal.residualMonthly ?? "",
     deal.payoutType === "RESIDUAL" ? "" : toDateInput(deal.payments[0]?.expectedDate),

@@ -60,8 +60,8 @@ test("import templates download with columns the importer accepts", () => {
     3,
   );
   assert.deepEqual(infinite.errors, []);
-  assert.equal(infinite.net, 5440);
-  assert.equal(infinite.amountDue, 5440);
+  assert.equal(infinite.net, 6800);
+  assert.equal(infinite.amountDue, 6800);
   assert.match(infinite.tpiLabel ?? "", /Infinite · 20%/);
   assert.match(infinite.payoutLabel ?? "", /40 \/ 40 \/ 20/);
 
@@ -106,9 +106,9 @@ test("import templates download with columns the importer accepts", () => {
       { stage: "ON_LIVE", percent: 60, expectedDate: null, actualPaid: 0 },
     ],
   });
-  assert.equal(updatePreview.net, 7500);
-  assert.deepEqual(updatePreview.payoutLabel, "40 / 60");
-  assert.equal(updatePreview.amountDue, 7500);
+  assert.equal(updatePreview.net, 10000);
+  assert.deepEqual(updatePreview.payoutLabel, "40 / 60 / 0");
+  assert.equal(updatePreview.amountDue, 10000);
 
   const leads = parseCsv(leadsCsvTemplate());
   assert.deepEqual(leads[0], [...CSV_LEAD_HEADERS]);

@@ -73,10 +73,13 @@ export function liveDealPreview(input: {
   const gross = typeof input.gross === "number" ? input.gross : (parseMoney(input.gross ?? null) ?? 0);
   const tpiPercent =
     typeof input.tpiPercent === "number" ? input.tpiPercent : (parseMoney(input.tpiPercent ?? null) ?? 0);
-  const net = netCommission(gross, tpiPercent);
-  const tpiAmount = roundPence(Math.max(0, gross - net));
+  const residualNet = netCommission(gross, tpiPercent);
+  const splitNet = gross;
+  const isResidual = (input.payoutType ?? "SPLIT") === "RESIDUAL";
+  const net = isResidual ? residualNet : splitNet;
+  const tpiAmount = isResidual ? roundPence(Math.max(0, gross - residualNet)) : 0;
 
-  if ((input.payoutType ?? "SPLIT") === "RESIDUAL") {
+  if (isResidual) {
     const start = parseLiveDate(input.start);
     const end = parseLiveDate(input.end);
     if (!start || !end) {
@@ -170,11 +173,17 @@ export function contractMonths(start: Date | null | undefined, end: Date | null 
 export function rollupPayments(payments: PaymentLike[]) {
   const due = roundPence(payments.reduce((sum, row) => sum + (row.amountDue ?? 0), 0));
   const paid = roundPence(payments.reduce((sum, row) => sum + (row.actualPaid ?? 0), 0));
-  const unpaid = payments.filter((row) => (row.amountDue ?? 0) - (row.actualPaid ?? 0) > 0.004);
+  const unpaid = payments.filter(
+    (row) => (row.amountDue ?? 0) > 0.004 && (row.amountDue ?? 0) - (row.actualPaid ?? 0) > 0.004,
+  );
   const dueDate =
-    unpaid.find((row) => row.expectedDate)?.expectedDate ??
-    payments.find((row) => row.expectedDate)?.expectedDate ??
-    null;
+    unpaid
+      .filter((row) => row.expectedDate)
+      .slice()
+      .sort(
+        (left, right) =>
+          (left.expectedDate as Date).getTime() - (right.expectedDate as Date).getTime(),
+      )[0]?.expectedDate ?? null;
   return { amountDue: due, actualPaid: paid, dueDate };
 }
 

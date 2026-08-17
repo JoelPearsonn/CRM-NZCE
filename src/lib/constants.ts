@@ -88,6 +88,7 @@ export const TPI_PARTNERS = [
   { value: "JOOSE_UCR", label: "Joose + UCR", percent: 30 },
   { value: "JOOSE", label: "Joose", percent: 25 },
   { value: "INFINITE", label: "Infinite", percent: 20 },
+  { value: "TUS", label: "TUS", percent: 0 },
 ] as const;
 
 export const PAYMENT_STAGES = [
@@ -104,7 +105,8 @@ export const PAYOUT_TYPES = [
 export const PAYOUT_PRESETS = [
   { value: "40_40_20", label: "40 / 40 / 20 · sign / live / EOC", percents: [40, 40, 20] },
   { value: "0_80_20", label: "0 / 80 / 20 · sign / live / EOC", percents: [0, 80, 20] },
-  { value: "40_60", label: "40 / 60 · sign / live", percents: [40, 60, 0] },
+  { value: "80_0_20", label: "80 / 0 / 20 · sign / live / EOC", percents: [80, 0, 20] },
+  { value: "40_60", label: "40 / 60 / 0 · sign / live / EOC", percents: [40, 60, 0] },
   { value: "CUSTOM", label: "Custom %", percents: [40, 40, 20] },
 ] as const;
 

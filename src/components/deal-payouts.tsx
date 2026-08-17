@@ -18,6 +18,7 @@ type DealWithPayments = Deal & { payments?: DealPayment[] };
 function presetFromPayments(payments: DealPayment[]) {
   const percents = payments.map((row) => row.percent);
   if (percents[0] === 0 && percents[1] === 80 && percents[2] === 20) return "0_80_20";
+  if (percents[0] === 80 && percents[1] === 0 && percents[2] === 20) return "80_0_20";
   if (percents[0] === 40 && percents[1] === 40 && percents[2] === 20) return "40_40_20";
   if (
     (percents.length === 2 && percents[0] === 40 && percents[1] === 60) ||
@@ -61,7 +62,7 @@ function rowsForPreset(
   const stages = ["ON_SIGN", "ON_LIVE", "EOC"];
   return percents.map((percent, index) => {
     const prior = existing[index];
-    const stage = prior?.stage ?? stages[index] ?? "ON_SIGN";
+    const stage = stages[index] ?? "ON_SIGN";
     const label = `Payment ${index + 1} · ${PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? `Payment ${index + 1}`}`;
     const fallbackDate =
       percent <= 0
@@ -193,7 +194,7 @@ export function DealPayoutFields({
   return (
     <div className="md:col-span-2 grid gap-4">
       <div className="grid gap-4 md:grid-cols-3">
-        <Field label="TPI partner" name="tpiPartner" hint="Deducted from the full deal value before payouts.">
+        <Field label="TPI partner" name="tpiPartner" hint="Recorded on the deal. Full deal value is already net of TPI.">
           <select
             id="tpiPartner"
             name="tpiPartner"
@@ -216,7 +217,7 @@ export function DealPayoutFields({
             onChange={(event) => setTpiPercent(event.target.value)}
           />
         </Field>
-        <Field label="Full deal value (£)" name="estimatedCommission" hint="Gross commission before TPI. Commas and £ are fine.">
+        <Field label="Full deal value (£)" name="estimatedCommission" hint="Already net of TPI. Payment 1 / 2 / 3 split this pot. Commas and £ are fine.">
           <input
             id="estimatedCommission"
             name="estimatedCommission"
@@ -243,7 +244,7 @@ export function DealPayoutFields({
           <span className="text-muted">
             TPI{preview.tpiPercent ? ` · ${tpiLabel} ${preview.tpiPercent}%` : " · none / direct"}
           </span>
-          <span>{preview.tpiAmount ? `−${gbpExact(preview.tpiAmount)}` : gbpExact(0)}</span>
+          <span>{payoutType === "RESIDUAL" && preview.tpiAmount ? `−${gbpExact(preview.tpiAmount)}` : "already in FDV"}</span>
         </div>
         <div className="flex flex-wrap items-baseline justify-between gap-2 border-t border-rule pt-2">
           <span className="font-medium">Net commission</span>

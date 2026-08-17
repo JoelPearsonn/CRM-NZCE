@@ -52,7 +52,7 @@ export default function HelpPage() {
 
         <Guide
           title="Import a list"
-          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Deal import stores Payment 1 / 2 / 3 and expected dates when those columns are present; otherwise it derives split amounts from full value × percents. Monthly residual is only for older residual deals. Nothing is deleted."
+          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Deal import stores Payment 1 / 2 / 3 and expected dates when those columns are present; otherwise it splits full deal value (already net of TPI) by the percents, keeping zeros in place. Monthly residual is only for older residual deals. Nothing is deleted."
         >
           <Link href="/import" className="btn btn-ghost">
             Import CSV
@@ -115,7 +115,7 @@ export default function HelpPage() {
 
         <Guide
           title="Record a deal"
-          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Sold-deal finance is three split legs (On Sign / On Live / EOC) each with an amount and expected date. Actual commission is one received pair for the whole deal. Monthly residual stays only on older residual deals. Two agents on a deal still split 50/50. A meter can only have one live contract."
+          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Full deal value is already net of TPI; pick the TPI partner (including TUS) so it is stored on the deal. Sold-deal finance is three split legs (On Sign / On Live / EOC) each with an amount and expected date — zeros stay, so 0/80/20 is On Live + EOC. Actual commission is one received pair for the whole deal. Monthly residual stays only on older residual deals. Two agents on a deal still split 50/50. A meter can only have one live contract."
         >
           <Link href="/contracts/new" className="btn btn-ghost">
             Record deal

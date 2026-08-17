@@ -165,7 +165,7 @@ test("parseMoney reads UK deal values the form used to treat as zero", () => {
   assert.equal(parseMoney("20%"), 20);
 });
 
-test("live calculator: full value minus TPI, then split legs, before save", () => {
+test("live calculator: FDV is already net of TPI, then split legs, before save", () => {
   const preview = liveDealPreview({
     gross: "£6,800",
     tpiPercent: "20%",
@@ -173,12 +173,12 @@ test("live calculator: full value minus TPI, then split legs, before save", () =
     percents: [40, 40, 20],
   });
   assert.equal(preview.gross, 6800);
-  assert.equal(preview.tpiAmount, 1360);
-  assert.equal(preview.net, 5440);
-  assert.equal(preview.totalDue, 5440);
+  assert.equal(preview.tpiAmount, 0);
+  assert.equal(preview.net, 6800);
+  assert.equal(preview.totalDue, 6800);
   assert.deepEqual(
     preview.legs.map((leg) => leg.amountDue),
-    [2176, 2176, 1088],
+    [2720, 2720, 1360],
   );
 });
 
@@ -205,10 +205,12 @@ test("only Joel / Admin sees the quarterly market-update reminder", () => {
 test("deal CSV import uses the same TPI and split calculator as the form", () => {
   assert.equal(parseTpiPartner("Infinite"), "INFINITE");
   assert.equal(parseTpiPartner("Joose + UCR"), "JOOSE_UCR");
+  assert.equal(parseTpiPartner("TUS"), "TUS");
   assert.equal(parseTpiPartner("Love Energy Savings"), "NONE");
   assert.deepEqual(parsePayoutPercents("40/60"), [40, 60, 0]);
   assert.deepEqual(parsePayoutPercents("50/50"), [50, 50, 0]);
   assert.deepEqual(parsePayoutPercents("0/80/20"), [0, 80, 20]);
+  assert.deepEqual(parsePayoutPercents("80/0/20"), [80, 0, 20]);
 
   const infinite = buildImportedFinance({
     estimatedCommission: 6800,
@@ -221,12 +223,12 @@ test("deal CSV import uses the same TPI and split calculator as the form", () =>
     dueDate: new Date("2026-04-01T12:00:00.000Z"),
   });
   assert.equal(infinite.tpiPercent, 20);
-  assert.equal(infinite.net, 5440);
+  assert.equal(infinite.net, 6800);
   assert.deepEqual(
     infinite.payments.map((row) => row.amountDue),
-    [2176, 2176, 1088],
+    [2720, 2720, 1360],
   );
-  assert.equal(infinite.rollup.amountDue, 5440);
+  assert.equal(infinite.rollup.amountDue, 6800);
 
   const jooseUcr = buildImportedFinance({
     estimatedCommission: 10000,
@@ -236,10 +238,10 @@ test("deal CSV import uses the same TPI and split calculator as the form", () =>
     contractEnd: new Date("2027-03-31T12:00:00.000Z"),
   });
   assert.equal(jooseUcr.tpiPercent, 30);
-  assert.equal(jooseUcr.net, 7000);
+  assert.equal(jooseUcr.net, 10000);
   assert.deepEqual(
     jooseUcr.payments.map((row) => row.amountDue),
-    [2800, 2800, 1400],
+    [4000, 4000, 2000],
   );
 
   const residual = buildImportedFinance({
@@ -309,6 +311,10 @@ test("40/40/20 import stores the three expected dates and amounts given", () => 
   });
   assert.equal(finance.payments.length, 3);
   assert.deepEqual(
+    finance.payments.map((row) => row.stage),
+    ["ON_SIGN", "ON_LIVE", "EOC"],
+  );
+  assert.deepEqual(
     finance.payments.map((row) => row.expectedDate?.toISOString().slice(0, 10)),
     ["2026-05-01", "2026-08-15", "2027-03-31"],
   );
@@ -321,7 +327,7 @@ test("40/40/20 import stores the three expected dates and amounts given", () => 
   assert.equal(finance.actualPaidDate?.toISOString().slice(0, 10), "2026-06-20");
 });
 
-test("0/80/20 import has payment 1 at zero and no date 1", () => {
+test("0/80/20 import creates On Live 80 + EOC 20, not On Sign 80", () => {
   const finance = buildImportedFinance({
     estimatedCommission: 1000,
     tpiPartner: "NONE",
@@ -332,11 +338,69 @@ test("0/80/20 import has payment 1 at zero and no date 1", () => {
     expectedDates: [null, new Date("2026-06-01T12:00:00.000Z"), new Date("2027-03-31T12:00:00.000Z")],
     amounts: [0, 800, 200],
   });
+  assert.deepEqual(
+    finance.payments.map((row) => row.stage),
+    ["ON_SIGN", "ON_LIVE", "EOC"],
+  );
+  assert.deepEqual(
+    finance.payments.map((row) => row.percent),
+    [0, 80, 20],
+  );
   assert.equal(finance.payments[0]?.amountDue, 0);
   assert.equal(finance.payments[0]?.expectedDate, null);
   assert.equal(finance.payments[1]?.amountDue, 800);
   assert.equal(finance.payments[1]?.expectedDate?.toISOString().slice(0, 10), "2026-06-01");
   assert.equal(finance.payments[2]?.amountDue, 200);
+  assert.equal(finance.rollup.dueDate?.toISOString().slice(0, 10), "2026-06-01");
+});
+
+test("80/0/20 import creates On Sign 80 + EOC 20", () => {
+  const finance = buildImportedFinance({
+    estimatedCommission: 1000,
+    tpiPartner: "TUS",
+    tpiPercent: 0,
+    payoutSplit: "80/0/20",
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+    expectedDates: [
+      new Date("2026-05-01T12:00:00.000Z"),
+      null,
+      new Date("2027-03-31T12:00:00.000Z"),
+    ],
+  });
+  assert.equal(finance.tpiPartner, "TUS");
+  assert.deepEqual(
+    finance.payments.map((row) => row.stage),
+    ["ON_SIGN", "ON_LIVE", "EOC"],
+  );
+  assert.deepEqual(
+    finance.payments.map((row) => row.percent),
+    [80, 0, 20],
+  );
+  assert.deepEqual(
+    finance.payments.map((row) => row.amountDue),
+    [800, 0, 200],
+  );
+  assert.equal(finance.payments[1]?.expectedDate, null);
+  assert.equal(finance.rollup.dueDate?.toISOString().slice(0, 10), "2026-05-01");
+});
+
+test("imported FDV is already net of TPI and is not cut again", () => {
+  const finance = buildImportedFinance({
+    estimatedCommission: 1000,
+    tpiPartner: "INFINITE",
+    tpiPercent: 20,
+    payoutSplit: "40/40/20",
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+  });
+  assert.equal(finance.tpiPercent, 20);
+  assert.equal(finance.net, 1000);
+  assert.equal(finance.rollup.amountDue, 1000);
+  assert.deepEqual(
+    finance.payments.map((row) => row.amountDue),
+    [400, 400, 200],
+  );
 });
 
 test("payment1Fixed overrides payment 1 when present", () => {

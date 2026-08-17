@@ -209,7 +209,10 @@ export function CustomerFinanceLedger({
       ) : (
         <div className="space-y-4 p-4">
           {deals.map((deal) => {
-            const net = netCommission(deal.estimatedCommission, deal.tpiPercent);
+            const net =
+              deal.payoutType === "RESIDUAL"
+                ? netCommission(deal.estimatedCommission, deal.tpiPercent)
+                : (deal.estimatedCommission ?? 0);
             const months = contractMonths(deal.contractStart, deal.contractEnd);
             const payments = [...(deal.payments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
             return (
