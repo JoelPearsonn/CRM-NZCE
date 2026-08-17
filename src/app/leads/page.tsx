@@ -141,6 +141,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
               customerId: lead.customerId,
               companyName: lead.customer.companyName,
               contactName: lead.customer.contactName,
+              jobTitle: lead.jobTitle,
               phone: lead.customer.phone,
               email: lead.customer.email,
               loaSent: flags.loaSent,

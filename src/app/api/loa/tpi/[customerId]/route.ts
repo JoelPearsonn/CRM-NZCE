@@ -27,6 +27,15 @@ async function loadLetter(
   });
 }
 
+function letterResponse(document: NonNullable<Awaited<ReturnType<typeof generateTpiLoa>>["document"]>, download: boolean) {
+  return new NextResponse(new Uint8Array(document.docx), {
+    headers: {
+      "Content-Type": document.mimeType,
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${document.fileName}"`,
+    },
+  });
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ customerId: string }> },
@@ -34,20 +43,12 @@ export async function GET(
   const { customerId } = await params;
   const result = await loadLetter(customerId, request, false);
   if (result.error || !result.document) {
-    return NextResponse.json({ error: result.error ?? "Could not build the LOA." }, { status: 400 });
-  }
-  const download = new URL(request.url).searchParams.get("download") === "1";
-  if (download) {
-    return new NextResponse(new Uint8Array(result.document.pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${result.document.fileName}"`,
-      },
+    return new NextResponse(result.error ?? "Could not build the LOA.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
   }
-  return new NextResponse(result.document.html, {
-    headers: { "Content-Type": "text/html; charset=utf-8" },
-  });
+  return letterResponse(result.document, new URL(request.url).searchParams.get("download") === "1");
 }
 
 export async function POST(
@@ -57,12 +58,10 @@ export async function POST(
   const { customerId } = await params;
   const result = await loadLetter(customerId, request, true);
   if (result.error || !result.document) {
-    return NextResponse.json({ error: result.error ?? "Could not build the LOA." }, { status: 400 });
+    return new NextResponse(result.error ?? "Could not build the LOA.", {
+      status: 400,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
   }
-  return new NextResponse(new Uint8Array(result.document.pdf), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${result.document.fileName}"`,
-    },
-  });
+  return letterResponse(result.document, true);
 }

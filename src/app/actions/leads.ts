@@ -48,6 +48,7 @@ export async function saveLead(
     title,
     stage,
     source: optionalStr(formData.get("source")),
+    jobTitle: optionalStr(formData.get("jobTitle")),
     notes: withMondayGroupNote(optionalStr(formData.get("notes")), stage),
     outcomeReason: isClosedLeadStage(stage) ? outcomeReason : null,
   };

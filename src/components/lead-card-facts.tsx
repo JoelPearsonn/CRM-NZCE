@@ -3,6 +3,7 @@ import { ownerFirstNames } from "@/lib/lead-card";
 export function LeadCardFacts({
   companyName,
   contactName,
+  jobTitle,
   phone,
   email,
   loaSent,
@@ -11,6 +12,7 @@ export function LeadCardFacts({
 }: {
   companyName: string;
   contactName?: string | null;
+  jobTitle?: string | null;
   phone?: string | null;
   email?: string | null;
   loaSent: boolean;
@@ -27,6 +29,11 @@ export function LeadCardFacts({
       {contactName ? (
         <p className="text-xs text-ink" data-testid="lead-contact">
           {contactName}
+        </p>
+      ) : null}
+      {jobTitle ? (
+        <p className="text-xs text-muted" data-testid="lead-job-title">
+          {jobTitle}
         </p>
       ) : null}
       {phone ? (

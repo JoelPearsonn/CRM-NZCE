@@ -279,6 +279,7 @@ test("lead cards show customer contact and LOA, and the column count matches the
     createElement(LeadCardFacts, {
       companyName: "Acme Bakery Ltd",
       contactName: "Sam Baker",
+      jobTitle: "Buyer",
       phone: "0117 555 0100",
       email: "sam@acme-bakery.test",
       loaSent: true,
@@ -288,6 +289,7 @@ test("lead cards show customer contact and LOA, and the column count matches the
   );
   assert.match(html, /Acme Bakery Ltd/);
   assert.match(html, /Sam Baker/);
+  assert.match(html, /Buyer/);
   assert.match(html, /0117 555 0100/);
   assert.match(html, /sam@acme-bakery\.test/);
   assert.match(html, /LOA sent/);
@@ -300,11 +302,14 @@ test("lead cards show customer contact and LOA, and the column count matches the
     { stage: "Potential Lead Joel", notes: null },
     { stage: "NEW", notes: "Monday group: Potential Lead Joel" },
     { stage: "Hot lead Joel", notes: null },
+    { stage: "Hot lead Joel", notes: null },
+    { stage: "Hot lead Joel", notes: null },
+    { stage: "Hot lead Joel", notes: null },
     { stage: "Won", notes: null },
   ];
   const counts = countLeadsByColumn(leads);
   assert.equal(counts["Potential Lead Joel"], 2);
-  assert.equal(counts["Hot lead Joel"], 1);
+  assert.equal(counts["Hot lead Joel"], 4);
   assert.equal(counts.Won, 1);
   assert.equal(
     Object.values(counts).reduce((sum, count) => sum + count, 0),
@@ -332,13 +337,21 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadBoardColumns("Won").length, 1);
 
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
-  assert.match(css, /\.lead-column\s*\{[^}]*min-width:\s*16\.25rem/s);
-  assert.match(css, /\.desk-main:has\(\.lead-board\)\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*scroll/s);
+  assert.doesNotMatch(css, /\.lead-board\s*\{[^}]*overflow-y:/s);
+  assert.match(css, /\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
+  assert.match(css, /\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
+  assert.match(css, /\.desk-main:has\(\.lead-board-shell\)\s*\{[^}]*overflow-x:\s*visible/s);
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
   assert.equal(kanban.includes("column.length === 0"), true);
   assert.match(kanban, /columns\.map/);
+  assert.match(kanban, /lead-jump/);
+  assert.equal((kanban.match(/LEAD_STAGES\.map/g) ?? []).length >= 1, true);
+  assert.equal(kanban.includes("Company —"), false);
+  const jumpCount = (kanban.match(/lead-jump-item/g) ?? []).length;
+  assert.ok(jumpCount >= 1);
+  assert.equal(kanban.includes("data-testid=\"lead-column-count\""), true);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {

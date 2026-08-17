@@ -114,6 +114,7 @@ model Lead {
   title      String
   stage      String   @default("Potential Lead Joel")
   source         String?
+  jobTitle       String?
   notes          String?
   outcomeReason  String?
   createdAt      DateTime @default(now())

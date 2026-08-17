@@ -47,7 +47,7 @@ export function GenerateLoaButton({
       <input type="hidden" name="kind" value={kind} />
       {leadId ? <input type="hidden" name="leadId" value={leadId} /> : null}
       <button className={className} type="submit">
-        Generate LOA
+        Generate {tpiLoaTemplateLabel(kind)}
       </button>
     </form>
   );
@@ -72,15 +72,13 @@ export function GenerateLoaPanel({
       <div className="mb-3">
         <h2 className="section-title">Generate LOA</h2>
         <p className="mt-1 text-sm text-muted">
-          Fills IE LOA (Infinite) or SOFT_LOA (Joose / Joose+UCR) from {companyName} — company,
-          contact and address. Download the PDF. DocuSign is not required.
+          Fills IE LOA or SOFT_LOA from {companyName} — company, contact, address and job title.
+          Downloads the Word letter. DocuSign is not required.
         </p>
       </div>
       {suggestedKind ? (
         <>
-          <p className="mb-3 text-sm">
-            Using {tpiLoaTemplateLabel(suggestedKind)} from this account’s TPI.
-          </p>
+          <p className="mb-3 text-sm">Using {tpiLoaTemplateLabel(suggestedKind)} from this account’s TPI.</p>
           <div className="flex flex-wrap gap-2">
             <a
               href={previewHref(suggestedKind)}
@@ -101,18 +99,13 @@ export function GenerateLoaPanel({
           <p className="mt-3 text-xs text-muted">Need the other letter?</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {suggestedKind !== "IE" ? (
-              <GenerateForm
-                customerId={customerId}
-                leadId={leadId}
-                kind="IE"
-                label="Generate IE LOA (Infinite)"
-              />
+              <GenerateForm customerId={customerId} leadId={leadId} kind="IE" label="Generate IE LOA" />
             ) : (
               <GenerateForm
                 customerId={customerId}
                 leadId={leadId}
                 kind="JOOSE"
-                label="Generate SOFT_LOA (Joose / Joose+UCR)"
+                label="Generate SOFT_LOA"
               />
             )}
           </div>
@@ -122,23 +115,17 @@ export function GenerateLoaPanel({
           <p className="mb-3 text-sm">No TPI on this account yet — choose the letter.</p>
           <div className="flex flex-wrap gap-2">
             <a href={previewHref("IE")} className="btn btn-ghost" target="_blank" rel="noreferrer">
-              Preview IE LOA (Infinite)
+              Preview IE LOA
             </a>
-            <GenerateForm
-              customerId={customerId}
-              leadId={leadId}
-              kind="IE"
-              label="Generate IE LOA (Infinite)"
-              primary
-            />
+            <GenerateForm customerId={customerId} leadId={leadId} kind="IE" label="Generate IE LOA" primary />
             <a href={previewHref("JOOSE")} className="btn btn-ghost" target="_blank" rel="noreferrer">
-              Preview SOFT_LOA (Joose / Joose+UCR)
+              Preview SOFT_LOA
             </a>
             <GenerateForm
               customerId={customerId}
               leadId={leadId}
               kind="JOOSE"
-              label="Generate SOFT_LOA (Joose / Joose+UCR)"
+              label="Generate SOFT_LOA"
               primary
             />
           </div>

@@ -14,6 +14,7 @@ import {
   tpiLoaKindFromPartner,
   tpiLoaTemplateLabel,
 } from "../src/lib/tpi-loa";
+import { buildTestLoaDocx, xmlFromDocx } from "./helpers/loa-docx";
 import { withTestDb } from "./helpers/test-db";
 
 const acme = {
@@ -158,62 +159,58 @@ test("Send LOA with a mocked DocuSign client stores the envelope and sig link", 
   });
 });
 
-test("IE LOA fills Acme Bakery onto the Infinite letter", () => {
+test("IE LOA fills Acme Bakery placeholders in the Word template", () => {
   const now = new Date(2026, 7, 17);
-  const document = buildTpiLoaDocument(acme, "IE", now);
+  const template = buildTestLoaDocx({ splitCompany: true });
+  const document = buildTpiLoaDocument({ ...acme, position: "Buyer" }, "IE", template, now);
   assert.equal(document.kind, "IE");
-  assert.equal(document.templateLabel, "IE LOA (Infinite)");
+  assert.equal(document.templateLabel, "IE LOA");
   assert.equal(document.companyName, "Acme Bakery Ltd");
   assert.equal(document.tradingName, "Acme Bakes");
-  assert.equal(document.contactName, "Sam Baker");
-  assert.equal(document.email, "sam@acme-bakery.test");
-  assert.equal(document.phone, "0117 000 0000");
-  assert.equal(document.addressLine1, "1 High Street");
-  assert.equal(document.city, "Bristol");
-  assert.equal(document.postcode, "BS1 1AA");
-  assert.equal(document.country, "United Kingdom");
+  assert.equal(document.town, "Bristol");
+  assert.equal(document.country, "");
   assert.equal(document.companyNumber, "");
-  assert.equal(document.position, "");
+  assert.equal(document.position, "Buyer");
   assert.equal(document.loaDate, "17.08.2026");
   assert.equal(formatLoaDotDate(now), "17.08.2026");
-  assert.equal(document.validMonths, 12);
-  assert.match(document.appointedName, /Infinite Energy Group Holdings Ltd/);
-  assert.match(document.html, /Acme Bakery Ltd/);
-  assert.match(document.html, /Sam Baker/);
-  assert.match(document.html, /1 High Street/);
-  assert.match(document.html, /Infinite Energy Group Holdings Ltd/);
-  assert.match(document.html, /12 months/);
-  assert.match(document.html, /7 Bell Yard, London WC2A 2JR/);
-  assert.doesNotMatch(document.html, /Joose Energy Ltd/);
-  assert.match(document.pdf.toString("latin1"), /^%PDF-1.4/);
-  assert.match(document.pdf.toString("latin1"), /Acme Bakery Ltd/);
-  assert.match(document.pdf.toString("latin1"), /Infinite Energy Group Holdings Ltd/);
-  assert.match(document.pdf.toString("latin1"), /7 Bell Yard/);
-  assert.equal(document.fileName, "IE-LOA-Acme-Bakery-Ltd.pdf");
+  assert.equal(document.fileName, "IE-LOA-Acme-Bakery-Ltd.docx");
+  assert.match(document.docx.toString("latin1"), /^PK/);
+  const xml = xmlFromDocx(document.docx);
+  assert.match(xml, /Acme Bakery Ltd/);
+  assert.match(xml, /Acme Bakes/);
+  assert.match(xml, /1 High Street/);
+  assert.match(xml, /Bristol/);
+  assert.match(xml, /BS1 1AA/);
+  assert.match(xml, /17\.08\.2026/);
+  assert.match(xml, /Sam Baker/);
+  assert.match(xml, /Buyer/);
+  assert.match(xml, /0117 000 0000/);
+  assert.match(xml, /sam@acme-bakery\.test/);
+  assert.match(xml, /w:val="1F497D"/);
+  assert.doesNotMatch(xml, /\{\{companyName\}\}/);
+  const header = xmlFromDocx(document.docx, "word/header1.xml");
+  assert.match(header, /0117 000 0000/);
+  assert.match(header, /w:val="1F497D"/);
 });
 
-test("SOFT_LOA fills Acme Bakery onto the Joose letter", () => {
-  const document = buildTpiLoaDocument(acme, "JOOSE", new Date(2026, 7, 17));
-  assert.equal(document.kind, "JOOSE");
-  assert.equal(document.templateLabel, "SOFT_LOA (Joose / Joose+UCR)");
-  assert.match(document.appointedName, /Joose Energy Ltd \/ UCR Consultants/);
-  assert.match(document.html, /Acme Bakery Ltd/);
-  assert.match(document.html, /cannot enter into or terminate contracts without our permission/);
-  assert.match(document.html, /Joose Energy Ltd/);
-  assert.match(document.html, /Athenaeum House, Newcastle Road, Sunderland SR5 1JT/);
-  assert.doesNotMatch(document.html, /Infinite Energy Group Holdings Ltd/);
-  assert.match(document.pdf.toString("latin1"), /Joose Energy Ltd \/ UCR Consultants/);
-  assert.match(document.pdf.toString("latin1"), /Athenaeum House/);
-  assert.equal(document.fileName, "SOFT_LOA-Acme-Bakery-Ltd.pdf");
+test("SOFT_LOA leaves position blank and does not invent Director", () => {
+  const document = buildTpiLoaDocument(acme, "JOOSE", buildTestLoaDocx(), new Date(2026, 7, 17));
+  assert.equal(document.templateLabel, "SOFT_LOA");
+  assert.equal(document.position, "");
+  assert.equal(document.fileName, "SOFT_LOA-Acme-Bakery-Ltd.docx");
+  const xml = xmlFromDocx(document.docx);
+  assert.match(xml, /Acme Bakery Ltd/);
+  assert.doesNotMatch(xml, /Director/);
+  assert.doesNotMatch(xml, /\{\{position\}\}/);
 });
 
-test("TPI partner picks IE or Joose, otherwise the user chooses", () => {
+test("TPI partner picks IE LOA or SOFT_LOA, otherwise the user chooses", () => {
   assert.equal(tpiLoaKindFromPartner("INFINITE"), "IE");
   assert.equal(tpiLoaKindFromPartner("JOOSE"), "JOOSE");
   assert.equal(tpiLoaKindFromPartner("JOOSE_UCR"), "JOOSE");
   assert.equal(parseTpiLoaKind("SOFT_LOA"), "JOOSE");
-  assert.equal(tpiLoaTemplateLabel("IE"), "IE LOA (Infinite)");
-  assert.equal(tpiLoaTemplateLabel("JOOSE"), "SOFT_LOA (Joose / Joose+UCR)");
+  assert.equal(tpiLoaTemplateLabel("IE"), "IE LOA");
+  assert.equal(tpiLoaTemplateLabel("JOOSE"), "SOFT_LOA");
   assert.equal(tpiLoaKindFromPartner("NONE"), null);
   assert.equal(tpiLoaKindFromPartner("TUS"), null);
   assert.equal(tpiLoaKindFromDeals([{ tpiPartner: "NONE" }, { tpiPartner: "INFINITE" }]), "IE");
@@ -225,9 +222,9 @@ test("TPI partner picks IE or Joose, otherwise the user chooses", () => {
     "JOOSE",
   );
   const ui = readFileSync(path.join(import.meta.dirname, "../src/components/generate-loa.tsx"), "utf8");
-  assert.match(ui, /IE LOA \(Infinite\)/);
-  assert.match(ui, /SOFT_LOA \(Joose \/ Joose\+UCR\)/);
-  assert.equal(ui.includes("J LOA"), false);
+  assert.match(ui, /Generate IE LOA/);
+  assert.match(ui, /Generate SOFT_LOA/);
+  assert.equal(ui.includes("IE LOA (Infinite)"), false);
   assert.equal(ui.includes("Generate Joose LOA"), false);
 });
 
@@ -250,25 +247,56 @@ test("Generate LOA marks meters REQUESTED and does not need DocuSign", async () 
       },
     });
 
-    const result = await generateTpiLoa({ customerId: customer.id, db });
+    const result = await generateTpiLoa({
+      customerId: customer.id,
+      db,
+      template: buildTestLoaDocx(),
+    });
     assert.equal(result.error, undefined);
     assert.equal(result.kind, "IE");
     assert.equal(result.document?.companyName, "Acme Bakery Ltd");
-    assert.match(result.document?.html ?? "", /Infinite Energy Group Holdings Ltd/);
+    assert.match(xmlFromDocx(result.document?.docx ?? Buffer.alloc(0)), /Acme Bakery Ltd/);
 
     const meters = await db.meter.findMany({ where: { customerId: customer.id } });
     assert.ok(meters.every((meter) => meter.loaStatus === "REQUESTED"));
   });
 });
 
-test("Generate LOA works with no meters when the user picks Joose", async () => {
+test("Generate LOA fills jobTitle as position and works with no meters", async () => {
   await withTestDb(async (db) => {
     const customer = await db.customer.create({ data: acme });
-    const result = await generateTpiLoa({ customerId: customer.id, kind: "JOOSE", db });
+    const lead = await db.lead.create({
+      data: {
+        customerId: customer.id,
+        title: "Electric renewal",
+        jobTitle: "Site manager",
+      },
+    });
+    const result = await generateTpiLoa({
+      customerId: customer.id,
+      leadId: lead.id,
+      kind: "JOOSE",
+      db,
+      template: buildTestLoaDocx(),
+    });
     assert.equal(result.error, undefined);
     assert.equal(result.kind, "JOOSE");
-    assert.match(result.document?.html ?? "", /Acme Bakery Ltd/);
-    assert.match(result.document?.html ?? "", /Joose Energy Ltd \/ UCR Consultants/);
+    assert.equal(result.document?.position, "Site manager");
+    assert.match(xmlFromDocx(result.document?.docx ?? Buffer.alloc(0)), /Site manager/);
+    assert.doesNotMatch(xmlFromDocx(result.document?.docx ?? Buffer.alloc(0)), /Director/);
+  });
+});
+
+test("Generate LOA without a Word file says the template is not on the desk", async () => {
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({ data: acme });
+    const result = await generateTpiLoa({
+      customerId: customer.id,
+      kind: "IE",
+      db,
+      templatesRoot: "/tmp/nzce-no-loa-templates",
+    });
+    assert.match(result.error ?? "", /IE LOA Word template is not on the desk yet/);
   });
 });
 

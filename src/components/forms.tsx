@@ -400,6 +400,13 @@ export function LeadForm({
       <Field label="Source" name="source">
         <input id="source" name="source" defaultValue={lead?.source ?? ""} />
       </Field>
+      <Field
+        label="Job title"
+        name="jobTitle"
+        hint="Optional. Fills position on IE LOA / SOFT_LOA. Leave blank if you do not have it."
+      >
+        <input id="jobTitle" name="jobTitle" defaultValue={lead?.jobTitle ?? ""} />
+      </Field>
       <div className="field">
         <span className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
           Allocate agents
