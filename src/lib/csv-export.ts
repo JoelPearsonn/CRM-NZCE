@@ -133,6 +133,7 @@ export async function exportDealsCsv() {
       meter: true,
       salesperson: true,
       allocations: { include: { agent: true } },
+      payments: { orderBy: { sortOrder: "asc" } },
     },
     orderBy: { dueDate: "asc" },
   });
@@ -156,6 +157,15 @@ export async function exportDealsCsv() {
     deal.allocations.map((row) => row.agent.email).join(";"),
     deal.tpiPartner,
     deal.tpiPercent,
+    deal.payoutType,
+    deal.payoutType === "RESIDUAL"
+      ? ""
+      : deal.payments.length === 2
+        ? deal.payments.map((row) => row.percent).join("/")
+        : deal.payments.length
+          ? deal.payments.map((row) => row.percent).join("/")
+          : "40/40/20",
+    deal.residualMonthly ?? "",
   ]);
   return csvResponse("nzce-deals.csv", toCsv(CSV_DEAL_HEADERS, rows));
 }

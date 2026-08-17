@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyResidual } from "../src/lib/deal-payouts";
+import {
+  applyResidual,
+  buildImportedFinance,
+  parsePayoutPercents,
+  parseTpiPartner,
+} from "../src/lib/deal-payouts";
 import {
   contractMonths,
   filterDealsByMonth,
@@ -194,6 +199,70 @@ test("only Joel / Admin sees the quarterly market-update reminder", () => {
   assert.equal(isDeskAdmin({ role: "Sales", email: "priya.shah@nzce.co.uk" }), false);
   assert.equal(isDeskAdmin({ role: "Admin", email: "joel.pearson@nzcenergy.co.uk" }), true);
   assert.equal(isDeskAdmin({ role: "Sales", email: "joel.pearson@nzcenergy.co.uk" }), true);
+});
+
+test("deal CSV import uses the same TPI and split calculator as the form", () => {
+  assert.equal(parseTpiPartner("Infinite"), "INFINITE");
+  assert.equal(parseTpiPartner("Joose + UCR"), "JOOSE_UCR");
+  assert.equal(parseTpiPartner("Love Energy Savings"), "NONE");
+  assert.deepEqual(parsePayoutPercents("40/60"), [40, 60]);
+  assert.deepEqual(parsePayoutPercents("50/50"), [50, 50]);
+
+  const infinite = buildImportedFinance({
+    estimatedCommission: 6800,
+    tpiPartner: "INFINITE",
+    tpiPercent: null,
+    payoutType: "SPLIT",
+    payoutSplit: "40/40/20",
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+    dueDate: new Date("2026-04-01T12:00:00.000Z"),
+  });
+  assert.equal(infinite.tpiPercent, 20);
+  assert.equal(infinite.net, 5440);
+  assert.deepEqual(
+    infinite.payments.map((row) => row.amountDue),
+    [2176, 2176, 1088],
+  );
+  assert.equal(infinite.rollup.amountDue, 5440);
+
+  const jooseUcr = buildImportedFinance({
+    estimatedCommission: 10000,
+    tpiPartner: "JOOSE_UCR",
+    tpiPercent: null,
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+  });
+  assert.equal(jooseUcr.tpiPercent, 30);
+  assert.equal(jooseUcr.net, 7000);
+  assert.deepEqual(
+    jooseUcr.payments.map((row) => row.amountDue),
+    [2800, 2800, 1400],
+  );
+
+  const residual = buildImportedFinance({
+    estimatedCommission: 3600,
+    tpiPartner: "NONE",
+    tpiPercent: null,
+    payoutType: "RESIDUAL",
+    contractStart: new Date("2025-09-01T12:00:00.000Z"),
+    contractEnd: new Date("2026-09-01T12:00:00.000Z"),
+  });
+  assert.equal(residual.payoutType, "RESIDUAL");
+  assert.equal(residual.payments.length, 12);
+  assert.equal(residual.payments[0]?.amountDue, 300);
+  assert.equal(residual.rollup.amountDue, 3600);
+
+  const typedMonthly = buildImportedFinance({
+    estimatedCommission: 3600,
+    tpiPartner: "NONE",
+    tpiPercent: null,
+    residualMonthly: 200,
+    contractStart: new Date("2025-09-01T12:00:00.000Z"),
+    contractEnd: new Date("2026-09-01T12:00:00.000Z"),
+  });
+  assert.equal(typedMonthly.payoutType, "RESIDUAL");
+  assert.equal(typedMonthly.payments[0]?.amountDue, 200);
 });
 
 test("live calculator: residual months use typed CSD/CED, not a saved deal", () => {

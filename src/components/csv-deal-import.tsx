@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useState } from "react";
 import { runDealImport, type DealImportState } from "@/app/actions/import-deals";
 import { ErrorBanner } from "@/components/ui";
+import { gbpExact } from "@/lib/format";
 
 const empty: DealImportState = {};
 
@@ -22,8 +23,11 @@ export function CsvDealImportForm() {
     <form action={action} className="card p-5">
       <ErrorBanner message={state.error} />
       <p className="text-sm text-muted">
-        Same columns as Export deals. Existing contracts are matched by customer + supplier + start
-        date (and MPAN/MPRN when present) and updated. Nothing is deleted. Preview before you import.
+        Same columns as Export deals. TPI and payouts use the same calculator as Record deal: net is
+        full deal value minus TPI % (Joose + UCR 30, Joose 25, Infinite 20, none 0), then a 40/40/20
+        or 40/60 split, or monthly residual from CSD to CED. Existing contracts are matched by
+        customer + supplier + start date (and MPAN/MPRN when present) and updated. Nothing is
+        deleted. Preview before you import.
       </p>
       <input type="hidden" name="csv" value={csvText} />
       <div className="mt-4 flex flex-wrap items-end gap-3">
@@ -67,7 +71,7 @@ export function CsvDealImportForm() {
       ) : null}
 
       {preview ? (
-        <div className="mt-5 overflow-x-auto">
+        <div className="mt-5 overflow-x-auto" data-testid="deal-import-preview">
           <p className="mb-2 text-sm">
             Preview · {preview.createDeals} new deals · {preview.updateDeals} updates ·{" "}
             {preview.createCustomers} new customers · {preview.blocked} blocked
@@ -78,6 +82,8 @@ export function CsvDealImportForm() {
                 <th>Line</th>
                 <th>Company</th>
                 <th>Supplier</th>
+                <th>TPI / payout</th>
+                <th>Net / due</th>
                 <th>Supply</th>
                 <th>Action</th>
                 <th>Notes</th>
@@ -95,6 +101,16 @@ export function CsvDealImportForm() {
                     {row.supplier || "—"}
                     <div className="text-[0.7rem] text-muted">
                       {row.fuelType} · {row.status}
+                    </div>
+                  </td>
+                  <td>
+                    {row.tpiLabel ?? "—"}
+                    <div className="text-[0.7rem] text-muted">{row.payoutLabel ?? ""}</div>
+                  </td>
+                  <td>
+                    {row.net != null ? gbpExact(row.net) : "—"}
+                    <div className="text-[0.7rem] text-muted">
+                      {row.amountDue != null ? `Due ${gbpExact(row.amountDue)}` : ""}
                     </div>
                   </td>
                   <td className="meter-id">

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { CSV_DEAL_HEADERS, CSV_IMPORT_HEADERS, CSV_LEAD_HEADERS } from "../src/lib/constants";
-import { dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
+import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
 import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
 import { leadsCsvTemplate, validateLeadRow } from "../src/lib/csv-leads";
@@ -27,6 +27,75 @@ test("import templates download with columns the importer accepts", () => {
   assert.deepEqual(dealRow.errors, []);
   assert.equal(dealRow.supplier, "Octopus Energy");
   assert.equal(dealRow.mpan, "1234567890123");
+  assert.equal(dealRow.net, 1800);
+  assert.equal(dealRow.amountDue, 1800);
+  assert.match(dealRow.tpiLabel ?? "", /None/);
+  assert.match(dealRow.payoutLabel ?? "", /40 \/ 40 \/ 20/);
+
+  const infinite = validateDealRow(
+    {
+      companyName: "Harbour View Hotels Ltd",
+      email: "claire@harbour.test",
+      supplier: "EDF Energy",
+      fuelType: "ELECTRIC",
+      status: "LIVE",
+      contractStart: "2026-04-01",
+      contractEnd: "2027-03-31",
+      estimatedCommission: "£6,800",
+      tpiPartner: "Infinite",
+    },
+    3,
+  );
+  assert.deepEqual(infinite.errors, []);
+  assert.equal(infinite.net, 5440);
+  assert.equal(infinite.amountDue, 5440);
+  assert.match(infinite.tpiLabel ?? "", /Infinite · 20%/);
+  assert.match(infinite.payoutLabel ?? "", /40 \/ 40 \/ 20/);
+
+  const residualMissingDates = validateDealRow(
+    {
+      companyName: "Coastal Care Homes",
+      email: "nisha@coastal.test",
+      supplier: "British Gas",
+      fuelType: "GAS",
+      status: "LIVE",
+      estimatedCommission: "3600",
+      payoutType: "RESIDUAL",
+    },
+    4,
+  );
+  assert.ok(residualMissingDates.errors.some((error) => /CSD/.test(error) && /CED/.test(error)));
+
+  const updatePreview = validateDealRow(
+    {
+      companyName: "Harbour View Hotels Ltd",
+      email: "claire@harbour.test",
+      supplier: "EDF Energy",
+      fuelType: "ELECTRIC",
+      status: "LIVE",
+      contractStart: "2026-04-01",
+      contractEnd: "2027-03-31",
+    },
+    5,
+  );
+  applyExistingDealToPreview(updatePreview, {
+    estimatedCommission: 10000,
+    tpiPartner: "JOOSE",
+    tpiPercent: 25,
+    payoutType: "SPLIT",
+    residualMonthly: null,
+    contractStart: new Date("2026-04-01T12:00:00.000Z"),
+    contractEnd: new Date("2027-03-31T12:00:00.000Z"),
+    dueDate: new Date("2026-04-01T12:00:00.000Z"),
+    actualPaid: 0,
+    payments: [
+      { stage: "ON_SIGN", percent: 40, expectedDate: null, actualPaid: 0 },
+      { stage: "ON_LIVE", percent: 60, expectedDate: null, actualPaid: 0 },
+    ],
+  });
+  assert.equal(updatePreview.net, 7500);
+  assert.deepEqual(updatePreview.payoutLabel, "40 / 60");
+  assert.equal(updatePreview.amountDue, 7500);
 
   const leads = parseCsv(leadsCsvTemplate());
   assert.deepEqual(leads[0], [...CSV_LEAD_HEADERS]);

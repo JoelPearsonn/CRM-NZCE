@@ -1,6 +1,7 @@
-import { CSV_DEAL_HEADERS, DEAL_STATUSES, FUEL_TYPES } from "@/lib/constants";
+import { CSV_DEAL_HEADERS, DEAL_STATUSES, FUEL_TYPES, labelFor, TPI_PARTNERS } from "@/lib/constants";
 import { parseCsvDate, parseCsvMoney } from "@/lib/csv-dates";
 import { csvLine, parseCsv, rowToRecord } from "@/lib/csv-import";
+import { buildImportedFinance, payoutLabel } from "@/lib/deal-payouts";
 import { isEmail } from "@/lib/format";
 
 export type DealImportAction = "CREATE_DEAL" | "UPDATE_DEAL" | "SKIP";
@@ -20,6 +21,10 @@ export type DealPreviewRow = {
   dealMatch: string | null;
   errors: string[];
   values: Record<string, string>;
+  tpiLabel?: string;
+  payoutLabel?: string;
+  net?: number;
+  amountDue?: number;
 };
 
 const FUELS = new Set<string>(FUEL_TYPES.map((item) => item.value));
@@ -46,6 +51,9 @@ export function dealsCsvTemplate() {
     "tom.brennan@nzce.co.uk",
     "NONE",
     "0",
+    "SPLIT",
+    "40/40/20",
+    "",
   ])}\n`;
 }
 
@@ -86,6 +94,12 @@ export function validateDealRow(values: Record<string, string>, line: number): D
   if (values.actualPaid && parseCsvMoney(values.actualPaid) == null) {
     errors.push("Actual paid is not a number.");
   }
+  if (values.residualMonthly && parseCsvMoney(values.residualMonthly) == null) {
+    errors.push("Residual £/month is not a number.");
+  }
+
+  const finance = importedDealFinance(values);
+  if (finance.error) errors.push(finance.error);
 
   return {
     line,
@@ -102,7 +116,73 @@ export function validateDealRow(values: Record<string, string>, line: number): D
     dealMatch: null,
     errors,
     values: { ...values, email, fuelType, status, mpan: mpan ?? "", mprn: mprn ?? "" },
+    ...financePreviewFields(finance),
   };
+}
+
+export type ExistingDealFinance = {
+  estimatedCommission: number | null;
+  tpiPartner: string;
+  tpiPercent: number | null;
+  payoutType: string;
+  residualMonthly: number | null;
+  contractStart: Date | null;
+  contractEnd: Date | null;
+  dueDate: Date | null;
+  actualPaid: number | null;
+  payments: { stage: string; percent: number; expectedDate: Date | null; actualPaid: number | null }[];
+};
+
+export function importedDealGross(
+  values: Record<string, string>,
+  existing?: Pick<ExistingDealFinance, "estimatedCommission">,
+) {
+  return (
+    parseCsvMoney(values.estimatedCommission) ??
+    parseCsvMoney(values.amountDue) ??
+    existing?.estimatedCommission ??
+    null
+  );
+}
+
+export function importedDealFinance(values: Record<string, string>, existing?: ExistingDealFinance) {
+  return buildImportedFinance({
+    estimatedCommission: importedDealGross(values, existing),
+    tpiPartner: values.tpiPartner || existing?.tpiPartner || "NONE",
+    tpiPercent: values.tpiPercent?.trim()
+      ? parseCsvMoney(values.tpiPercent)
+      : (existing?.tpiPercent ?? null),
+    payoutType: values.payoutType || existing?.payoutType,
+    payoutSplit:
+      values.payoutSplit ||
+      (existing?.payoutType !== "RESIDUAL" && existing?.payments?.length
+        ? existing.payments.map((row) => row.percent).join("/")
+        : undefined),
+    residualMonthly: parseCsvMoney(values.residualMonthly) ?? existing?.residualMonthly ?? null,
+    contractStart: parseCsvDate(values.contractStart) ?? existing?.contractStart ?? null,
+    contractEnd: parseCsvDate(values.contractEnd) ?? existing?.contractEnd ?? null,
+    dueDate: parseCsvDate(values.dueDate) ?? existing?.dueDate ?? null,
+    actualPaid: parseCsvMoney(values.actualPaid) ?? existing?.actualPaid ?? null,
+    existingPayments: existing?.payments,
+  });
+}
+
+function financePreviewFields(finance: ReturnType<typeof buildImportedFinance>) {
+  return {
+    tpiLabel: `${labelFor(TPI_PARTNERS, finance.tpiPartner)}${finance.tpiPercent ? ` · ${finance.tpiPercent}%` : ""}`,
+    payoutLabel: payoutLabel(finance.payoutType, finance.percents, finance.payments.length),
+    net: finance.net,
+    amountDue: finance.rollup.amountDue,
+  };
+}
+
+export function applyExistingDealToPreview(row: DealPreviewRow, existing: ExistingDealFinance) {
+  const finance = importedDealFinance(row.values, existing);
+  if (finance.error) {
+    row.errors.push(finance.error);
+    row.action = "SKIP";
+  }
+  Object.assign(row, financePreviewFields(finance));
 }
 
 export function parseDealCsv(text: string) {

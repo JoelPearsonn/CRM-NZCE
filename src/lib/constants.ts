@@ -169,6 +169,9 @@ export const CSV_DEAL_HEADERS = [
   "agentEmails",
   "tpiPartner",
   "tpiPercent",
+  "payoutType",
+  "payoutSplit",
+  "residualMonthly",
 ] as const;
 
 export const CSV_IMPORT_HEADERS = [

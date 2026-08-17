@@ -22,8 +22,45 @@ function stageLabel(stage: string, fallback: string) {
   return PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? fallback;
 }
 
+export function parseTpiPartner(raw: string | null | undefined) {
+  const value = String(raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  if (!value || value === "none" || value === "direct" || value === "none / direct" || value === "none/direct") {
+    return "NONE";
+  }
+  if (value === "joose_ucr" || value === "joose + ucr" || value === "joose+ucr") return "JOOSE_UCR";
+  if (value === "joose") return "JOOSE";
+  if (value === "infinite" || value === "infinite_20" || value === "infinite energy 20%") return "INFINITE";
+  const known = TPI_PARTNERS.find(
+    (item) => item.value.toLowerCase() === value || item.label.toLowerCase() === value,
+  );
+  return known?.value ?? "NONE";
+}
+
+export function parsePayoutType(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim().toLowerCase();
+  if (value === "residual" || value === "monthly" || value === "monthly residual") return "RESIDUAL";
+  return "SPLIT";
+}
+
+export function parsePayoutPercents(raw: string | null | undefined) {
+  const value = String(raw ?? "").trim().toLowerCase().replace(/\s+/g, "");
+  if (!value) return [40, 40, 20];
+  const parts = value.split(/[/_]+/).map((part) => Number(part));
+  if (
+    (parts.length === 2 || parts.length === 3) &&
+    parts.every((part) => Number.isFinite(part) && part >= 0)
+  ) {
+    const total = parts.reduce((sum, part) => sum + part, 0);
+    if (Math.abs(total - 100) <= 0.5) return parts;
+  }
+  return [40, 40, 20];
+}
+
 export function resolveTpi(partner: string, rawPercent: number | null) {
-  const known = TPI_PARTNERS.some((item) => item.value === partner) ? partner : "NONE";
+  const known = parseTpiPartner(partner);
   const percent = rawPercent == null ? tpiPercentFor(known) : Math.min(100, Math.max(0, rawPercent));
   return { tpiPartner: known, tpiPercent: percent };
 }
@@ -130,4 +167,145 @@ function defaultStage(index: number, count: number) {
   if (index === 0) return "ON_SIGN";
   if (index === 1) return "ON_LIVE";
   return count === 3 ? "EOC" : "ON_LIVE";
+}
+
+function splitDrafts(
+  percents: number[],
+  dates: { sign: Date | null; live: Date | null; eoc: Date | null },
+): BuiltPayment[] {
+  const stages = percents.length === 2 ? ["ON_SIGN", "ON_LIVE"] : ["ON_SIGN", "ON_LIVE", "EOC"];
+  return percents.map((percent, index) => {
+    const stage = stages[index] ?? "ON_SIGN";
+    return {
+      stage,
+      label: stageLabel(stage, `Payment ${index + 1}`),
+      percent,
+      expectedDate: stage === "EOC" ? dates.eoc : stage === "ON_LIVE" ? dates.live : dates.sign,
+      amountDue: 0,
+      actualPaid: 0,
+      sortOrder: index,
+    };
+  });
+}
+
+function applyLumpPaid(payments: BuiltPayment[], lump: number | null) {
+  if (lump == null || lump <= 0) return payments;
+  if (payments.some((row) => (row.actualPaid ?? 0) > 0.004)) return payments;
+  let remaining = lump;
+  return payments.map((row) => {
+    const take = Math.min(row.amountDue, remaining);
+    remaining = Math.round((remaining - take) * 100) / 100;
+    return { ...row, actualPaid: take };
+  });
+}
+
+export function payoutLabel(payoutType: string, percents: number[], monthCount: number) {
+  if (payoutType === "RESIDUAL") {
+    return monthCount ? `Monthly residual · ${monthCount} months` : "Monthly residual";
+  }
+  return percents.join(" / ");
+}
+
+export function buildImportedFinance(input: {
+  estimatedCommission: number | null;
+  tpiPartner: string;
+  tpiPercent: number | null;
+  payoutType?: string | null;
+  payoutSplit?: string | null;
+  residualMonthly?: number | null;
+  contractStart: Date | null;
+  contractEnd: Date | null;
+  dueDate?: Date | null;
+  actualPaid?: number | null;
+  existingPayments?: { stage: string; expectedDate: Date | null; actualPaid: number | null }[];
+}): {
+  error?: string;
+  tpiPartner: string;
+  tpiPercent: number;
+  payoutType: "SPLIT" | "RESIDUAL";
+  residualMonthly: number | null;
+  percents: number[];
+  net: number;
+  payments: BuiltPayment[];
+  rollup: ReturnType<typeof rollupPayments>;
+} {
+  const tpi = resolveTpi(input.tpiPartner, input.tpiPercent);
+  const residualMonthly = input.residualMonthly != null && input.residualMonthly > 0 ? input.residualMonthly : null;
+  const payoutType: "SPLIT" | "RESIDUAL" =
+    residualMonthly != null || parsePayoutType(input.payoutType) === "RESIDUAL" ? "RESIDUAL" : "SPLIT";
+  const start = input.contractStart;
+  const end = input.contractEnd;
+  if (start && end && end < start) {
+    return {
+      error: "Contract end (CED) must be on or after contract start (CSD).",
+      tpiPartner: tpi.tpiPartner,
+      tpiPercent: tpi.tpiPercent,
+      payoutType,
+      residualMonthly,
+      percents: [],
+      net: netCommission(input.estimatedCommission, tpi.tpiPercent),
+      payments: [],
+      rollup: { amountDue: 0, actualPaid: 0, dueDate: null },
+    };
+  }
+  if (payoutType === "RESIDUAL") {
+    if (!start || !end) {
+      return {
+        error: "Monthly residual needs a live date (CSD) and CED.",
+        tpiPartner: tpi.tpiPartner,
+        tpiPercent: tpi.tpiPercent,
+        payoutType,
+        residualMonthly,
+        percents: [],
+        net: netCommission(input.estimatedCommission, tpi.tpiPercent),
+        payments: [],
+        rollup: { amountDue: 0, actualPaid: 0, dueDate: null },
+      };
+    }
+    const built = applyResidual(
+      input.estimatedCommission,
+      tpi.tpiPercent,
+      start,
+      end,
+      residualMonthly,
+      input.existingPayments ?? [],
+    );
+    const payments = applyLumpPaid(built.payments, input.actualPaid);
+    const rollup = rollupPayments(payments);
+    return {
+      tpiPartner: tpi.tpiPartner,
+      tpiPercent: tpi.tpiPercent,
+      payoutType,
+      residualMonthly,
+      percents: [],
+      net: built.net,
+      payments,
+      rollup,
+    };
+  }
+
+  const percents = parsePayoutPercents(input.payoutSplit);
+  const drafts = splitDrafts(percents, {
+    sign: input.dueDate ?? start,
+    live: start,
+    eoc: end,
+  });
+  if (input.existingPayments?.length) {
+    for (const draft of drafts) {
+      const prior = input.existingPayments.find((row) => row.stage === draft.stage);
+      if (prior?.actualPaid) draft.actualPaid = prior.actualPaid;
+    }
+  }
+  const built = applyPayouts(input.estimatedCommission, tpi.tpiPercent, drafts);
+  const payments = applyLumpPaid(built.payments, input.actualPaid);
+  return {
+    tpiPartner: tpi.tpiPartner,
+    tpiPercent: tpi.tpiPercent,
+    payoutType,
+    residualMonthly,
+    percents,
+    net: built.net,
+    payments,
+    rollup: rollupPayments(payments),
+  };
 }

@@ -14,7 +14,9 @@ export function parseCsvDate(value: string | null | undefined) {
 }
 
 export function parseCsvMoney(value: string | null | undefined) {
-  const raw = String(value ?? "").trim().replace(/[£,]/g, "");
+  const raw = String(value ?? "")
+    .trim()
+    .replace(/[£,%\s]/g, "");
   if (!raw) return null;
   const parsed = Number.parseFloat(raw);
   return Number.isNaN(parsed) ? null : parsed;

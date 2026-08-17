@@ -2,8 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
-import { parseDealCsv, rowToRecord, validateDealRow, type DealPreviewRow } from "@/lib/csv-deals";
-import { parseCsvDate, parseCsvMoney } from "@/lib/csv-dates";
+import {
+  applyExistingDealToPreview,
+  importedDealFinance,
+  importedDealGross,
+  parseDealCsv,
+  rowToRecord,
+  validateDealRow,
+  type DealPreviewRow,
+} from "@/lib/csv-deals";
+import { parseCsvDate } from "@/lib/csv-dates";
 import { liveDealOnSupply } from "@/lib/deals";
 import { optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -64,7 +72,7 @@ async function buildPreview(text: string): Promise<DealImportState> {
       include: { customer: true },
     }),
     prisma.deal.findMany({
-      include: { customer: true, meter: true },
+      include: { customer: true, meter: true, payments: { orderBy: { sortOrder: "asc" } } },
     }),
   ]);
 
@@ -118,6 +126,12 @@ async function buildPreview(text: string): Promise<DealImportState> {
     if (deal) {
       row.dealMatch = `${deal.supplier} · ${deal.customer.companyName}`;
       row.action = "UPDATE_DEAL";
+      applyExistingDealToPreview(row, deal);
+      if (row.errors.length) {
+        row.action = "SKIP";
+        blocked += 1;
+        continue;
+      }
       updateDeals += 1;
     } else {
       row.action = "CREATE_DEAL";
@@ -219,16 +233,26 @@ export async function runDealImport(
         ...(meter ? { meterId: meter.id } : {}),
         ...(start ? { contractStart: start } : {}),
       },
+      include: { payments: { orderBy: { sortOrder: "asc" } } },
     });
 
     if (!existing && meter && row.status === "LIVE") {
       const live = await liveDealOnSupply({ meterId: meter.id, status: "LIVE" });
       if (live && live.customerId === customer.id && live.supplier.toLowerCase() === row.supplier.toLowerCase()) {
-        existing = live;
+        existing = await prisma.deal.findUnique({
+          where: { id: live.id },
+          include: { payments: { orderBy: { sortOrder: "asc" } } },
+        });
       } else if (live && live.supplier.toLowerCase() !== row.supplier.toLowerCase()) {
         continue;
       }
     }
+
+    const contractStart = start ?? existing?.contractStart ?? null;
+    const contractEnd = parseCsvDate(values.contractEnd) ?? existing?.contractEnd ?? null;
+    const finance = importedDealFinance(values, existing ?? undefined);
+    if (finance.error) continue;
+    const gross = importedDealGross(values, existing ?? undefined);
 
     const payload = {
       customerId: customer.id,
@@ -237,16 +261,27 @@ export async function runDealImport(
       supplier: row.supplier,
       fuelType: row.fuelType,
       status: row.status,
-      contractStart: start ?? existing?.contractStart ?? null,
-      contractEnd: parseCsvDate(values.contractEnd) ?? existing?.contractEnd ?? null,
-      renewalDate: parseCsvDate(values.renewalDate) ?? existing?.renewalDate ?? null,
-      dueDate: parseCsvDate(values.dueDate) ?? existing?.dueDate ?? null,
-      amountDue: parseCsvMoney(values.amountDue) ?? existing?.amountDue ?? null,
-      estimatedCommission: parseCsvMoney(values.estimatedCommission) ?? existing?.estimatedCommission ?? null,
-      actualPaid: parseCsvMoney(values.actualPaid) ?? existing?.actualPaid ?? null,
-      tpiPartner: values.tpiPartner || existing?.tpiPartner || "NONE",
-      tpiPercent: parseCsvMoney(values.tpiPercent) ?? existing?.tpiPercent ?? 0,
+      contractStart,
+      contractEnd,
+      renewalDate: parseCsvDate(values.renewalDate) ?? existing?.renewalDate ?? contractEnd,
+      dueDate: finance.rollup.dueDate,
+      amountDue: finance.rollup.amountDue,
+      estimatedCommission: gross,
+      actualPaid: finance.rollup.actualPaid,
+      tpiPartner: finance.tpiPartner,
+      tpiPercent: finance.tpiPercent,
+      payoutType: finance.payoutType,
+      residualMonthly: finance.residualMonthly,
     };
+    const paymentCreates = finance.payments.map((row) => ({
+      stage: row.stage,
+      label: row.label,
+      percent: row.percent,
+      expectedDate: row.expectedDate,
+      amountDue: row.amountDue,
+      actualPaid: row.actualPaid,
+      sortOrder: row.sortOrder,
+    }));
 
     if (existing) {
       await prisma.deal.update({
@@ -259,6 +294,10 @@ export async function runDealImport(
                 create: agentIds.map((agentId) => ({ agentId })),
               }
             : undefined,
+          payments: {
+            deleteMany: {},
+            create: paymentCreates,
+          },
         },
       });
       updateDeals += 1;
@@ -274,6 +313,7 @@ export async function runDealImport(
           allocations: {
             create: agentIds.map((agentId) => ({ agentId })),
           },
+          payments: { create: paymentCreates },
         },
       });
       createDeals += 1;

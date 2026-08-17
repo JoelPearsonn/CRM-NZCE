@@ -52,7 +52,7 @@ export default function HelpPage() {
 
         <Guide
           title="Import a list"
-          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Nothing is deleted."
+          body="If you already have a spreadsheet, download the NZCE template, fill company + site + MPAN or MPRN, then preview before you import. Existing meters are updated by supply number. Deals and leads have their own templates — same columns as the export buttons. Deal import uses the same calculator as Record deal: net is full value minus TPI %, then split or residual legs. Nothing is deleted."
         >
           <Link href="/import" className="btn btn-ghost">
             Import CSV
