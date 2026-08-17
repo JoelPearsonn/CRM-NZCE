@@ -62,12 +62,9 @@ export function isTenderLeadStage(stage: string) {
 
 export const TPI_PARTNERS = [
   { value: "NONE", label: "None / direct", percent: 0 },
-  { value: "JOOSE_UCR", label: "Joose + UCR", percent: 15 },
-  { value: "INFINITE_20", label: "Infinite Energy 20%", percent: 20 },
-  { value: "LOVE_ENERGY", label: "Love Energy Savings", percent: 10 },
-  { value: "BIONIC", label: "Bionic", percent: 10 },
-  { value: "UTILITY_TEAM", label: "Utility Team", percent: 12 },
-  { value: "SWITCH_MY_BUSINESS", label: "Switch My Business", percent: 10 },
+  { value: "JOOSE_UCR", label: "Joose + UCR", percent: 30 },
+  { value: "JOOSE", label: "Joose", percent: 25 },
+  { value: "INFINITE", label: "Infinite", percent: 20 },
 ] as const;
 
 export const PAYMENT_STAGES = [

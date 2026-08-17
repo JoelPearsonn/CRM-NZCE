@@ -142,7 +142,7 @@ async function ensureDemoPayouts() {
     if (harbour) {
       await writeDealFinance(
         deal.id,
-        "INFINITE_20",
+        "INFINITE",
         20,
         deal.estimatedCommission ?? 6800,
         payoutDraft(
@@ -153,7 +153,7 @@ async function ensureDemoPayouts() {
       continue;
     }
     if (mersey) {
-      const built = applyPayouts(deal.estimatedCommission ?? 9100, 15, payoutDraft(
+      const built = applyPayouts(deal.estimatedCommission ?? 9100, 30, payoutDraft(
         [40, 40, 20],
         [daysFromNow(30), deal.contractStart, deal.contractEnd],
       ));
@@ -161,7 +161,7 @@ async function ensureDemoPayouts() {
       await writeDealFinance(
         deal.id,
         "JOOSE_UCR",
-        15,
+        30,
         deal.estimatedCommission ?? 9100,
         built.payments,
       );
@@ -179,6 +179,47 @@ async function ensureDemoPayouts() {
       remainingPaid = Math.round((remainingPaid - take) * 100) / 100;
     }
     await writeDealFinance(deal.id, "NONE", 0, deal.estimatedCommission ?? 0, built.payments);
+  }
+}
+
+async function ensureDemoTpiNames() {
+  const deals = await prisma.deal.findMany({ include: { payments: true, customer: true } });
+  for (const deal of deals) {
+    if (deal.tpiPartner === "INFINITE_20") {
+      await prisma.deal.update({
+        where: { id: deal.id },
+        data: { tpiPartner: "INFINITE", tpiPercent: 20 },
+      });
+      continue;
+    }
+    if (deal.tpiPartner === "JOOSE_UCR" && deal.tpiPercent !== 30) {
+      const paidShare =
+        deal.payments[0] && deal.payments[0].amountDue
+          ? (deal.payments[0].actualPaid ?? 0) / deal.payments[0].amountDue
+          : 0;
+      const built = applyPayouts(
+        deal.estimatedCommission ?? 0,
+        30,
+        deal.payments.length
+          ? deal.payments.map((row, index) => ({
+              stage: row.stage,
+              label: row.label,
+              percent: row.percent,
+              expectedDate: row.expectedDate,
+              amountDue: 0,
+              actualPaid: 0,
+              sortOrder: index,
+            }))
+          : payoutDraft(
+              [40, 40, 20],
+              [deal.dueDate ?? deal.contractStart, deal.contractStart, deal.contractEnd],
+            ),
+      );
+      if (built.payments[0]) {
+        built.payments[0].actualPaid = Math.round(built.payments[0].amountDue * paidShare * 100) / 100;
+      }
+      await writeDealFinance(deal.id, "JOOSE_UCR", 30, deal.estimatedCommission ?? 0, built.payments);
+    }
   }
 }
 
@@ -424,6 +465,7 @@ export async function seedDesk() {
     await ensureDemoDealSplits();
     await ensureDemoPayouts();
     await ensureDemoResidual();
+    await ensureDemoTpiNames();
     await ensureDemoInbox();
     await ensureDemoReconciliations();
     await ensureRenewalReminderTasks();
@@ -1202,6 +1244,7 @@ export async function seedDesk() {
   await ensureDemoDealSplits();
   await ensureDemoPayouts();
   await ensureDemoResidual();
+  await ensureDemoTpiNames();
   await ensureDemoInbox();
   await ensureDemoReconciliations();
   await ensureRenewalReminderTasks();
