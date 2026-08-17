@@ -106,7 +106,7 @@ export default function HelpPage() {
 
         <Guide
           title="Record a deal"
-          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Payouts default to 40 / 40 / 20 (sign / live / EOC), or 40 / 60, or custom. Two agents on a deal still split 50/50. A meter can only have one live contract."
+          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Payouts are either a split (40 / 40 / 20 or 40 / 60) or a monthly residual from the live date to CED. Two agents on a deal still split 50/50. A meter can only have one live contract."
         >
           <Link href="/contracts/new" className="btn btn-ghost">
             Record deal

@@ -34,6 +34,17 @@ export function splitByPercent(net: number, percents: number[]) {
   return amounts;
 }
 
+export function residualDates(live: Date, ced: Date) {
+  const count = Math.max(1, contractMonths(live, ced) ?? 1);
+  const dates: Date[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const date = new Date(Date.UTC(live.getUTCFullYear(), live.getUTCMonth() + index, live.getUTCDate(), 12));
+    if (date > ced && index > 0) break;
+    dates.push(date);
+  }
+  return dates;
+}
+
 export function contractMonths(start: Date | null | undefined, end: Date | null | undefined) {
   if (!start || !end) return null;
   const startUtc = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
@@ -66,7 +77,7 @@ export function groupByPaymentStage(deals: (FinanceDeal & { stage?: string; labe
     addDeal(bucket, deal);
     map.set(key, bucket);
   }
-  const order = ["ON_SIGN", "ON_LIVE", "EOC"];
+  const order = ["ON_SIGN", "ON_LIVE", "EOC", "RESIDUAL"];
   return [...map.values()].sort((a, b) => {
     const left = order.indexOf(a.key);
     const right = order.indexOf(b.key);

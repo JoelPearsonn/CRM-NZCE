@@ -89,10 +89,10 @@ export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPaym
           <table className="desk-table">
             <thead>
               <tr>
-                <th>Payment</th>
-                <th>%</th>
-                <th>Expected</th>
-                <th>Due</th>
+                <th>{deal.payoutType === "RESIDUAL" ? "Month" : "Payment"}</th>
+                {deal.payoutType === "RESIDUAL" ? null : <th>%</th>}
+                <th>Due date</th>
+                <th>Amount due</th>
                 <th>Actual paid</th>
               </tr>
             </thead>
@@ -100,7 +100,7 @@ export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPaym
               {payments.map((payment) => (
                 <tr key={payment.id}>
                   <td className="font-medium">{payment.label}</td>
-                  <td>{payment.percent}%</td>
+                  {deal.payoutType === "RESIDUAL" ? null : <td>{payment.percent}%</td>}
                   <td>
                     <input
                       name={`paymentDate_${payment.id}`}
@@ -189,7 +189,10 @@ export function CustomerFinanceLedger({
                   <div>
                     <p className="font-medium">
                       {deal.supplier} · <FuelPill value={deal.fuelType} />{" "}
-                      <DealStatusPill value={deal.status} />
+                      <DealStatusPill value={deal.status} />{" "}
+                      <span className="pill bg-[#e7e4dc] text-ink">
+                        {deal.payoutType === "RESIDUAL" ? "Monthly residual" : "Split"}
+                      </span>
                     </p>
                     <p className="mt-1 text-sm text-muted">
                       CSD {formatDate(deal.contractStart)} · CED {formatDate(deal.contractEnd)}
@@ -213,18 +216,18 @@ export function CustomerFinanceLedger({
                   <table className="desk-table">
                     <thead>
                       <tr>
-                        <th>Payment</th>
-                        <th>%</th>
-                        <th>Expected</th>
-                        <th>Due</th>
-                        <th>Paid</th>
+                        <th>{deal.payoutType === "RESIDUAL" ? "Month" : "Payment"}</th>
+                        {deal.payoutType === "RESIDUAL" ? null : <th>%</th>}
+                        <th>Due date</th>
+                        <th>Amount due</th>
+                        <th>Actual paid</th>
                       </tr>
                     </thead>
                     <tbody>
                       {payments.map((payment) => (
                         <tr key={payment.id}>
                           <td className="font-medium">{payment.label}</td>
-                          <td>{payment.percent}%</td>
+                          {deal.payoutType === "RESIDUAL" ? null : <td>{payment.percent}%</td>}
                           <td>{formatDate(payment.expectedDate)}</td>
                           <td>{gbpExact(payment.amountDue)}</td>
                           <td>{gbpExact(payment.actualPaid)}</td>

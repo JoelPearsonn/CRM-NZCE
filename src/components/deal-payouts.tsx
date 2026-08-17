@@ -6,10 +6,11 @@ import { Field } from "@/components/ui";
 import {
   PAYMENT_STAGES,
   PAYOUT_PRESETS,
+  PAYOUT_TYPES,
   TPI_PARTNERS,
   tpiPercentFor,
 } from "@/lib/constants";
-import { contractMonths, netCommission, splitByPercent } from "@/lib/finance";
+import { contractMonths, netCommission, residualDates, splitByPercent } from "@/lib/finance";
 import { gbpExact, monthsLabel, toDateInput } from "@/lib/format";
 
 type DealWithPayments = Deal & { payments?: DealPayment[] };
@@ -101,6 +102,8 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
   const [tpi, setTpi] = useState(deal?.tpiPartner ?? "NONE");
   const [tpiPercent, setTpiPercent] = useState(String(deal?.tpiPercent ?? tpiPercentFor(deal?.tpiPartner)));
   const [gross, setGross] = useState(deal?.estimatedCommission != null ? String(deal.estimatedCommission) : "");
+  const [payoutType, setPayoutType] = useState(deal?.payoutType === "RESIDUAL" ? "RESIDUAL" : "SPLIT");
+  const [monthly, setMonthly] = useState(deal?.residualMonthly != null ? String(deal.residualMonthly) : "");
   const [preset, setPreset] = useState(presetFromPayments(deal?.payments ?? []));
   const [rows, setRows] = useState(() => rowsForPreset(presetFromPayments(deal?.payments ?? []), deal));
 
@@ -164,88 +167,161 @@ export function DealPayoutFields({ deal }: { deal?: DealWithPayments }) {
         {Number(tpiPercent) > 0 ? ` · ${tpiPercent}% to the TPI` : " · none / direct"}
       </p>
 
-      <Field label="Payout split" name="payoutPreset">
+      <Field label="Payout type" name="payoutType">
         <select
-          id="payoutPreset"
-          name="payoutPreset"
-          value={preset}
-          onChange={(event) => changePreset(event.target.value)}
+          id="payoutType"
+          name="payoutType"
+          value={payoutType}
+          onChange={(event) => setPayoutType(event.target.value)}
         >
-          {PAYOUT_PRESETS.map((item) => (
+          {PAYOUT_TYPES.map((item) => (
             <option key={item.value} value={item.value}>
               {item.label}
             </option>
           ))}
         </select>
       </Field>
-      <input type="hidden" name="paymentCount" value={rows.length} />
 
-      <div className="overflow-x-auto">
-        <table className="desk-table">
-          <thead>
-            <tr>
-              <th>Payment</th>
-              <th>%</th>
-              <th>Expected</th>
-              <th>Amount due</th>
-              <th>Actual paid</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr key={`${row.stage}-${index}`}>
-                <td>
-                  <select
-                    name={`paymentStage_${index}`}
-                    value={row.stage}
-                    onChange={(event) => {
-                      const stage = event.target.value;
-                      const label =
-                        PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? row.label;
-                      patch(index, { stage, label });
-                    }}
-                  >
-                    {PAYMENT_STAGES.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input type="hidden" name={`paymentLabel_${index}`} value={row.label} />
-                </td>
-                <td>
-                  <input
-                    name={`paymentPercent_${index}`}
-                    value={row.percent}
-                    onChange={(event) => patch(index, { percent: Number(event.target.value) || 0 })}
-                    className="w-20"
-                    disabled={preset !== "CUSTOM"}
-                  />
-                  {preset !== "CUSTOM" ? (
-                    <input type="hidden" name={`paymentPercent_${index}`} value={row.percent} />
-                  ) : null}
-                </td>
-                <td>
-                  <input
-                    name={`paymentDate_${index}`}
-                    type="date"
-                    value={row.date}
-                    onChange={(event) => patch(index, { date: event.target.value })}
-                  />
-                </td>
-                <td className="font-medium">{gbpExact(amounts[index] ?? 0)}</td>
-                <td>
-                  <input
-                    name={`paymentPaid_${index}`}
-                    value={row.paid}
-                    onChange={(event) => patch(index, { paid: event.target.value })}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {payoutType === "RESIDUAL" ? (
+        <ResidualPreview deal={deal} net={net} monthly={monthly} onMonthly={setMonthly} />
+      ) : null}
+
+      {payoutType === "SPLIT" ? (
+        <>
+          <Field label="Payout split" name="payoutPreset">
+            <select
+              id="payoutPreset"
+              name="payoutPreset"
+              value={preset}
+              onChange={(event) => changePreset(event.target.value)}
+            >
+              {PAYOUT_PRESETS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <input type="hidden" name="paymentCount" value={rows.length} />
+
+          <div className="overflow-x-auto">
+            <table className="desk-table">
+              <thead>
+                <tr>
+                  <th>Payment</th>
+                  <th>%</th>
+                  <th>Expected</th>
+                  <th>Amount due</th>
+                  <th>Actual paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, index) => (
+                  <tr key={`${row.stage}-${index}`}>
+                    <td>
+                      <select
+                        name={`paymentStage_${index}`}
+                        value={row.stage}
+                        onChange={(event) => {
+                          const stage = event.target.value;
+                          const label =
+                            PAYMENT_STAGES.find((item) => item.value === stage)?.label ?? row.label;
+                          patch(index, { stage, label });
+                        }}
+                      >
+                        {PAYMENT_STAGES.map((item) => (
+                          <option key={item.value} value={item.value}>
+                            {item.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input type="hidden" name={`paymentLabel_${index}`} value={row.label} />
+                    </td>
+                    <td>
+                      <input
+                        name={`paymentPercent_${index}`}
+                        value={row.percent}
+                        onChange={(event) => patch(index, { percent: Number(event.target.value) || 0 })}
+                        className="w-20"
+                        disabled={preset !== "CUSTOM"}
+                      />
+                      {preset !== "CUSTOM" ? (
+                        <input type="hidden" name={`paymentPercent_${index}`} value={row.percent} />
+                      ) : null}
+                    </td>
+                    <td>
+                      <input
+                        name={`paymentDate_${index}`}
+                        type="date"
+                        value={row.date}
+                        onChange={(event) => patch(index, { date: event.target.value })}
+                      />
+                    </td>
+                    <td className="font-medium">{gbpExact(amounts[index] ?? 0)}</td>
+                    <td>
+                      <input
+                        name={`paymentPaid_${index}`}
+                        value={row.paid}
+                        onChange={(event) => patch(index, { paid: event.target.value })}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function ResidualPreview({
+  deal,
+  net,
+  monthly,
+  onMonthly,
+}: {
+  deal?: DealWithPayments;
+  net: number;
+  monthly: string;
+  onMonthly: (value: string) => void;
+}) {
+  const dates =
+    deal?.contractStart && deal?.contractEnd
+      ? residualDates(deal.contractStart, deal.contractEnd)
+      : [];
+  const typed = Number(monthly);
+  const perMonth =
+    typed > 0 ? typed : dates.length ? Math.round((net / dates.length) * 100) / 100 : 0;
+
+  return (
+    <div className="grid gap-3">
+      <Field
+        label="£ / month (optional)"
+        name="residualMonthly"
+        hint="Leave blank to split net commission evenly across the months from CSD (live) to CED."
+      >
+        <input
+          id="residualMonthly"
+          name="residualMonthly"
+          value={monthly}
+          onChange={(event) => onMonthly(event.target.value)}
+        />
+      </Field>
+      <p className="text-sm text-muted">
+        {dates.length
+          ? `${dates.length} monthly residuals · ${gbpExact(perMonth)} each · first ${
+              dates[0] ? new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric", timeZone: "UTC" }).format(dates[0]) : "—"
+            } · last ${
+              dates[dates.length - 1]
+                ? new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric", timeZone: "UTC" }).format(
+                    dates[dates.length - 1] as Date,
+                  )
+                : "—"
+            }`
+          : "Set CSD (live date) and CED above. The schedule is built when you save."}
+      </p>
     </div>
   );
 }

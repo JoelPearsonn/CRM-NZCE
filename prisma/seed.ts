@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { applyPayouts, type BuiltPayment } from "../src/lib/deal-payouts";
+import { applyPayouts, applyResidual, type BuiltPayment } from "../src/lib/deal-payouts";
 import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
@@ -107,6 +107,8 @@ async function writeDealFinance(
     data: {
       tpiPartner,
       tpiPercent,
+      payoutType: "SPLIT",
+      residualMonthly: null,
       estimatedCommission: gross,
       amountDue: built.rollup.amountDue,
       actualPaid: built.rollup.actualPaid,
@@ -178,6 +180,48 @@ async function ensureDemoPayouts() {
     }
     await writeDealFinance(deal.id, "NONE", 0, deal.estimatedCommission ?? 0, built.payments);
   }
+}
+
+async function ensureDemoResidual() {
+  const coastal = await prisma.deal.findFirst({
+    where: { supplier: "SSE", customer: { companyName: "Coastal Leisure Parks Ltd" } },
+    include: { payments: true },
+  });
+  if (!coastal || coastal.payoutType === "RESIDUAL") return;
+  if (!coastal.contractStart || !coastal.contractEnd) return;
+  const built = applyResidual(
+    coastal.estimatedCommission ?? 3750,
+    0,
+    coastal.contractStart,
+    coastal.contractEnd,
+    null,
+  );
+  await prisma.deal.update({
+    where: { id: coastal.id },
+    data: {
+      payoutType: "RESIDUAL",
+      residualMonthly: null,
+      tpiPartner: "NONE",
+      tpiPercent: 0,
+      estimatedCommission: coastal.estimatedCommission ?? 3750,
+      amountDue: built.rollup.amountDue,
+      actualPaid: built.rollup.actualPaid,
+      dueDate: built.rollup.dueDate,
+      notes: "Monthly residual from live date to CED. Net split evenly across the term.",
+      payments: {
+        deleteMany: {},
+        create: built.payments.map((row) => ({
+          stage: row.stage,
+          label: row.label,
+          percent: row.percent,
+          expectedDate: row.expectedDate,
+          amountDue: row.amountDue,
+          actualPaid: row.actualPaid,
+          sortOrder: row.sortOrder,
+        })),
+      },
+    },
+  });
 }
 
 async function ensureDemoInbox() {
@@ -379,6 +423,7 @@ export async function seedDesk() {
     await ensureDemoLoa();
     await ensureDemoDealSplits();
     await ensureDemoPayouts();
+    await ensureDemoResidual();
     await ensureDemoInbox();
     await ensureDemoReconciliations();
     await ensureRenewalReminderTasks();
@@ -1156,6 +1201,7 @@ export async function seedDesk() {
   await seedHarbourViewSignedLoa();
   await ensureDemoDealSplits();
   await ensureDemoPayouts();
+  await ensureDemoResidual();
   await ensureDemoInbox();
   await ensureDemoReconciliations();
   await ensureRenewalReminderTasks();

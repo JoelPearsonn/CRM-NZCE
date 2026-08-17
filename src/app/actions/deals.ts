@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
 import { liveDealOnSupply } from "@/lib/deals";
-import { applyPayouts, parseDealPayments, resolveTpi } from "@/lib/deal-payouts";
+import { applyPayouts, applyResidual, parseDealPayments, resolveTpi } from "@/lib/deal-payouts";
 import { rollupPayments } from "@/lib/finance";
 import { gbpExact, optionalStr, parseDate, parseMoney, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -53,6 +53,7 @@ export async function saveDeal(
     agentIds.push(...leadAgents.map((row) => row.agentId));
   }
   const salespersonId = optionalStr(formData.get("salespersonId")) || agentIds[0] || null;
+  const payoutType = str(formData.get("payoutType")) === "RESIDUAL" ? "RESIDUAL" : "SPLIT";
   const parsedPayments = parseDealPayments(formData);
   if (parsedPayments.error) return { error: parsedPayments.error };
 
@@ -61,12 +62,23 @@ export async function saveDeal(
     parseMoney(formData.get("tpiPercent")),
   );
   const gross = parseMoney(formData.get("estimatedCommission"));
-  const built = applyPayouts(gross, tpi.tpiPercent, parsedPayments.payments);
   const contractStart = parseDate(formData.get("contractStart"));
   const contractEnd = parseDate(formData.get("contractEnd"));
   if (contractStart && contractEnd && contractEnd < contractStart) {
     return { error: "Contract end (CED) must be on or after contract start (CSD)." };
   }
+  if (payoutType === "RESIDUAL" && (!contractStart || !contractEnd)) {
+    return { error: "Monthly residual needs a live date (CSD) and CED." };
+  }
+
+  const residualMonthly = parseMoney(formData.get("residualMonthly"));
+  const existingPayments = id
+    ? await prisma.dealPayment.findMany({ where: { dealId: id }, orderBy: { sortOrder: "asc" } })
+    : [];
+  const built =
+    payoutType === "RESIDUAL" && contractStart && contractEnd
+      ? applyResidual(gross, tpi.tpiPercent, contractStart, contractEnd, residualMonthly, existingPayments)
+      : applyPayouts(gross, tpi.tpiPercent, parsedPayments.payments);
 
   const data = {
     customerId,
@@ -85,6 +97,8 @@ export async function saveDeal(
     actualPaid: built.rollup.actualPaid,
     tpiPartner: tpi.tpiPartner,
     tpiPercent: tpi.tpiPercent,
+    payoutType,
+    residualMonthly,
     notes: optionalStr(formData.get("notes")),
   };
   const paymentCreates = built.payments.map((row) => ({

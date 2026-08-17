@@ -72,7 +72,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
         estimatedCommission: payment.amountDue,
         actualPaid: payment.actualPaid,
         stage: payment.stage,
-        label: payment.label,
+        label: payment.stage === "RESIDUAL" ? "Monthly residual" : payment.label,
       }));
     });
 

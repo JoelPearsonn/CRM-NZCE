@@ -76,6 +76,11 @@ export const PAYMENT_STAGES = [
   { value: "EOC", label: "EOC" },
 ] as const;
 
+export const PAYOUT_TYPES = [
+  { value: "SPLIT", label: "Split — 2 or 3 lumps" },
+  { value: "RESIDUAL", label: "Monthly residual" },
+] as const;
+
 export const PAYOUT_PRESETS = [
   { value: "40_40_20", label: "40 / 40 / 20 · sign / live / EOC", percents: [40, 40, 20] },
   { value: "40_60", label: "40 / 60 · sign / live", percents: [40, 60] },

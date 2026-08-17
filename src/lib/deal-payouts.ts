@@ -1,5 +1,11 @@
 import { PAYMENT_STAGES, TPI_PARTNERS, tpiPercentFor } from "@/lib/constants";
-import { netCommission, rollupPayments, splitByPercent, type PaymentLike } from "@/lib/finance";
+import {
+  netCommission,
+  residualDates,
+  rollupPayments,
+  splitByPercent,
+  type PaymentLike,
+} from "@/lib/finance";
 import { parseDate, parseMoney } from "@/lib/format";
 
 export type BuiltPayment = PaymentLike & {
@@ -22,7 +28,56 @@ export function resolveTpi(partner: string, rawPercent: number | null) {
   return { tpiPartner: known, tpiPercent: percent };
 }
 
+export function applyResidual(
+  gross: number | null,
+  tpiPercent: number,
+  live: Date,
+  ced: Date,
+  monthlyOverride: number | null,
+  existing: { expectedDate: Date | null; actualPaid: number | null }[] = [],
+): { net: number; payments: BuiltPayment[]; rollup: ReturnType<typeof rollupPayments> } {
+  const net = netCommission(gross, tpiPercent);
+  const dates = residualDates(live, ced);
+  const amounts =
+    monthlyOverride != null && monthlyOverride > 0
+      ? dates.map(() => monthlyOverride)
+      : splitByPercent(
+          net,
+          dates.map(() => 100 / dates.length),
+        );
+  const paidByMonth = new Map(
+    existing
+      .filter((row) => row.expectedDate)
+      .map((row) => [monthKey(row.expectedDate as Date), row.actualPaid ?? 0]),
+  );
+  const payments = dates.map((date, index) => ({
+    stage: "RESIDUAL",
+    label: residualLabel(date),
+    percent: monthlyOverride != null && monthlyOverride > 0 ? 0 : roundShare(dates.length),
+    expectedDate: date,
+    amountDue: amounts[index] ?? 0,
+    actualPaid: paidByMonth.get(monthKey(date)) ?? 0,
+    sortOrder: index,
+  }));
+  return { net, payments, rollup: rollupPayments(payments) };
+}
+
+function monthKey(date: Date) {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+function residualLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", { month: "short", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
+function roundShare(count: number) {
+  return Math.round((100 / Math.max(1, count)) * 100) / 100;
+}
+
 export function parseDealPayments(formData: FormData): { error?: string; payments: BuiltPayment[] } {
+  if (String(formData.get("payoutType") ?? "SPLIT") === "RESIDUAL") {
+    return { payments: [] };
+  }
   const count = Math.min(3, Math.max(2, Number(formData.get("paymentCount")) || 3));
   const drafts: { stage: string; label: string; percent: number; expectedDate: Date | null; actualPaid: number }[] =
     [];

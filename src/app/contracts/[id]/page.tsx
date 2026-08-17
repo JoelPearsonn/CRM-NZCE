@@ -39,6 +39,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
     ["Contract start (CSD)", formatDate(deal.contractStart)],
     ["Contract end (CED)", formatDate(deal.contractEnd)],
     ["Length", monthsLabel(contractMonths(deal.contractStart, deal.contractEnd))],
+    ["Payout", deal.payoutType === "RESIDUAL" ? "Monthly residual" : "Split"],
     ["TPI", `${labelFor(TPI_PARTNERS, deal.tpiPartner)}${deal.tpiPercent ? ` · ${deal.tpiPercent}%` : ""}`],
     ["Full deal value", gbpExact(deal.estimatedCommission)],
     ["Net commission", gbpExact(netCommission(deal.estimatedCommission, deal.tpiPercent))],
@@ -110,7 +111,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
       {deal.payments.length ? (
         <div className="card mt-6 overflow-x-auto">
           <p className="border-b border-rule px-4 py-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
-            Split payouts
+            {deal.payoutType === "RESIDUAL" ? "Monthly residual schedule" : "Split payouts"}
           </p>
           <table className="desk-table">
             <thead>

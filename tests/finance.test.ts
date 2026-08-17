@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { applyResidual } from "../src/lib/deal-payouts";
 import {
   contractMonths,
   filterDealsByMonth,
@@ -7,6 +8,7 @@ import {
   groupByPaymentStage,
   monthKey,
   netCommission,
+  residualDates,
   splitAmounts,
   splitByPercent,
 } from "../src/lib/finance";
@@ -102,6 +104,29 @@ test("contract length comes from CSD and CED, not a months field", () => {
   const end = new Date(Date.UTC(2026, 7, 1));
   assert.equal(contractMonths(start, end), 24);
   assert.equal(contractMonths(start, null), null);
+});
+
+test("monthly residual: one payment per month from live date to CED", () => {
+  const live = new Date(Date.UTC(2025, 8, 1));
+  const ced = new Date(Date.UTC(2026, 8, 1));
+  const dates = residualDates(live, ced);
+  assert.equal(dates.length, 12);
+  assert.equal(dates[0]?.toISOString().slice(0, 10), "2025-09-01");
+  assert.equal(dates[11]?.toISOString().slice(0, 10), "2026-08-01");
+});
+
+test("monthly residual splits net after TPI, or uses £/month", () => {
+  const live = new Date(Date.UTC(2025, 8, 1));
+  const ced = new Date(Date.UTC(2026, 8, 1));
+  const even = applyResidual(3600, 0, live, ced, null);
+  assert.equal(even.payments.length, 12);
+  assert.equal(even.payments[0]?.amountDue, 300);
+  assert.equal(even.payments[11]?.amountDue, 300);
+  assert.equal(even.rollup.amountDue, 3600);
+  const typed = applyResidual(3600, 20, live, ced, 200);
+  assert.equal(typed.net, 2880);
+  assert.equal(typed.payments[0]?.amountDue, 200);
+  assert.equal(typed.rollup.amountDue, 2400);
 });
 
 test("finance groups due and paid by payment stage", () => {
