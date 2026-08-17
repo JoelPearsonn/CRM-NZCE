@@ -387,10 +387,12 @@ test("header search Enter opens the best match, or the results page", () => {
   assert.deepEqual(pickEnterDestination({ customers: [], meters: [], leads: [], deals: [] }, "xx", "/"), {
     none: true,
   });
-  assert.equal(pickEnterDestination({ ...book, meters: [], leads: [] }, "Harbour", "/").href, "/customers/c1");
-  assert.equal(pickEnterDestination(book, "Harbour View", "/").href, "/customers/c1");
-  assert.equal(pickEnterDestination(book, "Hotel group", "/leads").href, "/leads/l1");
-  assert.equal(pickEnterDestination(book, "Hotel group", "/").href, "/leads/l1");
+  const href = (result: ReturnType<typeof pickEnterDestination>) =>
+    "href" in result ? result.href : "";
+  assert.equal(href(pickEnterDestination({ ...book, meters: [], leads: [] }, "Harbour", "/")), "/customers/c1");
+  assert.equal(href(pickEnterDestination(book, "Harbour View", "/")), "/customers/c1");
+  assert.equal(href(pickEnterDestination(book, "Hotel group", "/leads")), "/leads/l1");
+  assert.equal(href(pickEnterDestination(book, "Hotel group", "/")), "/leads/l1");
 
   const oak = {
     customers: [
