@@ -42,6 +42,7 @@ export default async function CustomerDetailPage({
           include: {
             salesperson: true,
             allocations: { include: { agent: true } },
+            payments: { orderBy: { sortOrder: "asc" } },
             reconciliations: { include: { actor: true }, orderBy: { createdAt: "desc" } },
           },
           orderBy: { renewalDate: "asc" },

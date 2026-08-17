@@ -4,6 +4,76 @@ export type FinanceDeal = {
   actualPaid?: number | null;
 };
 
+export type PaymentLike = {
+  stage: string;
+  label: string;
+  percent: number;
+  expectedDate?: Date | null;
+  amountDue?: number | null;
+  actualPaid?: number | null;
+};
+
+export function roundPence(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+export function netCommission(
+  gross: number | null | undefined,
+  tpiPercent: number | null | undefined,
+) {
+  const rate = Math.min(100, Math.max(0, tpiPercent ?? 0));
+  return roundPence((gross ?? 0) * (1 - rate / 100));
+}
+
+export function splitByPercent(net: number, percents: number[]) {
+  const amounts = percents.map((percent, index) =>
+    index === percents.length - 1 ? 0 : roundPence((net * percent) / 100),
+  );
+  const used = amounts.slice(0, -1).reduce((sum, value) => sum + value, 0);
+  if (amounts.length) amounts[amounts.length - 1] = roundPence(net - used);
+  return amounts;
+}
+
+export function contractMonths(start: Date | null | undefined, end: Date | null | undefined) {
+  if (!start || !end) return null;
+  const startUtc = Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate());
+  const endUtc = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+  if (endUtc <= startUtc) return 0;
+  const months =
+    (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
+    (end.getUTCMonth() - start.getUTCMonth()) -
+    (end.getUTCDate() < start.getUTCDate() ? 1 : 0);
+  return Math.max(0, months);
+}
+
+export function rollupPayments(payments: PaymentLike[]) {
+  const due = roundPence(payments.reduce((sum, row) => sum + (row.amountDue ?? 0), 0));
+  const paid = roundPence(payments.reduce((sum, row) => sum + (row.actualPaid ?? 0), 0));
+  const unpaid = payments.filter((row) => (row.amountDue ?? 0) - (row.actualPaid ?? 0) > 0.004);
+  const dueDate =
+    unpaid.find((row) => row.expectedDate)?.expectedDate ??
+    payments.find((row) => row.expectedDate)?.expectedDate ??
+    null;
+  return { amountDue: due, actualPaid: paid, dueDate };
+}
+
+export function groupByPaymentStage(deals: (FinanceDeal & { stage?: string; label?: string })[]): Bucket[] {
+  const map = new Map<string, Bucket>();
+  for (const deal of deals) {
+    const key = deal.stage ?? "OTHER";
+    const label = deal.label ?? key;
+    const bucket = map.get(key) ?? emptyBucket(key, label);
+    addDeal(bucket, deal);
+    map.set(key, bucket);
+  }
+  const order = ["ON_SIGN", "ON_LIVE", "EOC"];
+  return [...map.values()].sort((a, b) => {
+    const left = order.indexOf(a.key);
+    const right = order.indexOf(b.key);
+    return (left === -1 ? 99 : left) - (right === -1 ? 99 : right);
+  });
+}
+
 export type AnalyticsDeal = FinanceDeal & {
   id: string;
   customerId: string;
@@ -14,6 +84,9 @@ export type AnalyticsDeal = FinanceDeal & {
   supplier: string;
   agentIds: string[];
   agentNames: string[];
+  stage?: string;
+  label?: string;
+  tpiPartner?: string;
 };
 
 export type Bucket = {

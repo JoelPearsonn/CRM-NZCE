@@ -1,15 +1,31 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Agent, Deal, Lead, Meter } from "@prisma/client";
+import type { Agent, Deal, DealPayment, Lead, Meter } from "@prisma/client";
 import { reconcileDeal, type ActionState } from "@/app/actions/deals";
 import { DealForm } from "@/components/forms";
 import { DealStatusPill, ErrorBanner, FuelPill, RenewalCell } from "@/components/ui";
 import { agentNames, splitLabel } from "@/lib/agents";
-import { formatDate, formatDateTime, gbp, gbpExact, toDateInput } from "@/lib/format";
-import { dealRemaining } from "@/lib/finance";
+import { labelFor, TPI_PARTNERS } from "@/lib/constants";
+import { contractMonths, dealRemaining, netCommission } from "@/lib/finance";
+import { formatDate, formatDateTime, gbp, gbpExact, monthsLabel, toDateInput } from "@/lib/format";
 
 const empty: ActionState = {};
+
+type DealRow = Deal & {
+  salesperson: { name: string } | null;
+  allocations?: { agent: { name: string } }[];
+  payments?: DealPayment[];
+  reconciliations?: {
+    id: string;
+    createdAt: Date;
+    actualPaidOld: number | null;
+    actualPaidNew: number | null;
+    amountDueOld: number | null;
+    amountDueNew: number | null;
+    actor: { name: string } | null;
+  }[];
+};
 
 export function FinanceSnapshot({
   due,
@@ -24,7 +40,7 @@ export function FinanceSnapshot({
 }) {
   return (
     <div className="grid gap-3 sm:grid-cols-4">
-      <Snapshot label="Commission due" value={gbp(due)} hint="Amount still invoiced" />
+      <Snapshot label="Commission due" value={gbp(due)} hint="Net payouts still invoiced" />
       <Snapshot label="Actual paid" value={gbp(paid)} hint="Received on the book" />
       <Snapshot
         label="Remaining"
@@ -32,7 +48,7 @@ export function FinanceSnapshot({
         hint="Due minus paid"
         tone={remaining > 0 ? "warn" : "ok"}
       />
-      <Snapshot label="Estimated" value={gbp(estimated)} hint="Commission on the deals" />
+      <Snapshot label="Gross book" value={gbp(estimated)} hint="Full deal value before TPI" />
     </div>
   );
 }
@@ -59,43 +75,83 @@ function Snapshot({
   );
 }
 
-export function ReconcileDealForm({ deal }: { deal: Deal }) {
+export function ReconcileDealForm({ deal }: { deal: Deal & { payments?: DealPayment[] } }) {
   const [state, action, pending] = useActionState(reconcileDeal, empty);
   const remaining = dealRemaining(deal);
+  const payments = [...(deal.payments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+
   return (
     <form action={action} className="grid gap-2">
       <input type="hidden" name="id" value={deal.id} />
       <ErrorBanner message={state.error} />
-      <div className="grid gap-2 lg:grid-cols-5">
-        <label className="field">
-          <span>Due date</span>
-          <input name="dueDate" type="date" defaultValue={toDateInput(deal.dueDate)} />
-        </label>
-        <label className="field">
-          <span>Amount due</span>
-          <input name="amountDue" defaultValue={deal.amountDue ?? ""} />
-        </label>
-        <label className="field">
-          <span>Est. commission</span>
-          <input name="estimatedCommission" defaultValue={deal.estimatedCommission ?? ""} />
-        </label>
-        <label className="field">
-          <span>Actual paid</span>
-          <input name="actualPaid" defaultValue={deal.actualPaid ?? ""} />
-        </label>
-        <div className="flex items-end justify-between gap-2">
-          <div>
-            <p className="text-[0.68rem] font-semibold tracking-[0.08em] text-muted uppercase">
-              Remaining
-            </p>
-            <p className={`font-serif text-lg ${remaining > 0 ? "text-warn" : "text-moss"}`}>
-              {gbp(remaining)}
-            </p>
-          </div>
-          <button className="btn btn-brass" disabled={pending}>
-            {pending ? "Saving…" : "Save finance"}
-          </button>
+      {payments.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="desk-table">
+            <thead>
+              <tr>
+                <th>Payment</th>
+                <th>%</th>
+                <th>Expected</th>
+                <th>Due</th>
+                <th>Actual paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className="font-medium">{payment.label}</td>
+                  <td>{payment.percent}%</td>
+                  <td>
+                    <input
+                      name={`paymentDate_${payment.id}`}
+                      type="date"
+                      defaultValue={toDateInput(payment.expectedDate)}
+                    />
+                  </td>
+                  <td>{gbpExact(payment.amountDue)}</td>
+                  <td>
+                    <input
+                      name={`paymentPaid_${payment.id}`}
+                      defaultValue={payment.actualPaid || ""}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
+      ) : (
+        <div className="grid gap-2 lg:grid-cols-5">
+          <label className="field">
+            <span>Due date</span>
+            <input name="dueDate" type="date" defaultValue={toDateInput(deal.dueDate)} />
+          </label>
+          <label className="field">
+            <span>Amount due</span>
+            <input name="amountDue" defaultValue={deal.amountDue ?? ""} />
+          </label>
+          <label className="field">
+            <span>Est. commission</span>
+            <input name="estimatedCommission" defaultValue={deal.estimatedCommission ?? ""} />
+          </label>
+          <label className="field">
+            <span>Actual paid</span>
+            <input name="actualPaid" defaultValue={deal.actualPaid ?? ""} />
+          </label>
+        </div>
+      )}
+      <div className="flex items-end justify-between gap-2">
+        <div>
+          <p className="text-[0.68rem] font-semibold tracking-[0.08em] text-muted uppercase">
+            Remaining
+          </p>
+          <p className={`font-serif text-lg ${remaining > 0 ? "text-warn" : "text-moss"}`}>
+            {gbp(remaining)}
+          </p>
+        </div>
+        <button className="btn btn-brass" disabled={pending}>
+          {pending ? "Saving…" : "Save finance"}
+        </button>
       </div>
     </form>
   );
@@ -109,19 +165,7 @@ export function CustomerFinanceLedger({
   agents,
 }: {
   customerId: string;
-  deals: (Deal & {
-    salesperson: { name: string } | null;
-    allocations?: { agent: { name: string } }[];
-    reconciliations?: {
-      id: string;
-      createdAt: Date;
-      actualPaidOld: number | null;
-      actualPaidNew: number | null;
-      amountDueOld: number | null;
-      amountDueNew: number | null;
-      actor: { name: string } | null;
-    }[];
-  })[];
+  deals: DealRow[];
   meters: Meter[];
   leads: Lead[];
   agents: Agent[];
@@ -134,55 +178,74 @@ export function CustomerFinanceLedger({
           Contracts page.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="desk-table">
-            <thead>
-              <tr>
-                <th>Supplier</th>
-                <th className="col-lesser">Fuel</th>
-                <th>Status</th>
-                <th className="col-extra">Renewal</th>
-                <th>Due date</th>
-                <th>Amount due</th>
-                <th className="col-lesser">Est. commission</th>
-                <th className="col-extra">Actual paid</th>
-                <th>Remaining</th>
-                <th className="col-lesser">Sales</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deals.map((deal) => (
-                <tr key={deal.id}>
-                  <td className="font-medium">{deal.supplier}</td>
-                  <td className="col-lesser">
-                    <FuelPill value={deal.fuelType} />
-                  </td>
-                  <td>
-                    <DealStatusPill value={deal.status} />
-                  </td>
-                  <td className="col-extra">
-                    <RenewalCell date={deal.renewalDate} />
-                  </td>
-                  <td>{formatDate(deal.dueDate)}</td>
-                  <td>{gbp(deal.amountDue)}</td>
-                  <td className="col-lesser">{gbp(deal.estimatedCommission)}</td>
-                  <td className="col-extra">{gbp(deal.actualPaid)}</td>
-                  <td className={dealRemaining(deal) > 0 ? "font-semibold text-warn" : "text-moss"}>
-                    {gbp(dealRemaining(deal))}
-                  </td>
-                  <td className="col-lesser">
-                    {deal.allocations?.length
-                      ? `${agentNames(deal.allocations.map((row) => row.agent))}${
-                          splitLabel(deal.allocations.length)
-                            ? ` · ${splitLabel(deal.allocations.length)}`
-                            : ""
-                        }`
-                      : (deal.salesperson?.name ?? "—")}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-4 p-4">
+          {deals.map((deal) => {
+            const net = netCommission(deal.estimatedCommission, deal.tpiPercent);
+            const months = contractMonths(deal.contractStart, deal.contractEnd);
+            const payments = [...(deal.payments ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
+            return (
+              <article key={deal.id} className="border border-rule bg-paper">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-rule bg-[#f6f1e6] px-4 py-3">
+                  <div>
+                    <p className="font-medium">
+                      {deal.supplier} · <FuelPill value={deal.fuelType} />{" "}
+                      <DealStatusPill value={deal.status} />
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      CSD {formatDate(deal.contractStart)} · CED {formatDate(deal.contractEnd)}
+                      {months != null ? ` · ${monthsLabel(months)}` : ""}
+                    </p>
+                  </div>
+                  <RenewalCell date={deal.renewalDate} />
+                </div>
+                <div className="grid gap-3 px-4 py-3 sm:grid-cols-4">
+                  <Fact label="TPI" value={labelFor(TPI_PARTNERS, deal.tpiPartner)} hint={deal.tpiPercent ? `${deal.tpiPercent}% deduction` : "None / direct"} />
+                  <Fact label="Gross" value={gbpExact(deal.estimatedCommission)} hint="Full deal value" />
+                  <Fact label="Net" value={gbpExact(net)} hint="After TPI" />
+                  <Fact
+                    label="Remaining"
+                    value={gbpExact(dealRemaining(deal))}
+                    hint="Net due minus paid"
+                    warn={dealRemaining(deal) > 0}
+                  />
+                </div>
+                {payments.length ? (
+                  <table className="desk-table">
+                    <thead>
+                      <tr>
+                        <th>Payment</th>
+                        <th>%</th>
+                        <th>Expected</th>
+                        <th>Due</th>
+                        <th>Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map((payment) => (
+                        <tr key={payment.id}>
+                          <td className="font-medium">{payment.label}</td>
+                          <td>{payment.percent}%</td>
+                          <td>{formatDate(payment.expectedDate)}</td>
+                          <td>{gbpExact(payment.amountDue)}</td>
+                          <td>{gbpExact(payment.actualPaid)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : null}
+                <p className="px-4 py-2 text-[0.7rem] text-muted">
+                  Sales:{" "}
+                  {deal.allocations?.length
+                    ? `${agentNames(deal.allocations.map((row) => row.agent))}${
+                        splitLabel(deal.allocations.length)
+                          ? ` · ${splitLabel(deal.allocations.length)}`
+                          : ""
+                      }`
+                    : (deal.salesperson?.name ?? "—")}
+                </p>
+              </article>
+            );
+          })}
         </div>
       )}
 
@@ -225,6 +288,26 @@ export function CustomerFinanceLedger({
           embedded
         />
       </details>
+    </div>
+  );
+}
+
+function Fact({
+  label,
+  value,
+  hint,
+  warn,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  warn?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-[0.68rem] font-semibold tracking-[0.08em] text-muted uppercase">{label}</p>
+      <p className={`font-serif text-xl ${warn ? "text-warn" : "text-ink"}`}>{value}</p>
+      <p className="text-[0.7rem] text-muted">{hint}</p>
     </div>
   );
 }

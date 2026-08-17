@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import type { Agent, Customer, Deal, Lead, Meter, TenderResponse } from "@prisma/client";
+import type { Agent, Customer, Deal, DealPayment, Lead, Meter, TenderResponse } from "@prisma/client";
+import { ContractDateFields, DealPayoutFields } from "@/components/deal-payouts";
 import { saveAgent, type ActionState as AgentState } from "@/app/actions/agents";
 import { saveCustomer, type ActionState as CustomerState } from "@/app/actions/customers";
 import { saveDeal, type ActionState as DealState } from "@/app/actions/deals";
@@ -444,7 +445,7 @@ export function DealForm({
   embedded,
   selectedAgentIds = [],
 }: {
-  deal?: Deal;
+  deal?: Deal & { payments?: DealPayment[] };
   customers: Customer[];
   meters: Meter[];
   leads: Lead[];
@@ -554,31 +555,11 @@ export function DealForm({
           ))}
         </div>
       </div>
-      <Field label="Contract start" name="contractStart">
-        <input id="contractStart" name="contractStart" type="date" defaultValue={toDateInput(deal?.contractStart)} />
-      </Field>
-      <Field label="Contract end" name="contractEnd">
-        <input id="contractEnd" name="contractEnd" type="date" defaultValue={toDateInput(deal?.contractEnd)} />
-      </Field>
-      <Field label="Renewal date" name="renewalDate">
+      <ContractDateFields deal={deal} />
+      <Field label="Renewal date" name="renewalDate" hint="Defaults to CED if you leave it blank.">
         <input id="renewalDate" name="renewalDate" type="date" defaultValue={toDateInput(deal?.renewalDate)} />
       </Field>
-      <Field label="Commission due date" name="dueDate">
-        <input id="dueDate" name="dueDate" type="date" defaultValue={toDateInput(deal?.dueDate)} />
-      </Field>
-      <Field label="Amount due (£)" name="amountDue">
-        <input id="amountDue" name="amountDue" defaultValue={deal?.amountDue ?? ""} />
-      </Field>
-      <Field label="Estimated commission (£)" name="estimatedCommission">
-        <input
-          id="estimatedCommission"
-          name="estimatedCommission"
-          defaultValue={deal?.estimatedCommission ?? ""}
-        />
-      </Field>
-      <Field label="Actual paid (£)" name="actualPaid">
-        <input id="actualPaid" name="actualPaid" defaultValue={deal?.actualPaid ?? ""} />
-      </Field>
+      <DealPayoutFields deal={deal} />
       <div className="md:col-span-2">
         <Field label="Notes" name="notes">
           <textarea id="notes" name="notes" rows={3} defaultValue={deal?.notes ?? ""} />

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
 import { liveDealOnSupply } from "@/lib/deals";
+import { applyPayouts, parseDealPayments, resolveTpi } from "@/lib/deal-payouts";
+import { rollupPayments } from "@/lib/finance";
 import { gbpExact, optionalStr, parseDate, parseMoney, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { getWorkingAsId } from "@/lib/working-as";
@@ -51,6 +53,20 @@ export async function saveDeal(
     agentIds.push(...leadAgents.map((row) => row.agentId));
   }
   const salespersonId = optionalStr(formData.get("salespersonId")) || agentIds[0] || null;
+  const parsedPayments = parseDealPayments(formData);
+  if (parsedPayments.error) return { error: parsedPayments.error };
+
+  const tpi = resolveTpi(
+    str(formData.get("tpiPartner")) || "NONE",
+    parseMoney(formData.get("tpiPercent")),
+  );
+  const gross = parseMoney(formData.get("estimatedCommission"));
+  const built = applyPayouts(gross, tpi.tpiPercent, parsedPayments.payments);
+  const contractStart = parseDate(formData.get("contractStart"));
+  const contractEnd = parseDate(formData.get("contractEnd"));
+  if (contractStart && contractEnd && contractEnd < contractStart) {
+    return { error: "Contract end (CED) must be on or after contract start (CSD)." };
+  }
 
   const data = {
     customerId,
@@ -59,16 +75,27 @@ export async function saveDeal(
     salespersonId,
     supplier,
     fuelType,
-    contractStart: parseDate(formData.get("contractStart")),
-    contractEnd: parseDate(formData.get("contractEnd")),
-    renewalDate: parseDate(formData.get("renewalDate")),
+    contractStart,
+    contractEnd,
+    renewalDate: parseDate(formData.get("renewalDate")) ?? contractEnd,
     status: str(formData.get("status")) || "LIVE",
-    dueDate: parseDate(formData.get("dueDate")),
-    amountDue: parseMoney(formData.get("amountDue")),
-    estimatedCommission: parseMoney(formData.get("estimatedCommission")),
-    actualPaid: parseMoney(formData.get("actualPaid")),
+    dueDate: built.rollup.dueDate,
+    amountDue: built.rollup.amountDue,
+    estimatedCommission: gross,
+    actualPaid: built.rollup.actualPaid,
+    tpiPartner: tpi.tpiPartner,
+    tpiPercent: tpi.tpiPercent,
     notes: optionalStr(formData.get("notes")),
   };
+  const paymentCreates = built.payments.map((row) => ({
+    stage: row.stage,
+    label: row.label,
+    percent: row.percent,
+    expectedDate: row.expectedDate,
+    amountDue: row.amountDue,
+    actualPaid: row.actualPaid,
+    sortOrder: row.sortOrder,
+  }));
 
   if (id) {
     const existing = await prisma.deal.findUnique({ where: { id } });
@@ -82,6 +109,10 @@ export async function saveDeal(
           create: uniqueIds(agentIds.length ? agentIds : salespersonId ? [salespersonId] : []).map(
             (agentId) => ({ agentId }),
           ),
+        },
+        payments: {
+          deleteMany: {},
+          create: paymentCreates,
         },
       },
     });
@@ -111,6 +142,7 @@ export async function saveDeal(
           (agentId) => ({ agentId }),
         ),
       },
+      payments: { create: paymentCreates },
     },
   });
   await logActivity(
@@ -171,25 +203,50 @@ export async function reconcileDeal(
 
   const deal = await prisma.deal.findUnique({
     where: { id },
-    include: { customer: true },
+    include: { customer: true, payments: { orderBy: { sortOrder: "asc" } } },
   });
   if (!deal) return { error: "Contract not found." };
 
-  const actualPaid = parseMoney(formData.get("actualPaid"));
-  const amountDue = parseMoney(formData.get("amountDue"));
-  const estimatedCommission = parseMoney(formData.get("estimatedCommission"));
-  const dueDate = parseDate(formData.get("dueDate"));
   const actorId = await getWorkingAsId();
+  let amountDue = deal.amountDue;
+  let estimatedCommission = deal.estimatedCommission;
+  let actualPaid = deal.actualPaid;
 
-  await prisma.deal.update({
-    where: { id },
-    data: {
-      dueDate,
-      amountDue,
-      estimatedCommission,
-      actualPaid,
-    },
-  });
+  if (deal.payments.length > 0) {
+    for (const payment of deal.payments) {
+      await prisma.dealPayment.update({
+        where: { id: payment.id },
+        data: {
+          expectedDate: parseDate(formData.get(`paymentDate_${payment.id}`)) ?? payment.expectedDate,
+          actualPaid: parseMoney(formData.get(`paymentPaid_${payment.id}`)) ?? 0,
+        },
+      });
+    }
+    const fresh = await prisma.dealPayment.findMany({
+      where: { dealId: id },
+      orderBy: { sortOrder: "asc" },
+    });
+    const rollup = rollupPayments(fresh);
+    amountDue = rollup.amountDue;
+    actualPaid = rollup.actualPaid;
+    await prisma.deal.update({
+      where: { id },
+      data: { dueDate: rollup.dueDate, amountDue, actualPaid },
+    });
+  } else {
+    amountDue = parseMoney(formData.get("amountDue"));
+    estimatedCommission = parseMoney(formData.get("estimatedCommission"));
+    actualPaid = parseMoney(formData.get("actualPaid"));
+    await prisma.deal.update({
+      where: { id },
+      data: {
+        dueDate: parseDate(formData.get("dueDate")),
+        amountDue,
+        estimatedCommission,
+        actualPaid,
+      },
+    });
+  }
   const wrote = await recordFinanceChange(
     deal,
     { amountDue, estimatedCommission, actualPaid },

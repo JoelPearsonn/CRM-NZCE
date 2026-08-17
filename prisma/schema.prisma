@@ -137,6 +137,8 @@ model Deal {
   amountDue           Float?
   estimatedCommission Float?
   actualPaid          Float?
+  tpiPartner          String    @default("NONE")
+  tpiPercent          Float     @default(0)
   notes               String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
@@ -147,9 +149,28 @@ model Deal {
   salesperson     Agent?               @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
   allocations     DealAllocation[]
   reconciliations DealReconciliation[]
+  payments        DealPayment[]
 
   @@index([customerId])
   @@index([renewalDate])
+}
+
+model DealPayment {
+  id           String    @id @default(cuid())
+  dealId       String
+  stage        String
+  label        String
+  percent      Float
+  expectedDate DateTime?
+  amountDue    Float?
+  actualPaid   Float     @default(0)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, sortOrder])
 }
 
 model DealReconciliation {

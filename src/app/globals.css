@@ -66,6 +66,18 @@ a {
   vertical-align: top;
 }
 
+.desk-table input,
+.desk-table select {
+  width: 100%;
+  min-height: 2.25rem;
+  border: 1px solid var(--color-rule);
+  background: var(--color-card);
+  color: var(--color-ink);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
 .desk-table tbody tr:hover td {
   background: #f7f2e7;
 }

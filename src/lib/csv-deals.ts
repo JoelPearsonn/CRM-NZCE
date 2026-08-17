@@ -44,6 +44,8 @@ export function dealsCsvTemplate() {
     "0",
     "tom.brennan@nzce.co.uk",
     "tom.brennan@nzce.co.uk",
+    "NONE",
+    "0",
   ])}\n`;
 }
 

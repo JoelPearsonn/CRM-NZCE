@@ -60,6 +60,32 @@ export function isTenderLeadStage(stage: string) {
   return (TENDER_LEAD_STAGES as readonly string[]).includes(stage);
 }
 
+export const TPI_PARTNERS = [
+  { value: "NONE", label: "None / direct", percent: 0 },
+  { value: "JOOSE_UCR", label: "Joose + UCR", percent: 15 },
+  { value: "INFINITE_20", label: "Infinite Energy 20%", percent: 20 },
+  { value: "LOVE_ENERGY", label: "Love Energy Savings", percent: 10 },
+  { value: "BIONIC", label: "Bionic", percent: 10 },
+  { value: "UTILITY_TEAM", label: "Utility Team", percent: 12 },
+  { value: "SWITCH_MY_BUSINESS", label: "Switch My Business", percent: 10 },
+] as const;
+
+export const PAYMENT_STAGES = [
+  { value: "ON_SIGN", label: "On Sign" },
+  { value: "ON_LIVE", label: "On Live" },
+  { value: "EOC", label: "EOC" },
+] as const;
+
+export const PAYOUT_PRESETS = [
+  { value: "40_40_20", label: "40 / 40 / 20 · sign / live / EOC", percents: [40, 40, 20] },
+  { value: "40_60", label: "40 / 60 · sign / live", percents: [40, 60] },
+  { value: "CUSTOM", label: "Custom %", percents: [40, 40, 20] },
+] as const;
+
+export function tpiPercentFor(value: string | null | undefined) {
+  return TPI_PARTNERS.find((item) => item.value === value)?.percent ?? 0;
+}
+
 export const DEAL_STATUSES = [
   { value: "LIVE", label: "Live" },
   { value: "PENDING", label: "Pending start" },
@@ -134,6 +160,8 @@ export const CSV_DEAL_HEADERS = [
   "actualPaid",
   "salespersonEmail",
   "agentEmails",
+  "tpiPartner",
+  "tpiPercent",
 ] as const;
 
 export const CSV_IMPORT_HEADERS = [

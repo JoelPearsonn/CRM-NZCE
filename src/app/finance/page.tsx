@@ -7,11 +7,13 @@ import {
   groupByAgent,
   groupByCustomer,
   groupByMonth,
+  groupByPaymentStage,
   isMonthKey,
   monthKey,
   monthLabel,
   type AnalyticsDeal,
 } from "@/lib/finance";
+import { labelFor, TPI_PARTNERS } from "@/lib/constants";
 import { formatDate, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
@@ -29,26 +31,52 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
 
   const deals = await prisma.deal.findMany({
     where: { customer: { archivedAt: null }, status: { not: "CANCELLED" } },
-    include: { customer: true, salesperson: true, allocations: { include: { agent: true } } },
+    include: {
+      customer: true,
+      salesperson: true,
+      allocations: { include: { agent: true } },
+      payments: { orderBy: { sortOrder: "asc" } },
+    },
     orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
   });
 
-  const rows: AnalyticsDeal[] = deals.map((deal) => ({
-    id: deal.id,
-    customerId: deal.customerId,
-    dueDate: deal.dueDate,
-    salespersonId: deal.salespersonId,
-    customerName: deal.customer.companyName,
-    salespersonName: deal.salesperson?.name ?? null,
-    supplier: deal.supplier,
-    agentIds: deal.allocations.map((row) => row.agentId),
-    agentNames: deal.allocations.map((row) => row.agent.name),
-    amountDue: deal.amountDue,
-    estimatedCommission: deal.estimatedCommission,
-    actualPaid: deal.actualPaid,
-  }));
+  const lines: (AnalyticsDeal & { stage?: string; label?: string; tpiPartner?: string })[] =
+    deals.flatMap((deal) => {
+      const base = {
+        id: deal.id,
+        customerId: deal.customerId,
+        salespersonId: deal.salespersonId,
+        customerName: deal.customer.companyName,
+        salespersonName: deal.salesperson?.name ?? null,
+        supplier: deal.supplier,
+        agentIds: deal.allocations.map((row) => row.agentId),
+        agentNames: deal.allocations.map((row) => row.agent.name),
+        tpiPartner: deal.tpiPartner,
+      };
+      if (deal.payments.length === 0) {
+        return [
+          {
+            ...base,
+            dueDate: deal.dueDate,
+            amountDue: deal.amountDue,
+            estimatedCommission: deal.estimatedCommission,
+            actualPaid: deal.actualPaid,
+          },
+        ];
+      }
+      return deal.payments.map((payment) => ({
+        ...base,
+        id: `${deal.id}:${payment.id}`,
+        dueDate: payment.expectedDate,
+        amountDue: payment.amountDue,
+        estimatedCommission: payment.amountDue,
+        actualPaid: payment.actualPaid,
+        stage: payment.stage,
+        label: payment.label,
+      }));
+    });
 
-  const byMonth = groupByMonth(rows);
+  const byMonth = groupByMonth(lines);
   const currentKey = monthKey(new Date());
   const monthOptions = [
     ...byMonth.map((row) => ({ key: row.key, label: row.label })),
@@ -57,12 +85,13 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
       : [{ key: currentKey, label: monthLabel(currentKey) }]),
   ].sort((a, b) => a.key.localeCompare(b.key));
 
-  const scopedRows = filterDealsByMonth(rows, month);
-  const scopedDeals = filterDealsByMonth(deals, month);
+  const scopedRows = filterDealsByMonth(lines, month);
+  const scopedDeals = scopedRows;
   const totals = financeTotals(scopedRows);
   const scopedByMonth = month ? byMonth.filter((row) => row.key === month) : byMonth;
   const byAgent = groupByAgent(scopedRows);
   const byCustomer = groupByCustomer(scopedRows);
+  const byStage = groupByPaymentStage(scopedRows);
   const monthTitle = month ? monthLabel(month) : "All months";
 
   return (
@@ -70,7 +99,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
       <PageHeader
         kicker="Monthly report"
         title={month ? `Finance · ${monthTitle}` : "Finance · all months"}
-        description="Pick a month to see due, paid, outstanding and estimated for that month only. This is a screen — not a PDF. Same deal records as each customer finance tracker."
+        description="Due and paid by payment stage (On Sign / On Live / EOC), after TPI. Pick a month to see those payouts only. This is a screen — not a PDF."
       />
 
       <form method="get" className="card mb-6 flex flex-wrap items-end gap-3 p-4">
@@ -106,7 +135,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
         />
       </div>
 
-      {rows.length === 0 ? (
+      {deals.length === 0 ? (
         <EmptyState
           title="No deals to analyse"
           body="Record a deal on a customer and it will land here and on the Contracts page."
@@ -124,9 +153,40 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
         />
       ) : (
         <div className="grid gap-6">
+          <Section title={month ? `By payment stage · ${monthTitle}` : "Due / paid by payment stage"}>
+            <p className="border-b border-rule px-4 py-2 text-xs text-muted">
+              On Sign, On Live and EOC after TPI — not one lump per deal
+            </p>
+            <HorizonBars rows={byStage} valueKey="due" />
+            <table className="desk-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Due</th>
+                  <th>Paid</th>
+                  <th>Remaining</th>
+                  <th>Payouts</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byStage.map((row) => (
+                  <tr key={row.key}>
+                    <td className="font-medium">{row.label}</td>
+                    <td>{gbp(row.due)}</td>
+                    <td>{gbp(row.paid)}</td>
+                    <td className={row.remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
+                      {gbp(row.remaining)}
+                    </td>
+                    <td>{row.dealCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Section>
+
           <Section title={month ? `Cashflow · ${monthTitle}` : "Cashflow by month"}>
             <p className="border-b border-rule px-4 py-2 text-xs text-muted">
-              Commission due date · amount due versus actual paid · remaining
+              Payout expected date · amount due versus actual paid · remaining
             </p>
             <GroupedBars
               rows={scopedByMonth}
@@ -290,48 +350,51 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
             </table>
           </Section>
 
-          <Section title={month ? `Deals due · ${monthTitle}` : "Deal book"}>
+          <Section title={month ? `Payouts due · ${monthTitle}` : "Payout book"}>
             <table className="desk-table">
               <thead>
                 <tr>
                   <th>Customer</th>
                   <th className="col-extra">Supplier</th>
-                  <th>Due date</th>
+                  <th>Stage</th>
+                  <th>Expected</th>
                   <th>Amount due</th>
                   <th className="col-lesser">Paid</th>
                   <th>Remaining</th>
-                  <th className="col-lesser">Estimated</th>
+                  <th className="col-lesser">TPI</th>
                   <th className="col-lesser">Sales</th>
                 </tr>
               </thead>
               <tbody>
                 {scopedDeals.map((deal) => {
                   const remaining = Math.max(0, (deal.amountDue ?? 0) - (deal.actualPaid ?? 0));
+                  const contractId = deal.id.split(":")[0];
                   return (
                     <tr key={deal.id}>
                       <td>
                         <Link href={`/customers/${deal.customerId}`} className="font-medium">
-                          {deal.customer.companyName}
+                          {deal.customerName}
                         </Link>
                         <div>
-                          <Link href={`/contracts/${deal.id}`} className="text-[0.7rem] text-muted">
+                          <Link href={`/contracts/${contractId}`} className="text-[0.7rem] text-muted">
                             Deal record
                           </Link>
                         </div>
                       </td>
                       <td className="col-extra">{deal.supplier}</td>
+                      <td>{deal.label ?? "Deal"}</td>
                       <td>{formatDate(deal.dueDate)}</td>
                       <td>{gbp(deal.amountDue)}</td>
                       <td className="col-lesser">{gbp(deal.actualPaid)}</td>
                       <td className={remaining > 0 ? "font-semibold text-warn" : "text-moss"}>
                         {gbp(remaining)}
                       </td>
-                      <td className="col-lesser">{gbp(deal.estimatedCommission)}</td>
                       <td className="col-lesser">
-                        {deal.allocations.length
-                          ? deal.allocations.map((row) => row.agent.name).join(" · ")
-                          : (deal.salesperson?.name ?? "—")}
-                        {deal.allocations.length === 2 ? (
+                        {deal.tpiPartner ? labelFor(TPI_PARTNERS, deal.tpiPartner) : "None / direct"}
+                      </td>
+                      <td className="col-lesser">
+                        {deal.agentNames.length ? deal.agentNames.join(" · ") : (deal.salespersonName ?? "—")}
+                        {deal.agentIds.length === 2 ? (
                           <div className="text-[0.7rem] text-muted">50/50</div>
                         ) : null}
                       </td>

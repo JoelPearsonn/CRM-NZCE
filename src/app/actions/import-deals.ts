@@ -244,6 +244,8 @@ export async function runDealImport(
       amountDue: parseCsvMoney(values.amountDue) ?? existing?.amountDue ?? null,
       estimatedCommission: parseCsvMoney(values.estimatedCommission) ?? existing?.estimatedCommission ?? null,
       actualPaid: parseCsvMoney(values.actualPaid) ?? existing?.actualPaid ?? null,
+      tpiPartner: values.tpiPartner || existing?.tpiPartner || "NONE",
+      tpiPercent: parseCsvMoney(values.tpiPercent) ?? existing?.tpiPercent ?? 0,
     };
 
     if (existing) {

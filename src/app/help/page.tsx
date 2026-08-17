@@ -106,7 +106,7 @@ export default function HelpPage() {
 
         <Guide
           title="Record a deal"
-          body="When a lead is sold, record the contract on the customer (or on Contracts). Same row appears in finance. Two agents on a deal split estimated and actual 50/50. A meter can only have one live contract."
+          body="When a lead is sold, record the contract on the customer (or on Contracts). Put CSD and CED — length is taken from those dates. Pick a TPI (or none / direct); net commission is the full deal value minus that TPI %. Payouts default to 40 / 40 / 20 (sign / live / EOC), or 40 / 60, or custom. Two agents on a deal still split 50/50. A meter can only have one live contract."
         >
           <Link href="/contracts/new" className="btn btn-ghost">
             Record deal
@@ -115,7 +115,7 @@ export default function HelpPage() {
 
         <Guide
           title="Monthly finance"
-          body="Finance opens on this month. Pick another month to see due, paid, outstanding and estimated for that month only. It is a screen, not a PDF."
+          body="Finance opens on this month. Due and paid are by payment stage (On Sign / On Live / EOC) after TPI, not one lump. Pick another month to see those payouts only. It is a screen, not a PDF."
         >
           <Link href="/finance" className="btn btn-ghost">
             This month

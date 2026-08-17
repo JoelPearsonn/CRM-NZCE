@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { applyPayouts, type BuiltPayment } from "../src/lib/deal-payouts";
 import { writeSeedLoa } from "../src/lib/loa-files";
 import { writeSeedRecording } from "../src/lib/recording-files";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
@@ -72,6 +73,110 @@ async function ensureDemoDealSplits() {
         await prisma.dealAllocation.create({ data: { dealId: harbourDeal.id, agentId } });
       }
     }
+  }
+}
+
+function payoutDraft(
+  percents: number[],
+  dates: Array<Date | null>,
+  paid: number[] = [],
+): BuiltPayment[] {
+  const stages = percents.length === 2 ? ["ON_SIGN", "ON_LIVE"] : ["ON_SIGN", "ON_LIVE", "EOC"];
+  const labels = percents.length === 2 ? ["On Sign", "On Live"] : ["On Sign", "On Live", "EOC"];
+  return percents.map((percent, index) => ({
+    stage: stages[index] ?? "ON_SIGN",
+    label: labels[index] ?? `Payment ${index + 1}`,
+    percent,
+    expectedDate: dates[index] ?? null,
+    amountDue: 0,
+    actualPaid: paid[index] ?? 0,
+    sortOrder: index,
+  }));
+}
+
+async function writeDealFinance(
+  dealId: string,
+  tpiPartner: string,
+  tpiPercent: number,
+  gross: number,
+  drafts: BuiltPayment[],
+) {
+  const built = applyPayouts(gross, tpiPercent, drafts);
+  await prisma.deal.update({
+    where: { id: dealId },
+    data: {
+      tpiPartner,
+      tpiPercent,
+      estimatedCommission: gross,
+      amountDue: built.rollup.amountDue,
+      actualPaid: built.rollup.actualPaid,
+      dueDate: built.rollup.dueDate,
+      payments: {
+        deleteMany: {},
+        create: built.payments.map((row) => ({
+          stage: row.stage,
+          label: row.label,
+          percent: row.percent,
+          expectedDate: row.expectedDate,
+          amountDue: row.amountDue,
+          actualPaid: row.actualPaid,
+          sortOrder: row.sortOrder,
+        })),
+      },
+    },
+  });
+}
+
+async function ensureDemoPayouts() {
+  const deals = await prisma.deal.findMany({
+    include: { payments: true, customer: true },
+  });
+  for (const deal of deals) {
+    if (deal.payments.length > 0) continue;
+    const harbour =
+      deal.supplier === "EDF Energy" && deal.customer.companyName === "Harbour View Hotels Ltd";
+    const mersey =
+      deal.supplier === "SmartestEnergy" && deal.customer.companyName === "Mersey Logistics Ltd";
+    if (harbour) {
+      await writeDealFinance(
+        deal.id,
+        "INFINITE_20",
+        20,
+        deal.estimatedCommission ?? 6800,
+        payoutDraft(
+          [40, 40, 20],
+          [daysFromNow(14), deal.contractStart, deal.contractEnd],
+        ),
+      );
+      continue;
+    }
+    if (mersey) {
+      const built = applyPayouts(deal.estimatedCommission ?? 9100, 15, payoutDraft(
+        [40, 40, 20],
+        [daysFromNow(30), deal.contractStart, deal.contractEnd],
+      ));
+      built.payments[0].actualPaid = built.payments[0].amountDue;
+      await writeDealFinance(
+        deal.id,
+        "JOOSE_UCR",
+        15,
+        deal.estimatedCommission ?? 9100,
+        built.payments,
+      );
+      continue;
+    }
+    const drafts = payoutDraft(
+      [40, 40, 20],
+      [deal.dueDate ?? deal.contractStart, deal.contractStart, deal.contractEnd],
+    );
+    const built = applyPayouts(deal.estimatedCommission ?? deal.amountDue ?? 0, 0, drafts);
+    let remainingPaid = deal.actualPaid ?? 0;
+    for (const payment of built.payments) {
+      const take = Math.min(payment.amountDue, remainingPaid);
+      payment.actualPaid = take;
+      remainingPaid = Math.round((remainingPaid - take) * 100) / 100;
+    }
+    await writeDealFinance(deal.id, "NONE", 0, deal.estimatedCommission ?? 0, built.payments);
   }
 }
 
@@ -273,6 +378,7 @@ export async function seedDesk() {
     await ensureDemoTenders();
     await ensureDemoLoa();
     await ensureDemoDealSplits();
+    await ensureDemoPayouts();
     await ensureDemoInbox();
     await ensureDemoReconciliations();
     await ensureRenewalReminderTasks();
@@ -1049,6 +1155,7 @@ export async function seedDesk() {
   await seedOakfieldTenders();
   await seedHarbourViewSignedLoa();
   await ensureDemoDealSplits();
+  await ensureDemoPayouts();
   await ensureDemoInbox();
   await ensureDemoReconciliations();
   await ensureRenewalReminderTasks();

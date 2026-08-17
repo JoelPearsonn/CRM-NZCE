@@ -154,6 +154,8 @@ export async function exportDealsCsv() {
     deal.actualPaid,
     deal.salesperson?.email ?? "",
     deal.allocations.map((row) => row.agent.email).join(";"),
+    deal.tpiPartner,
+    deal.tpiPercent,
   ]);
   return csvResponse("nzce-deals.csv", toCsv(CSV_DEAL_HEADERS, rows));
 }

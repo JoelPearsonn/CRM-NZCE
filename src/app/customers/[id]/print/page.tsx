@@ -184,10 +184,11 @@ export default async function CustomerPrintPage({ params }: IdPageProps) {
               <tr>
                 <th>Supplier</th>
                 <th>Status</th>
-                <th>Renewal</th>
+                <th>CSD</th>
+                <th>CED</th>
                 <th>Due</th>
                 <th>Paid</th>
-                <th>Estimated</th>
+                <th>Gross</th>
                 <th>Sales</th>
               </tr>
             </thead>
@@ -198,9 +199,8 @@ export default async function CustomerPrintPage({ params }: IdPageProps) {
                   <td>
                     <DealStatusPill value={deal.status} />
                   </td>
-                  <td>
-                    <RenewalCell date={deal.renewalDate} />
-                  </td>
+                  <td>{formatDate(deal.contractStart)}</td>
+                  <td>{formatDate(deal.contractEnd)}</td>
                   <td>{gbp(deal.amountDue)}</td>
                   <td>{gbp(deal.actualPaid)}</td>
                   <td>{gbp(deal.estimatedCommission)}</td>

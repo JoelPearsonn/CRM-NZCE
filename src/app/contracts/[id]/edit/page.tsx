@@ -8,7 +8,7 @@ export default async function EditDealPage({ params }: IdPageProps) {
   const { id } = await params;
   const deal = await prisma.deal.findUnique({
     where: { id },
-    include: { customer: true, allocations: true },
+    include: { customer: true, allocations: true, payments: { orderBy: { sortOrder: "asc" } } },
   });
   if (!deal) notFound();
 

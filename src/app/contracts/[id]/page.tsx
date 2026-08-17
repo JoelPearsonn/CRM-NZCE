@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ReconcileDealForm } from "@/components/customer-finance";
 import { DealStatusPill, FuelPill, PageHeader, RenewalCell } from "@/components/ui";
-import { formatDate, formatDateTime, formatMpan, gbpExact } from "@/lib/format";
+import { labelFor, TPI_PARTNERS } from "@/lib/constants";
+import { contractMonths, netCommission } from "@/lib/finance";
+import { formatDate, formatDateTime, formatMpan, gbpExact, monthsLabel } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
 
@@ -16,6 +18,7 @@ export default async function DealDetailPage({ params }: IdPageProps) {
       lead: true,
       salesperson: true,
       allocations: { include: { agent: true } },
+      payments: { orderBy: { sortOrder: "asc" } },
       reconciliations: { include: { actor: true }, orderBy: { createdAt: "desc" } },
     },
   });
@@ -33,11 +36,13 @@ export default async function DealDetailPage({ params }: IdPageProps) {
           }`
         : (deal.salesperson?.name ?? "—"),
     ],
-    ["Contract start", formatDate(deal.contractStart)],
-    ["Contract end", formatDate(deal.contractEnd)],
-    ["Commission due", formatDate(deal.dueDate)],
+    ["Contract start (CSD)", formatDate(deal.contractStart)],
+    ["Contract end (CED)", formatDate(deal.contractEnd)],
+    ["Length", monthsLabel(contractMonths(deal.contractStart, deal.contractEnd))],
+    ["TPI", `${labelFor(TPI_PARTNERS, deal.tpiPartner)}${deal.tpiPercent ? ` · ${deal.tpiPercent}%` : ""}`],
+    ["Full deal value", gbpExact(deal.estimatedCommission)],
+    ["Net commission", gbpExact(netCommission(deal.estimatedCommission, deal.tpiPercent))],
     ["Amount due", gbpExact(deal.amountDue)],
-    ["Estimated commission", gbpExact(deal.estimatedCommission)],
     ["Actual paid", gbpExact(deal.actualPaid)],
   ] as const;
 
@@ -101,6 +106,36 @@ export default async function DealDetailPage({ params }: IdPageProps) {
           </div>
         ) : null}
       </div>
+
+      {deal.payments.length ? (
+        <div className="card mt-6 overflow-x-auto">
+          <p className="border-b border-rule px-4 py-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+            Split payouts
+          </p>
+          <table className="desk-table">
+            <thead>
+              <tr>
+                <th>Payment</th>
+                <th>%</th>
+                <th>Expected</th>
+                <th>Due</th>
+                <th>Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deal.payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className="font-medium">{payment.label}</td>
+                  <td>{payment.percent}%</td>
+                  <td>{formatDate(payment.expectedDate)}</td>
+                  <td>{gbpExact(payment.amountDue)}</td>
+                  <td>{gbpExact(payment.actualPaid)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <div className="card mt-6 p-4">
         <p className="mb-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
