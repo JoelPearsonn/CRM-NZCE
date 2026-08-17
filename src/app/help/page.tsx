@@ -136,7 +136,7 @@ export default function HelpPage() {
 
         <Guide
           title="Won or lost reason"
-          body="Moving a lead to Sold or Lost needs a reason. Tap a common one (best price, stayed with incumbent) or type your own. It shows on the lead card so the book remembers why. Search this board filters the columns by company, contact or MPAN. Allocate is collapsed on each card so twenty leads in one stage do not fill the screen."
+          body="Moving a lead to Won or Lost needs a reason. Tap a common one (best price, stayed with incumbent) or type your own. Each card shows company, contact, phone, email, LOA sent/received and the owner. Allocate stays in the dropdown. The column number is how many cards sit in that group."
         >
           <Link href="/leads" className="btn btn-ghost">
             Open leads

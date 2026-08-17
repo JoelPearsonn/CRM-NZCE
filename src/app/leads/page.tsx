@@ -4,6 +4,7 @@ import { LeadKanban } from "@/components/lead-kanban";
 import { PageHeader } from "@/components/ui";
 import { exportHref, leadFilterParams, leadMatchesSearch, parseLeadFilters } from "@/lib/book-filters";
 import { LEAD_STAGES } from "@/lib/constants";
+import { loaBoardFlags } from "@/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import type { SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
@@ -19,7 +20,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
       where: { customer: { archivedAt: null } },
       include: {
         customer: {
-          include: { meters: { select: { mpan: true, mprn: true, siteName: true } } },
+          include: { meters: { select: { mpan: true, mprn: true, siteName: true, loaStatus: true } } },
         },
         allocations: { include: { agent: true } },
       },
@@ -44,7 +45,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
       <PageHeader
         kicker="Pipeline"
         title="Leads"
-        description="Search the board, then filter by stage or agent. Allocate sits behind each card so the column stays short. Drag a card to move it."
+        description="Search the board, then filter by stage or agent. Cards show company, contact and LOA. Allocate sits in the dropdown. Drag a card to move it."
         actions={
           <>
             <a href={exportHref("/api/export/leads", leadFilterParams(filters))} className="btn btn-ghost">
@@ -130,6 +131,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           agents={agents}
           leads={filtered.map((lead) => {
             const loa = latestLoa.get(lead.customerId);
+            const flags = loaBoardFlags(lead.customer.meters, loa);
             return {
               id: lead.id,
               title: lead.title,
@@ -138,6 +140,12 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
               outcomeReason: lead.outcomeReason,
               customerId: lead.customerId,
               companyName: lead.customer.companyName,
+              contactName: lead.customer.contactName,
+              phone: lead.customer.phone,
+              email: lead.customer.email,
+              loaSent: flags.loaSent,
+              loaReceived: flags.loaReceived,
+              ownerNames: lead.allocations.map((allocation) => allocation.agent.name),
               allocations: lead.allocations.map((allocation) => ({ agentId: allocation.agentId })),
               loa: loa ? { sigLink: loa.sigLink, status: loa.status, channel: loa.channel } : null,
             };

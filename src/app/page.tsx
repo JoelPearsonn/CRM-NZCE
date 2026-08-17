@@ -10,9 +10,10 @@ import {
   StagePill,
 } from "@/components/ui";
 import { QuarterlyMarketReminder } from "@/components/desk-reminder";
-import { LEAD_STAGES, OPEN_LEAD_STAGES } from "@/lib/constants";
+import { isClosedLeadStage, LEAD_STAGES } from "@/lib/constants";
 import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
-import { ensureLeadBoardStages } from "@/lib/lead-board";
+import { countLeadsByColumn } from "@/lib/lead-card";
+import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
   const horizon = new Date();
   horizon.setDate(horizon.getDate() + 90);
 
-  const [renewals, objections, leads, deals, openLeadCount, customerCount, meterCount] =
+  const [renewals, objections, leadRows, deals, customerCount, meterCount] =
     await Promise.all([
     prisma.meter.findMany({
       where: { renewalDate: { lte: horizon }, customer: { archivedAt: null } },
@@ -43,22 +44,21 @@ export default async function DashboardPage() {
       include: { customer: true, salesperson: true },
       orderBy: { objectionRaisedOn: "asc" },
     }),
-    prisma.lead.groupBy({
-      by: ["stage"],
+    prisma.lead.findMany({
       where: { customer: { archivedAt: null } },
-      _count: { _all: true },
+      select: { stage: true, notes: true },
     }),
     prisma.deal.findMany({
       where: { customer: { archivedAt: null }, status: { not: "CANCELLED" } },
-    }),
-    prisma.lead.count({
-      where: { stage: { in: [...OPEN_LEAD_STAGES] }, customer: { archivedAt: null } },
     }),
     prisma.customer.count({ where: { archivedAt: null } }),
     prisma.meter.count({ where: { customer: { archivedAt: null } } }),
   ]);
 
-  const leadCounts = Object.fromEntries(leads.map((row) => [row.stage, row._count._all]));
+  const leadCounts = countLeadsByColumn(leadRows);
+  const openLeadCount = leadRows.filter(
+    (lead) => !isClosedLeadStage(resolveLeadBoardStage(lead)),
+  ).length;
   const estimated = deals.reduce((sum, deal) => sum + (deal.estimatedCommission ?? 0), 0);
   const paid = deals.reduce((sum, deal) => sum + (deal.actualPaid ?? 0), 0);
   const due = deals.reduce((sum, deal) => sum + (deal.amountDue ?? 0), 0);

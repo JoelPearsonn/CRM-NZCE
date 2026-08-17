@@ -1,6 +1,4 @@
-import { LEAD_STAGES, labelFor } from "@/lib/constants";
 import { formatMpan } from "@/lib/format";
-import { resolveLeadBoardStage } from "@/lib/lead-board";
 import type { SearchResponse } from "@/lib/master-search";
 import { prisma } from "@/lib/prisma";
 
@@ -53,7 +51,13 @@ export async function searchBook(q: string, type = ""): Promise<SearchResponse> 
       ? prisma.lead.findMany({
           where: {
             customer: { archivedAt: null },
-            OR: [{ title: contains }, { notes: contains }, { customer: { companyName: contains } }],
+            OR: [
+              { title: contains },
+              { notes: contains },
+              { customer: { companyName: contains } },
+              { customer: { contactName: contains } },
+              { customer: { email: contains } },
+            ],
           },
           include: { customer: true },
           take: 8,
@@ -98,8 +102,8 @@ export async function searchBook(q: string, type = ""): Promise<SearchResponse> 
     leads: leads.map((lead) => ({
       id: lead.id,
       type: "lead" as const,
-      title: lead.title,
-      subtitle: `${lead.customer.companyName} · ${labelFor(LEAD_STAGES, resolveLeadBoardStage(lead))}`,
+      title: lead.customer.companyName,
+      subtitle: [lead.customer.contactName, lead.customer.phone].filter(Boolean).join(" · "),
       href: `/leads/${lead.id}`,
     })),
     deals: deals.map((deal) => ({

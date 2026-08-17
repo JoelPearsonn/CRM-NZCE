@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { leadMatchesSearch } from "../src/lib/book-filters";
 import { pickEnterDestination } from "../src/lib/master-search";
 import {
@@ -12,6 +14,8 @@ import {
   LEAD_STAGES,
   OPEN_LEAD_STAGES,
 } from "../src/lib/constants";
+import { LeadCardFacts } from "../src/components/lead-card-facts";
+import { countLeadsByColumn, loaBoardFlags } from "../src/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
@@ -261,6 +265,52 @@ test("lead board columns match Monday Customer Board groups and import mapping",
     const updated = await db.lead.findUnique({ where: { id: lead.id } });
     assert.equal(updated?.stage, "Proposal Sent");
   });
+});
+
+test("lead cards show customer contact and LOA, and the column count matches the cards", () => {
+  const flags = loaBoardFlags(
+    [{ loaStatus: "REQUESTED" }, { loaStatus: "RECEIVED" }],
+    { status: "COMPLETED" },
+  );
+  assert.equal(flags.loaSent, true);
+  assert.equal(flags.loaReceived, true);
+
+  const html = renderToStaticMarkup(
+    createElement(LeadCardFacts, {
+      companyName: "Acme Bakery Ltd",
+      contactName: "Sam Baker",
+      phone: "0117 555 0100",
+      email: "sam@acme-bakery.test",
+      loaSent: true,
+      loaReceived: true,
+      owners: ["Priya Shah"],
+    }),
+  );
+  assert.match(html, /Acme Bakery Ltd/);
+  assert.match(html, /Sam Baker/);
+  assert.match(html, /0117 555 0100/);
+  assert.match(html, /sam@acme-bakery\.test/);
+  assert.match(html, /LOA sent/);
+  assert.match(html, /LOA received/);
+  assert.match(html, /Priya/);
+  assert.equal(html.includes("Acme Bakery Ltd — "), false);
+  assert.equal(html.includes("Potential Lead Joel"), false);
+
+  const leads = [
+    { stage: "Potential Lead Joel", notes: null },
+    { stage: "NEW", notes: "Monday group: Potential Lead Joel" },
+    { stage: "Hot lead Joel", notes: null },
+    { stage: "Won", notes: null },
+  ];
+  const counts = countLeadsByColumn(leads);
+  assert.equal(counts["Potential Lead Joel"], 2);
+  assert.equal(counts["Hot lead Joel"], 1);
+  assert.equal(counts.Won, 1);
+  assert.equal(
+    Object.values(counts).reduce((sum, count) => sum + count, 0),
+    leads.length,
+  );
+  assert.equal(LEAD_STAGES.length, 16);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {
@@ -560,7 +610,7 @@ test("header search Enter opens the best match, or the results page", () => {
     id: "l1",
     type: "lead" as const,
     title: "Hotel group 2026 renewal",
-    subtitle: "Harbour View Hotels Ltd · TENDERING",
+    subtitle: "Claire Debenham",
     href: "/leads/l1",
   };
   const meter = {

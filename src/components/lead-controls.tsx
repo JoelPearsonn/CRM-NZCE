@@ -121,17 +121,10 @@ export function AllocateDisclosure({
   agents: Agent[];
   selectedIds: string[];
 }) {
-  const names = agents
-    .filter((agent) => selectedIds.includes(agent.id))
-    .map((agent) => agent.name.split(" ")[0]);
-
   return (
     <details className="lead-allocate mt-2 border-t border-rule pt-2" data-testid="lead-allocate">
       <summary className="cursor-pointer text-[0.7rem] text-muted">
         <span className="font-semibold tracking-[0.08em] uppercase">Allocate</span>
-        <span className="ml-1.5">
-          {names.length ? names.join(", ") : "unassigned"}
-        </span>
       </summary>
       <div className="mt-2">
         <AllocateAgents leadId={leadId} agents={agents} selectedIds={selectedIds} />

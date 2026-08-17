@@ -5,9 +5,11 @@ import { useState, useTransition } from "react";
 import type { Agent } from "@prisma/client";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
+import { LeadCardFacts } from "@/components/lead-card-facts";
 import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
 import { LeadLoaActions } from "@/components/send-loa";
 import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage, LEAD_STAGES } from "@/lib/constants";
+import { leadsInColumn } from "@/lib/lead-card";
 import { resolveLeadBoardStage } from "@/lib/lead-board";
 
 export type LeadCardData = {
@@ -18,6 +20,12 @@ export type LeadCardData = {
   outcomeReason: string | null;
   customerId: string;
   companyName: string;
+  contactName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  loaSent: boolean;
+  loaReceived: boolean;
+  ownerNames: string[];
   allocations: { agentId: string }[];
   loa?: { sigLink: string | null; status: string; channel: string } | null;
 };
@@ -51,13 +59,14 @@ export function LeadKanban({
   return (
     <div className="flex flex-col gap-4 md:flex-row md:overflow-x-auto md:pb-4">
       {columns.map((item) => {
-        const column = leads.filter((lead) => resolveLeadBoardStage(lead) === item.value);
+        const column = leadsInColumn(leads, item.value);
         return (
           <section
             key={item.value}
-            className="w-full md:w-52 md:shrink-0"
+            className="w-full md:w-60 md:shrink-0"
             data-testid="lead-column"
             data-stage={item.value}
+            data-count={column.length}
             onDragOver={(event) => {
               event.preventDefault();
               event.dataTransfer.dropEffect = "move";
@@ -70,7 +79,9 @@ export function LeadKanban({
           >
             <div className="mb-2 flex items-start justify-between gap-2">
               <h2 className="text-[0.8rem] font-semibold leading-tight text-ink">{item.label}</h2>
-              <span className="shrink-0 text-xs text-muted">{column.length}</span>
+              <span className="shrink-0 text-xs text-muted" data-testid="lead-column-count">
+                {column.length}
+              </span>
             </div>
             <div className="min-h-16 space-y-2 rounded-sm border border-dashed border-transparent p-0.5">
               {column.length === 0 ? (
@@ -90,10 +101,17 @@ export function LeadKanban({
                     <div className="mb-1 flex items-start justify-between gap-2">
                       <LeadSelect leadId={lead.id} />
                     </div>
-                    <Link href={`/leads/${lead.id}`} className="font-medium">
-                      {lead.companyName}
+                    <Link href={`/leads/${lead.id}`} className="block">
+                      <LeadCardFacts
+                        companyName={lead.companyName}
+                        contactName={lead.contactName}
+                        phone={lead.phone}
+                        email={lead.email}
+                        loaSent={lead.loaSent}
+                        loaReceived={lead.loaReceived}
+                        owners={lead.ownerNames}
+                      />
                     </Link>
-                    <p className="mt-0.5 text-xs text-muted">{lead.title}</p>
                     {lead.outcomeReason && isClosedLeadStage(lead.stage) ? (
                       <p className="mt-1 text-[0.7rem] text-ink">
                         {isWonLeadStage(lead.stage) ? "Won" : "Lost"}: {lead.outcomeReason}
