@@ -7,7 +7,7 @@ import { useImportAction } from "@/components/use-csv-import";
 const empty: ImportState = {};
 
 export function CsvImportForm() {
-  const { csvText, fileName, onFileChange, state, pending, canCommit, submit } = useImportAction(
+  const { csvText, fileName, onFileChange, onPasteText, state, pending, canCommit, submit } = useImportAction(
     runImport,
     empty,
   );
@@ -33,7 +33,8 @@ export function CsvImportForm() {
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(event) => void onFileChange(event.target.files?.[0])}
+            onInput={(event) => void onFileChange(event.currentTarget.files?.[0])}
+            onChange={(event) => void onFileChange(event.currentTarget.files?.[0])}
           />
           {fileName ? <span className="text-[0.7rem] text-muted">{fileName}</span> : null}
         </label>
@@ -49,6 +50,15 @@ export function CsvImportForm() {
           {pending ? "Importing…" : "Import"}
         </button>
       </div>
+      <label className="field mt-3">
+        <span>Or paste the CSV</span>
+        <textarea
+          rows={4}
+          value={csvText}
+          onChange={(event) => onPasteText(event.target.value)}
+          placeholder="Paste the NZCE template here if the file picker does not stick."
+        />
+      </label>
       {!preview && csvText ? (
         <p className="mt-3 text-xs text-muted">Preview the file before it is written to the book.</p>
       ) : null}

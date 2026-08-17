@@ -23,6 +23,13 @@ export function useImportAction<S extends { error?: string; preview?: unknown; c
     setPreviewedText("");
   }
 
+  function onPasteText(text: string) {
+    setCsvText(text);
+    if (!text) setFileName("");
+    setState(empty);
+    setPreviewedText("");
+  }
+
   async function submit(intent: "preview" | "commit") {
     if (!csvText) {
       setState({ ...empty, error: "Choose a CSV file." });
@@ -43,5 +50,5 @@ export function useImportAction<S extends { error?: string; preview?: unknown; c
     }
   }
 
-  return { csvText, fileName, state, pending, canCommit, onFileChange, submit };
+  return { csvText, fileName, state, pending, canCommit, onFileChange, onPasteText, submit };
 }

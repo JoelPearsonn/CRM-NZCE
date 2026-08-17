@@ -8,7 +8,7 @@ import { gbpExact } from "@/lib/format";
 const empty: DealImportState = {};
 
 export function CsvDealImportForm() {
-  const { csvText, fileName, onFileChange, state, pending, canCommit, submit } = useImportAction(
+  const { csvText, fileName, onFileChange, onPasteText, state, pending, canCommit, submit } = useImportAction(
     runDealImport,
     empty,
   );
@@ -36,7 +36,8 @@ export function CsvDealImportForm() {
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(event) => void onFileChange(event.target.files?.[0])}
+            onInput={(event) => void onFileChange(event.currentTarget.files?.[0])}
+            onChange={(event) => void onFileChange(event.currentTarget.files?.[0])}
           />
           {fileName ? <span className="text-[0.7rem] text-muted">{fileName}</span> : null}
         </label>
@@ -52,6 +53,15 @@ export function CsvDealImportForm() {
           {pending ? "Importing…" : "Import deals"}
         </button>
       </div>
+      <label className="field mt-3">
+        <span>Or paste the CSV</span>
+        <textarea
+          rows={4}
+          value={csvText}
+          onChange={(event) => onPasteText(event.target.value)}
+          placeholder="Paste the deals template here if the file picker does not stick."
+        />
+      </label>
 
       {state.committed ? (
         <p className="mt-4 text-sm text-moss" data-testid="deal-import-committed">

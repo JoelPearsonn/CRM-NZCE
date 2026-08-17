@@ -7,7 +7,7 @@ import { useImportAction } from "@/components/use-csv-import";
 const empty: LeadImportState = {};
 
 export function CsvLeadImportForm() {
-  const { csvText, fileName, onFileChange, state, pending, canCommit, submit } = useImportAction(
+  const { csvText, fileName, onFileChange, onPasteText, state, pending, canCommit, submit } = useImportAction(
     runLeadImport,
     empty,
   );
@@ -32,7 +32,8 @@ export function CsvLeadImportForm() {
           <input
             type="file"
             accept=".csv,text/csv"
-            onChange={(event) => void onFileChange(event.target.files?.[0])}
+            onInput={(event) => void onFileChange(event.currentTarget.files?.[0])}
+            onChange={(event) => void onFileChange(event.currentTarget.files?.[0])}
           />
           {fileName ? <span className="text-[0.7rem] text-muted">{fileName}</span> : null}
         </label>
@@ -48,6 +49,15 @@ export function CsvLeadImportForm() {
           {pending ? "Importing…" : "Import leads"}
         </button>
       </div>
+      <label className="field mt-3">
+        <span>Or paste the CSV</span>
+        <textarea
+          rows={4}
+          value={csvText}
+          onChange={(event) => onPasteText(event.target.value)}
+          placeholder="Paste the leads template here if the file picker does not stick."
+        />
+      </label>
 
       {state.committed ? (
         <p className="mt-4 text-sm text-moss" data-testid="lead-import-committed">
