@@ -26,7 +26,8 @@ html,
 body {
   background: var(--color-paper);
   color: var(--color-ink);
-  overflow-x: visible;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -107,23 +108,34 @@ a {
   min-width: 12rem;
 }
 
+.desk-pane {
+  overflow-x: clip;
+}
+
+.desk-pane-main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 .desk-main {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-y: visible;
   padding: 1.5rem;
 }
 
-.desk-main:has(.lead-board-shell) {
-  overflow-x: visible;
-  overflow-y: visible;
-}
-
-.lead-page {
+.leads-page,
+.lead-page,
+.leads-board-host {
   min-width: 0;
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
+.leads-board-shell,
 .lead-board-shell {
   box-sizing: border-box;
   display: flex;
@@ -131,9 +143,10 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
+.leads-jump,
 .lead-jump {
   position: sticky;
   top: 0;
@@ -146,6 +159,7 @@ a {
   border-bottom: 1px solid var(--color-rule);
 }
 
+.leads-jump-item,
 .lead-jump-item {
   border: 1px solid var(--color-rule);
   background: var(--color-card);
@@ -156,62 +170,77 @@ a {
   cursor: pointer;
 }
 
+.leads-jump-item:hover,
+.leads-jump-item:focus-visible,
 .lead-jump-item:hover,
 .lead-jump-item:focus-visible {
   border-color: var(--color-brass);
 }
 
+.leads-board,
 .lead-board {
   box-sizing: border-box;
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  height: calc(100dvh - 14rem);
-  overflow-x: scroll;
+  height: auto;
+  overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: auto;
   scrollbar-color: #8a6716 #ebe4d4;
   padding: 0.75rem 0 0.15rem;
 }
 
+.leads-board::-webkit-scrollbar,
 .lead-board::-webkit-scrollbar {
   height: 12px;
   width: 12px;
 }
 
+.leads-board::-webkit-scrollbar-track,
 .lead-board::-webkit-scrollbar-track {
   background: #ebe4d4;
 }
 
+.leads-board::-webkit-scrollbar-thumb,
 .lead-board::-webkit-scrollbar-thumb {
   background: #8a6716;
   border-radius: 6px;
 }
 
+.leads-board-row,
 .lead-board-row {
-  display: flex;
+  display: inline-flex;
   flex-direction: row;
   flex-wrap: nowrap;
+  align-items: flex-start;
   gap: 0.75rem;
   width: max-content;
-  min-width: max-content;
-  height: 100%;
+  min-width: calc(var(--lead-col-count, 16) * 260px);
+  height: auto;
+  max-height: calc(70vh + 4rem);
 }
 
+.leads-column,
 .lead-column {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   flex: 0 0 240px;
+  align-self: flex-start;
   width: 240px;
   min-width: 240px;
   max-width: 240px;
-  height: 100%;
+  max-height: calc(70vh + 3.5rem);
+  overflow: hidden;
 }
 
+.leads-column-cards,
 .lead-column-cards {
-  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
+  max-height: min(70vh, 36rem);
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -477,16 +506,7 @@ a {
 
   .desk-main {
     padding: 1rem max(1rem, env(safe-area-inset-right)) 1.5rem max(1rem, env(safe-area-inset-left));
-    overflow-x: hidden;
-  }
-
-  .desk-main:has(.lead-board-shell) {
-    overflow-x: visible;
-    overflow-y: visible;
-  }
-
-  .lead-board {
-    height: calc(100dvh - 16rem);
+    overflow-x: clip;
   }
 
   .master-search {

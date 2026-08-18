@@ -1,16 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition } from "react";
 import type { Agent } from "@prisma/client";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
 import { LeadCardFacts } from "@/components/lead-card-facts";
 import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
+import { LeadsJump } from "@/components/leads-jump";
 import { LeadLoaActions } from "@/components/send-loa";
 import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage, LEAD_STAGES } from "@/lib/constants";
 import { leadBoardColumns, leadsInColumn } from "@/lib/lead-card";
 import { resolveLeadBoardStage } from "@/lib/lead-board";
+import { scrollLeadsBoardToColumn, syncLeadsBoardScroller } from "@/lib/leads-board-scroll";
 
 export type LeadCardData = {
   id: string;
@@ -49,6 +51,20 @@ export function LeadKanban({
   const [, startTransition] = useTransition();
   const columns = leadBoardColumns(stageFilter);
 
+  useLayoutEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+    const run = () => syncLeadsBoardScroller(board);
+    run();
+    const observer = new ResizeObserver(run);
+    observer.observe(board);
+    window.addEventListener("resize", run);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", run);
+    };
+  }, [columns.length, leads.length]);
+
   function moveLead(leadId: string, stage: string) {
     const lead = leads.find((item) => item.id === leadId);
     if (!lead || resolveLeadBoardStage(lead) === stage) return;
@@ -63,41 +79,29 @@ export function LeadKanban({
   }
 
   function jumpTo(stage: string) {
-    const column = boardRef.current?.querySelector<HTMLElement>(`#${leadColumnDomId(stage)}`);
-    column?.scrollIntoView({ inline: "start", block: "nearest", behavior: "smooth" });
+    const board = boardRef.current;
+    if (board) scrollLeadsBoardToColumn(board, stage);
   }
 
   return (
-    <div className="lead-board-shell" data-testid="lead-board-shell">
-      <nav className="lead-jump" data-testid="lead-jump" aria-label="Lead groups">
-        {LEAD_STAGES.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className="lead-jump-item"
-            data-testid="lead-jump-item"
-            data-stage={item.value}
-            onClick={() => jumpTo(item.value)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </nav>
+    <div className="leads-board-shell lead-board-shell" data-testid="leads-board-shell">
+      <LeadsJump stages={LEAD_STAGES} onJump={jumpTo} />
       <div
         ref={boardRef}
-        className="lead-board"
-        data-testid="lead-board"
+        className="leads-board lead-board"
+        data-testid="leads-board"
         data-column-count={columns.length}
+        style={{ ["--lead-col-count" as string]: String(columns.length) }}
       >
-        <div className="lead-board-row">
+        <div className="leads-board-row lead-board-row">
           {columns.map((item) => {
             const column = leadsInColumn(leads, item.value);
             return (
               <section
                 key={item.value}
                 id={leadColumnDomId(item.value)}
-                className="lead-column"
-                data-testid="lead-column"
+                className="leads-column lead-column"
+                data-testid="leads-column"
                 data-stage={item.value}
                 data-count={column.length}
                 onDragOver={(event) => {
@@ -116,7 +120,7 @@ export function LeadKanban({
                     {column.length}
                   </span>
                 </div>
-                <div className="lead-column-cards min-h-16 space-y-2 rounded-sm border border-dashed border-transparent p-0.5">
+                <div className="leads-column-cards lead-column-cards space-y-2 rounded-sm border border-dashed border-transparent p-0.5">
                   {column.length === 0 ? (
                     <div className="card px-3 py-6 text-center text-xs text-muted">Empty</div>
                   ) : (

@@ -41,7 +41,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
   });
 
   return (
-    <div className="lead-page">
+    <div className="leads-page lead-page">
       <PageHeader
         kicker="Pipeline"
         title="Leads"
