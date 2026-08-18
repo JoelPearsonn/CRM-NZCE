@@ -466,19 +466,148 @@ a {
   background: #f3e6c4;
 }
 
+.cashflow-chart {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 0.35rem 0.15rem 0.2rem;
+}
+
+.cashflow-chart-track {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  min-width: 100%;
+  overflow: visible;
+}
+
+.cashflow-month {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 2.85rem;
+  width: 2.85rem;
+  min-width: 2.85rem;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+  cursor: pointer;
+  outline: none;
+  padding: 0 0.12rem;
+}
+
+.cashflow-month.is-dim {
+  opacity: 0.28;
+}
+
+.cashflow-month.is-active {
+  z-index: 20;
+  opacity: 1;
+}
+
+.cashflow-month.is-active::before {
+  content: "";
+  position: absolute;
+  inset: 0.15rem 0.05rem 1.55rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--color-gold) 18%, transparent);
+  pointer-events: none;
+}
+
 .cashflow-bar-caption {
-  min-height: 4.35rem;
-  padding: 0 0.1rem 0.35rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 5.6rem;
+  width: 7.5rem;
+  max-width: none;
+  padding: 0 0.15rem 0.4rem;
+  overflow: visible;
+}
+
+.cashflow-bar-caption-text {
+  width: 7.5rem;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.cashflow-bar-caption-month {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--color-navy);
+}
+
+.cashflow-bar-caption-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.cashflow-bar-caption-parts {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--color-muted);
 }
 
 .cashflow-bar-lift {
   width: 100%;
+  flex: 1 0 auto;
   transform-origin: center bottom;
-  transition: transform 160ms ease;
+  transition:
+    transform 160ms ease,
+    filter 160ms ease;
+}
+
+.cashflow-bar-pair {
+  display: flex;
+  height: 10rem;
+  width: 100%;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.cashflow-bar-rect {
+  width: 0.72rem;
+  min-height: 3px;
+  transition:
+    width 160ms ease,
+    box-shadow 160ms ease,
+    outline-color 160ms ease;
+}
+
+.cashflow-bar-rect.is-brass {
+  background: var(--color-gold);
+}
+
+.cashflow-bar-rect.is-moss {
+  background: var(--color-moss);
 }
 
 .cashflow-bar-lift.is-lifted {
-  transform: translateY(-0.45rem) scale(1.12);
+  transform: translateY(-0.85rem) scale(1.7);
+  filter: drop-shadow(0 8px 10px color-mix(in srgb, var(--color-navy) 28%, transparent));
+}
+
+.cashflow-month.is-active .cashflow-bar-rect {
+  width: 1.15rem;
+  outline: 2px solid var(--color-navy);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-gold) 80%, transparent);
+}
+
+.cashflow-month-label {
+  margin-top: 0.45rem;
+  width: 100%;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--color-ink);
+}
+
+.cashflow-month.is-active .cashflow-month-label {
+  color: var(--color-navy);
 }
 
 .section-title {
