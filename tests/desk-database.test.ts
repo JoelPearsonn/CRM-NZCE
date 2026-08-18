@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
 import {
   isDeskDatabaseConfigured,
@@ -22,6 +24,12 @@ test("local sqlite file is allowed; the same file URL is rejected on Vercel", ()
     isDeskDatabaseConfigured({ DATABASE_URL: "file:./dev.db", VERCEL_ENV: "production" }),
     false,
   );
+});
+
+test("committed Prisma schema is PostgreSQL for Vercel / Neon", () => {
+  const schema = readFileSync(path.join(import.meta.dirname, "../prisma/schema.prisma"), "utf8");
+  assert.match(schema, /provider\s*=\s*"postgresql"/);
+  assert.equal(/provider\s*=\s*"sqlite"/.test(schema), false);
 });
 
 test("Postgres URLs are accepted for Neon / Vercel Postgres", () => {

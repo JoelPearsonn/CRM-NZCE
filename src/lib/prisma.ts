@@ -1,8 +1,14 @@
 import { PrismaClient } from "@prisma/client";
-import { DESK_DATABASE_MISSING, isDeskDatabaseConfigured } from "@/lib/desk-database";
+import {
+  DESK_DATABASE_MISSING,
+  deskDatabaseUrl,
+  isDeskDatabaseConfigured,
+} from "@/lib/desk-database";
 
 function createPrisma() {
+  const url = deskDatabaseUrl();
   return new PrismaClient({
+    datasources: { db: { url } },
     omit: { agent: { passwordHash: true } },
   });
 }
@@ -21,7 +27,7 @@ export function getPrisma(): DeskPrisma {
   return globalForPrisma.prisma;
 }
 
-/** Lazy: constructing PrismaClient with no usable DATABASE_URL throws and 500s the page. */
+/** Lazy: new PrismaClient() without DATABASE_URL is a 500. Never construct until configured. */
 export const prisma = new Proxy({} as DeskPrisma, {
   get(_target, prop) {
     const client = getPrisma();

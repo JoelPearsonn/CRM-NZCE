@@ -26,9 +26,9 @@ export function DatabaseSetup() {
           Do not paste the URL into chat.
         </p>
         <p className="text-muted">
-          After the store exists, push the schema from a machine that can reach it:{" "}
-          <span className="font-mono">npx prisma db push</span>. Then Redeploy again if the first
-          deploy ran before the URL was set.
+          After Storage is attached, Redeploy. The production build pushes the Prisma schema when{" "}
+          <span className="font-mono">DATABASE_URL</span> is Postgres. Do not use a SQLite{" "}
+          <span className="font-mono">file:</span> path on Vercel.
         </p>
       </div>
       <p className="mt-4 text-sm text-muted">

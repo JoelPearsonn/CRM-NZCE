@@ -4,10 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && next dev --turbopack",
-    "build": "node scripts/prisma-with-provider.mjs generate && next build",
+    "build": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs push-if-postgres && next build",
     "start": "node scripts/prisma-with-provider.mjs generate && next start",
     "lint": "eslint",
-    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts tests/desk-database.test.ts",
+    "test": "DATABASE_URL=file:./dev.db node scripts/prisma-with-provider.mjs generate && tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts tests/desk-database.test.ts",
     "staff-hash": "tsx scripts/staff-hash.ts",
     "seed": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && tsx prisma/seed.ts",
     "db:seed": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && tsx prisma/seed.ts",

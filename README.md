@@ -111,14 +111,14 @@ Joel adds these on the Vercel project (empty names only live in `.env.example` �
 
 | Var | Role |
 |---|---|
-| `DATABASE_URL` | **Required on Vercel for desk data.** Postgres URL from Neon or Vercel Postgres (`postgresql://` or `postgres://`). A `file:` SQLite path 500s or is rejected on Vercel. Missing ⇒ `/` and `/login` show “database isn’t set” (no 500). Do not invent credentials. |
+| `DATABASE_URL` | **Required on Vercel for desk data.** Prisma schema is **PostgreSQL**. Vercel Postgres / Neon sets this (`postgresql://` or `postgres://`). Leave the Storage value as-is. A `file:` SQLite path is rejected on Vercel. Missing ⇒ `/` and `/login` show “database isn’t set” (no 500). Do not invent credentials. |
 | `RESEND_API_KEY` | Required to send the first-time verification email. Missing ⇒ fail closed. |
 | `CRM_MAIL_FROM` | From-address. Defaults to `info@nzcenergy.co.uk`. |
 | `CRM_PUBLIC_URL` | Set to the Vercel production URL once it exists (used in the verify link). |
 | `CRM_SESSION_SECRET` | Optional cookie-signing key. Not a login password. |
 | `DOCUSIGN_WEBHOOK_SECRET` | Connect HMAC. Missing ⇒ webhook 401. |
 
-`npm run build` generates the Prisma client (sqlite if `DATABASE_URL` is `file:` or unset; postgresql if the URL is `postgres://` / `postgresql://`) then `next build`. It does not `db push`. After a CRM Postgres store exists, push the schema from a machine that can reach it (`npx prisma db push` or `npm run db:push`) and Redeploy. Do not seed live customer data onto Vercel.
+`npm run build` generates a **PostgreSQL** Prisma client (dummy URL if `DATABASE_URL` is unset — generate does not need a live DB). If Storage has already set a `postgres://` / `postgresql://` URL, build also runs `prisma db push` so the empty Neon store gets tables. Local `DATABASE_URL=file:./dev.db` still generates/pushes SQLite. Do not seed live customer data onto Vercel. Do not commit `.env`.
 
 ## Demo book
 
@@ -126,4 +126,4 @@ If the desk is empty, `npm run seed` loads eight UK businesses, four agents, lea
 
 ## Stack
 
-Next.js, TypeScript, Tailwind CSS, Prisma 6, SQLite.
+Next.js, TypeScript, Tailwind CSS, Prisma 6, PostgreSQL on Vercel (SQLite file optional on a laptop).

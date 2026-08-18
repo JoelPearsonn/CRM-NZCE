@@ -8,7 +8,7 @@ export async function withTestDb(run: (db: PrismaClient) => Promise<void>) {
   const dir = mkdtempSync(path.join(tmpdir(), "nzce-test-"));
   const file = path.join(dir, "test.db");
   const url = `file:${file}`;
-  execFileSync("npx", ["prisma", "db", "push", "--skip-generate"], {
+  execFileSync("node", ["scripts/prisma-with-provider.mjs", "db", "push", "--skip-generate"], {
     cwd: path.join(import.meta.dirname, "../.."),
     env: { ...process.env, DATABASE_URL: url },
     stdio: "pipe",
