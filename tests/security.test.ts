@@ -10,16 +10,19 @@ import { handleRecordingDownload } from "../src/app/api/recordings/[id]/route";
 import { csvTemplate } from "../src/lib/csv-import";
 import { previewMeterImport } from "../src/lib/csv-import-preview";
 import { dealRefsBelongToCustomer } from "../src/lib/deals";
-import { hashPassword } from "../src/lib/portal-crypto";
-import { authenticateStaff } from "../src/lib/staff-accounts";
+import {
+  authenticateStaff,
+  createStaffPassword,
+  staffEmailLoginStep,
+} from "../src/lib/staff-accounts";
 import {
   createStaffSessionToken,
   isNceWorkEmail,
   isProtectedStaffApiPath,
-  parseStaffPasswordHashes,
   planWorkingAsCookie,
   STAFF_COOKIE,
   STAFF_SESSION_MAX_AGE,
+  staffHasPassword,
   staffPasswordHashFor,
   staffSessionCookieOptions,
   verifyStaffSessionToken,
@@ -68,88 +71,84 @@ test("user A’s session cannot be used as user B, and an unknown person cannot 
   assert.equal(verifyStaffSessionToken(tokenB, Date.now(), env)?.email, TEST_STAFF_B);
 
   await withTestDb(async (db) => {
-    const joelHash = hashPassword("joel-local-test");
     await db.agent.create({
-      data: {
-        name: "Joel Pearson",
-        email: JOEL_EMAIL,
-        role: "Admin",
-        passwordHash: joelHash,
-      },
+      data: { name: "Joel Pearson", email: JOEL_EMAIL, role: "Admin" },
     });
     await db.agent.create({
       data: { name: "Priya Shah", email: "priya.shah@nzce.co.uk", role: "Sales" },
     });
 
-    const unknown = await authenticateStaff(
-      { email: "nobody@not-on-the-desk.test", password: "anything-long" },
-      db,
-      env,
-    );
-    assert.equal("error" in unknown, true);
+    const otherDomain = await createStaffPassword({
+      email: "nobody@not-on-the-desk.test",
+      password: "first-time-secret",
+      confirm: "first-time-secret",
+    }, db);
+    assert.equal("error" in otherDomain, true);
 
-    const seedDomain = await authenticateStaff(
-      { email: "priya.shah@nzce.co.uk", password: "anything-long" },
-      db,
-      env,
-    );
+    const seedDomain = await createStaffPassword({
+      email: "priya.shah@nzce.co.uk",
+      password: "first-time-secret",
+      confirm: "first-time-secret",
+    }, db);
     assert.equal("error" in seedDomain, true);
 
-    const byName = await authenticateStaff(
-      { email: "Joel Pearson", password: "joel-local-test" },
-      db,
-      env,
-    );
+    const byName = await staffEmailLoginStep("Joel Pearson", db);
     assert.equal("error" in byName, true);
 
-    const joelOk = await authenticateStaff(
-      { email: JOEL_EMAIL, password: "joel-local-test" },
-      db,
-      env,
-    );
+    const firstVisit = await staffEmailLoginStep(JOEL_EMAIL, db);
+    assert.ok("step" in firstVisit && firstVisit.step === "create");
+
+    const created = await createStaffPassword({
+      email: JOEL_EMAIL,
+      password: "joel-local-test",
+      confirm: "joel-local-test",
+    }, db);
+    assert.ok("ok" in created && created.ok);
+    assert.equal(created.agent.email, JOEL_EMAIL);
+    const createdDump = JSON.stringify(created);
+    assert.equal(createdDump.includes("joel-local-test"), false);
+    assert.equal(createdDump.includes("passwordHash"), false);
+
+    const secondCreate = await createStaffPassword({
+      email: JOEL_EMAIL,
+      password: "another-secret",
+      confirm: "another-secret",
+    }, db);
+    assert.equal("error" in secondCreate, true);
+
+    const laterVisit = await staffEmailLoginStep(JOEL_EMAIL, db);
+    assert.ok("step" in laterVisit && laterVisit.step === "signin");
+
+    const joelOk = await authenticateStaff({ email: JOEL_EMAIL, password: "joel-local-test" }, db);
     assert.ok("ok" in joelOk && joelOk.ok);
     assert.equal(joelOk.agent.email, JOEL_EMAIL);
+    const signinDump = JSON.stringify(joelOk);
+    assert.equal(signinDump.includes("joel-local-test"), false);
+    assert.equal(signinDump.includes("passwordHash"), false);
 
-    const wrong = await authenticateStaff(
-      { email: JOEL_EMAIL, password: "not-joel" },
-      db,
-      env,
-    );
+    const wrong = await authenticateStaff({ email: JOEL_EMAIL, password: "not-joel" }, db);
     assert.equal("error" in wrong, true);
 
-    const seedBootstrapHash = hashPassword("priya-bootstrap-test");
-    const seedBootstrapped = await authenticateStaff(
-      { email: "priya.shah@nzce.co.uk", password: "priya-bootstrap-test" },
-      db,
-      { ...env, CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${seedBootstrapHash}` },
-    );
-    assert.equal("error" in seedBootstrapped, true);
-
-    const unknownWorkEmail = await authenticateStaff(
+    const noHashYet = await authenticateStaff(
       { email: TEST_STAFF_A, password: "anything-long" },
       db,
-      env,
     );
-    assert.equal("error" in unknownWorkEmail, true);
+    assert.equal("error" in noHashYet, true);
 
-    await db.agent.create({
-      data: { name: "Test Staff A", email: TEST_STAFF_A, role: "Sales" },
-    });
-    const noHash = await authenticateStaff(
-      { email: TEST_STAFF_A, password: "anything-long" },
-      db,
-      env,
-    );
-    assert.equal("error" in noHash, true);
+    const otherWork = await createStaffPassword({
+      email: TEST_STAFF_A,
+      password: "staff-a-own-password",
+      confirm: "staff-a-own-password",
+    }, db);
+    assert.ok("ok" in otherWork && otherWork.ok);
+    assert.equal(otherWork.agent.email, TEST_STAFF_A);
+    assert.equal(JSON.stringify(otherWork).includes("staff-a-own-password"), false);
 
-    const envHash = hashPassword("staff-a-env-test");
-    const envLogin = await authenticateStaff(
-      { email: TEST_STAFF_A, password: "staff-a-env-test" },
+    const otherSignin = await authenticateStaff(
+      { email: TEST_STAFF_A, password: "staff-a-own-password" },
       db,
-      { ...env, CRM_STAFF_PASSWORDS: `${TEST_STAFF_A}=${envHash}` },
     );
-    assert.ok("ok" in envLogin && envLogin.ok);
-    assert.equal(envLogin.agent.email, TEST_STAFF_A);
+    assert.ok("ok" in otherSignin && otherSignin.ok);
   });
 });
 
@@ -447,23 +446,18 @@ test("source no longer embeds portal passwords, tokens, or a shared staff passwo
     assert.equal(source.includes("claire.debenham@"), false, file);
     assert.equal(source.includes("CRM_STAFF_PASSWORD="), false, file);
     assert.equal(source.includes("CRM_STAFF_PASSWORD?"), false, file);
+    assert.equal(source.includes("CRM_STAFF_PASSWORDS"), false, file);
     assert.equal(source.includes("identifier"), false, file);
   }
   const login = readFileSync(path.join(import.meta.dirname, "..", "src/app/login/page.tsx"), "utf8");
   assert.equal(login.includes("Work email"), true);
+  assert.equal(login.includes("Create your password"), true);
   assert.equal(login.includes('type="email"'), true);
   assert.equal(login.includes("@nzcenergy.co.uk"), true);
-  assert.equal(parseStaffPasswordHashes({ CRM_STAFF_PASSWORDS: "plain@x=not-a-hash" }).size, 0);
   const hash = "ab".repeat(16) + ":" + "cd".repeat(32);
-  assert.equal(staffPasswordHashFor("plain@x", null, { CRM_STAFF_PASSWORDS: `plain@x=${hash}` }), null);
-  assert.equal(
-    parseStaffPasswordHashes({ CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${hash}` }).size,
-    0,
-  );
-  assert.equal(
-    staffPasswordHashFor(JOEL_EMAIL, null, { CRM_STAFF_PASSWORDS: `${JOEL_EMAIL}=${hash}` }),
-    hash,
-  );
+  assert.equal(staffPasswordHashFor("plain@x", hash), null);
+  assert.equal(staffPasswordHashFor(JOEL_EMAIL, null), null);
+  assert.equal(staffHasPassword(JOEL_EMAIL, hash), true);
   assert.equal(isNceWorkEmail(JOEL_EMAIL), true);
   assert.equal(isNceWorkEmail("priya.shah@nzce.co.uk"), false);
   assert.equal(isNceWorkEmail("Joel Pearson"), false);

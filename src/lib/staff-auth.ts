@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 
 export const STAFF_COOKIE = "nzce_staff_session";
@@ -25,50 +25,28 @@ export function normalizeStaffEmail(value: string): string | null {
   return isNceWorkEmail(email) ? email : null;
 }
 
-export function parseStaffPasswordHashes(env: EnvMap = process.env) {
-  const raw = env.CRM_STAFF_PASSWORDS ?? "";
-  const map = new Map<string, string>();
-  for (const part of raw.split(/[\n,;]+/)) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq <= 0) continue;
-    const email = normalizeStaffEmail(trimmed.slice(0, eq));
-    const hash = trimmed.slice(eq + 1).trim();
-    if (email && isStaffPasswordHash(hash)) map.set(email, hash);
-  }
-  return map;
-}
-
 export function isStaffPasswordHash(value: string) {
   const [salt, hash] = value.split(":");
   return Boolean(salt && hash && /^[a-f0-9]+$/i.test(salt) && /^[a-f0-9]+$/i.test(hash));
 }
 
-export function staffPasswordHashFor(
-  email: string,
-  storedHash: string | null | undefined,
-  env: EnvMap = process.env,
-) {
+/** Only a hash already stored on the Agent row. No env password bootstrap. */
+export function staffPasswordHashFor(email: string, storedHash: string | null | undefined) {
   const normalized = normalizeStaffEmail(email);
   if (!normalized) return null;
   if (storedHash && isStaffPasswordHash(storedHash)) return storedHash;
-  return parseStaffPasswordHashes(env).get(normalized) ?? null;
+  return null;
 }
 
-export function staffHasPassword(
-  email: string,
-  storedHash: string | null | undefined,
-  env: EnvMap = process.env,
-) {
-  return Boolean(staffPasswordHashFor(email, storedHash, env));
+export function staffHasPassword(email: string, storedHash: string | null | undefined) {
+  return Boolean(staffPasswordHashFor(email, storedHash));
 }
 
 export function staffSigningSecret(env: EnvMap = process.env) {
   const explicit = env.CRM_SESSION_SECRET?.trim();
   if (explicit) return explicit;
-  const bootstrap = env.CRM_STAFF_PASSWORDS?.trim();
-  if (bootstrap) return createHash("sha256").update(`nzce-staff-hashes:${bootstrap}`).digest("hex");
+  // Cookie signing only — not a login password. Tests that pass a custom env stay fail-closed.
+  if (env === process.env) return "nzce-private-desk-cookie-v2";
   return null;
 }
 

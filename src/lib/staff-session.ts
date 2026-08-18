@@ -29,7 +29,7 @@ export async function getSignedInStaff(env: NodeJS.ProcessEnv = process.env) {
     where: { email },
     select: { id: true, name: true, email: true, role: true, passwordHash: true },
   });
-  if (!agent || !staffHasPassword(agent.email, agent.passwordHash, env)) return null;
+  if (!agent || !staffHasPassword(agent.email, agent.passwordHash)) return null;
   return publicAgentOf(agent);
 }
 

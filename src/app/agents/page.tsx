@@ -27,7 +27,7 @@ export default async function AgentsPage() {
       <PageHeader
         kicker="Desk"
         title="Agents"
-        description="People who can be allocated to leads and named on meters and contracts. Each person signs in with their own @nzcenergy.co.uk work email and password."
+        description="People who can be allocated to leads and named on meters and contracts. Each person creates their own password at /login with their @nzcenergy.co.uk work email."
         actions={
           <Link href="/agents/new" className="btn btn-primary">
             Add agent

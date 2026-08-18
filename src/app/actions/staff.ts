@@ -6,35 +6,86 @@ import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/portal-crypto";
 import { optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { authenticateStaff } from "@/lib/staff-accounts";
+import {
+  authenticateStaff,
+  createStaffPassword,
+  staffEmailLoginStep,
+} from "@/lib/staff-accounts";
 import {
   createStaffSessionToken,
   isNceWorkEmail,
   staffSessionCookieOptions,
   workingAsCookieOptions,
   STAFF_COOKIE,
+  type PublicAgent,
 } from "@/lib/staff-auth";
 import { getSignedInStaff, staffIsAdmin } from "@/lib/staff-session";
 import { WORKING_AS_COOKIE } from "@/lib/working-as";
 
-export type StaffLoginState = { error?: string };
+export type StaffLoginState = {
+  error?: string;
+  step?: "email" | "create" | "signin";
+  email?: string;
+};
+
 export type StaffPasswordState = { error?: string; saved?: string };
 
-export async function signInStaff(
-  _prev: StaffLoginState,
-  formData: FormData,
-): Promise<StaffLoginState> {
-  const result = await authenticateStaff({
-    email: str(formData.get("email")),
-    password: str(formData.get("password")),
-  });
-  if ("error" in result) return result;
-  const token = createStaffSessionToken(result.agent.email);
+async function finishStaffSession(agent: PublicAgent): Promise<StaffLoginState> {
+  const token = createStaffSessionToken(agent.email);
   if (!token) return { error: "Staff sign-in is not configured on this desk." };
   const store = await cookies();
   store.set(STAFF_COOKIE, token, staffSessionCookieOptions());
-  store.set(WORKING_AS_COOKIE, result.agent.id, workingAsCookieOptions());
+  store.set(WORKING_AS_COOKIE, agent.id, workingAsCookieOptions());
   redirect("/");
+}
+
+export async function continueStaffLogin(
+  prev: StaffLoginState,
+  formData: FormData,
+): Promise<StaffLoginState> {
+  const intent = str(formData.get("intent")) || "email";
+  const emailRaw = str(formData.get("email")) || prev.email || "";
+
+  if (intent === "reset") {
+    return { step: "email" };
+  }
+
+  if (intent === "create") {
+    const result = await createStaffPassword({
+      email: emailRaw,
+      password: str(formData.get("password")),
+      confirm: str(formData.get("confirm")),
+    });
+    if ("error" in result) {
+      const step = await staffEmailLoginStep(emailRaw);
+      return {
+        error: result.error,
+        step: "step" in step ? step.step : "create",
+        email: "email" in step ? step.email : undefined,
+      };
+    }
+    return finishStaffSession(result.agent);
+  }
+
+  if (intent === "signin") {
+    const result = await authenticateStaff({
+      email: emailRaw,
+      password: str(formData.get("password")),
+    });
+    if ("error" in result) {
+      const step = await staffEmailLoginStep(emailRaw);
+      return {
+        error: result.error,
+        step: "step" in step ? step.step : "signin",
+        email: "email" in step ? step.email : undefined,
+      };
+    }
+    return finishStaffSession(result.agent);
+  }
+
+  const step = await staffEmailLoginStep(emailRaw);
+  if ("error" in step) return { error: step.error, step: "email" };
+  return { step: step.step, email: step.email };
 }
 
 export async function signOutStaff() {
