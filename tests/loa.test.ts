@@ -282,8 +282,53 @@ test("Generate LOA fills jobTitle as position and works with no meters", async (
     assert.equal(result.error, undefined);
     assert.equal(result.kind, "JOOSE");
     assert.equal(result.document?.position, "Site manager");
-    assert.match(xmlFromDocx(result.document?.docx ?? Buffer.alloc(0)), /Site manager/);
-    assert.doesNotMatch(xmlFromDocx(result.document?.docx ?? Buffer.alloc(0)), /Director/);
+    assert.equal(result.document?.addressLine1, "");
+    assert.equal(result.document?.town, "");
+    assert.equal(result.document?.postcode, "");
+    assert.equal(result.document?.country, "");
+    const xml = xmlFromDocx(result.document?.docx ?? Buffer.alloc(0));
+    assert.match(xml, /Site manager/);
+    assert.doesNotMatch(xml, /Director/);
+    assert.doesNotMatch(xml, /1 High Street/);
+    assert.doesNotMatch(xml, /Bristol/);
+    assert.doesNotMatch(xml, /United Kingdom/);
+  });
+});
+
+test("Generate LOA fills lead address lines and leaves blanks empty", async () => {
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({ data: acme });
+    const lead = await db.lead.create({
+      data: {
+        customerId: customer.id,
+        title: "Electric renewal",
+        jobTitle: "Buyer",
+        addressLine1: "12 Baker Street",
+        town: "Bath",
+        postcode: "BA1 1AA",
+      },
+    });
+    const result = await generateTpiLoa({
+      customerId: customer.id,
+      leadId: lead.id,
+      kind: "IE",
+      db,
+      template: buildTestLoaDocx(),
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.document?.position, "Buyer");
+    assert.equal(result.document?.addressLine1, "12 Baker Street");
+    assert.equal(result.document?.town, "Bath");
+    assert.equal(result.document?.postcode, "BA1 1AA");
+    assert.equal(result.document?.country, "");
+    const xml = xmlFromDocx(result.document?.docx ?? Buffer.alloc(0));
+    assert.match(xml, /12 Baker Street/);
+    assert.match(xml, /Bath/);
+    assert.match(xml, /BA1 1AA/);
+    assert.doesNotMatch(xml, /1 High Street/);
+    assert.doesNotMatch(xml, /Bristol/);
+    assert.doesNotMatch(xml, /United Kingdom/);
+    assert.doesNotMatch(xml, /Director/);
   });
 });
 

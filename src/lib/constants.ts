@@ -170,9 +170,22 @@ export const CSV_LEAD_HEADERS = [
   "title",
   "stage",
   "source",
+  "jobTitle",
+  "addressLine1",
+  "town",
+  "postcode",
+  "country",
   "outcomeReason",
   "agentEmails",
   "notes",
+] as const;
+
+export const CSV_LEAD_LETTER_FIELDS = [
+  "jobTitle",
+  "addressLine1",
+  "town",
+  "postcode",
+  "country",
 ] as const;
 
 export const CSV_DEAL_HEADERS = [

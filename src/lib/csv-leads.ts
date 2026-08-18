@@ -1,6 +1,6 @@
-import { CSV_LEAD_HEADERS } from "@/lib/constants";
+import { CSV_LEAD_HEADERS, CSV_LEAD_LETTER_FIELDS } from "@/lib/constants";
 import { csvLine, parseCsv, rowToRecord } from "@/lib/csv-import";
-import { isEmail } from "@/lib/format";
+import { isEmail, optionalStr } from "@/lib/format";
 import { isKnownLeadStageInput, resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
 
 export type LeadImportAction = "CREATE_LEAD" | "UPDATE_LEAD" | "SKIP";
@@ -25,6 +25,11 @@ export function leadsCsvTemplate() {
     "Bakery electric renewal",
     "Sent For Tender",
     "Referral",
+    "",
+    "",
+    "",
+    "",
+    "",
     "",
     "tom.brennan@nzce.co.uk",
     "Waiting on LOA",
@@ -59,6 +64,17 @@ export function validateLeadRow(values: Record<string, string>, line: number): L
     errors,
     values: { ...values, email, stage, notes: withMondayGroupNote(notes, stage) },
   };
+}
+
+/** Only set letter fields when the CSV header includes them, so Monday imports do not wipe saved values. */
+export function leadLetterFieldsFromCsv(values: Record<string, string>) {
+  const next: Partial<Record<(typeof CSV_LEAD_LETTER_FIELDS)[number], string | null>> = {};
+  for (const key of CSV_LEAD_LETTER_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(values, key)) {
+      next[key] = optionalStr(values[key]);
+    }
+  }
+  return next;
 }
 
 export { parseCsv, rowToRecord };

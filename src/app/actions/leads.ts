@@ -49,6 +49,10 @@ export async function saveLead(
     stage,
     source: optionalStr(formData.get("source")),
     jobTitle: optionalStr(formData.get("jobTitle")),
+    addressLine1: optionalStr(formData.get("addressLine1")),
+    town: optionalStr(formData.get("town")),
+    postcode: optionalStr(formData.get("postcode")),
+    country: optionalStr(formData.get("country")),
     notes: withMondayGroupNote(optionalStr(formData.get("notes")), stage),
     outcomeReason: isClosedLeadStage(stage) ? outcomeReason : null,
   };
