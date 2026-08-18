@@ -17,6 +17,11 @@ import {
 import { LeadCardFacts } from "../src/components/lead-card-facts";
 import { countLeadsByColumn, leadBoardColumns, loaBoardFlags } from "../src/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
+import {
+  forcedLeadsBoardRowWidthPx,
+  leadsBoardRowMinWidthPx,
+  scrollLeadsBoardToColumn,
+} from "../src/lib/leads-board-scroll";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
 import { runLeadImport } from "../src/app/actions/import-leads";
@@ -337,24 +342,94 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadBoardColumns("Won").length, 1);
 
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*scroll/s);
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-y:\s*hidden/s);
-  assert.match(css, /\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
-  assert.match(css, /\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
-  assert.match(css, /\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
+  assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*width:\s*100%/s);
+  assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*max-width:\s*100%/s);
+  assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*overflow-y:\s*visible/s);
+  assert.match(css, /\.leads-board::-webkit-scrollbar,\s*\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*display:\s*inline-flex/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*flex-wrap:\s*nowrap/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
+  assert.match(
+    css,
+    /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*min-width:\s*calc\(var\(--lead-col-count,\s*16\)\s*\*\s*260px\)/s,
+  );
+  assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
+  assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.desk-main:has\(\.lead-board-shell\)\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.lead-page\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.desk-pane-main\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.desk-main\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.leads-page,\s*\.lead-page,\s*\.leads-board-host\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.equal(css.includes("4080"), false);
+  assert.equal(/\.leads-board[^{]*\{[^}]*height:\s*calc/s.test(css), false);
+  assert.doesNotMatch(css, /html,\s*body\s*\{[^}]*overflow-x:\s*hidden/s);
+  assert.doesNotMatch(css, /\.desk-main\s*\{[^}]*overflow-x:\s*hidden/s);
+
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
+  const jump = readFileSync(path.join(import.meta.dirname, "../src/components/leads-jump.tsx"), "utf8");
+  const helper = readFileSync(path.join(import.meta.dirname, "../src/lib/leads-board-scroll.ts"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
   assert.equal(kanban.includes("column.length === 0"), true);
   assert.match(kanban, /columns\.map/);
-  assert.match(kanban, /lead-jump/);
-  assert.equal((kanban.match(/LEAD_STAGES\.map/g) ?? []).length >= 1, true);
+  assert.match(kanban, /data-testid="leads-board"/);
+  assert.match(kanban, /scrollLeadsBoardToColumn/);
+  assert.match(kanban, /syncLeadsBoardScroller/);
+  assert.equal(kanban.includes("scrollIntoView"), false);
   assert.equal(kanban.includes("Company —"), false);
-  const jumpCount = (kanban.match(/lead-jump-item/g) ?? []).length;
-  assert.ok(jumpCount >= 1);
   assert.equal(kanban.includes("data-testid=\"lead-column-count\""), true);
+  assert.match(jump, /LEAD_STAGES|item\.value/);
+  assert.match(jump, /leads-jump-item/);
+  assert.equal((jump.match(/data-stage=\{item\.value\}/g) ?? []).length, 1);
+  assert.match(helper, /getBoundingClientRect/);
+  assert.match(helper, /--lead-col-count/);
+
+  assert.equal(leadsBoardRowMinWidthPx(16), 16 * 260);
+  assert.equal(leadsBoardRowMinWidthPx(1), 260);
+  assert.equal(
+    forcedLeadsBoardRowWidthPx({
+      columnCount: 16,
+      clientWidth: 1200,
+      scrollWidth: 4160,
+      lastColumnRight: 4100,
+    }),
+    null,
+  );
+  assert.equal(
+    forcedLeadsBoardRowWidthPx({
+      columnCount: 16,
+      clientWidth: 1200,
+      scrollWidth: 1200,
+      lastColumnRight: 1200,
+    }),
+    16 * 260,
+  );
+  assert.equal(
+    forcedLeadsBoardRowWidthPx({
+      columnCount: 2,
+      clientWidth: 800,
+      scrollWidth: 800,
+      lastColumnRight: 500,
+    }),
+    null,
+  );
+
+  const jumps: { left: number }[] = [];
+  const row = {
+    getBoundingClientRect: () => ({ left: -400 }),
+  };
+  const lastColumn = {
+    dataset: { stage: "Joel Follow Up" },
+    getBoundingClientRect: () => ({ left: 80 }),
+  };
+  const board = {
+    querySelector: () => row,
+    querySelectorAll: () => [lastColumn],
+    scrollTo: (opts: { left: number }) => {
+      jumps.push(opts);
+    },
+  };
+  scrollLeadsBoardToColumn(board as unknown as HTMLElement, "Joel Follow Up");
+  assert.equal(jumps[0]?.left, 480);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {
