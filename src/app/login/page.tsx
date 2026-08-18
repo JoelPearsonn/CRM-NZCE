@@ -18,7 +18,7 @@ export default function StaffLoginPage() {
       <h1 className="mt-2 font-serif text-3xl text-ink">Staff sign-in</h1>
       <p className="mt-2 text-sm text-muted">
         {step === "check"
-          ? "A one-time link was sent to that work inbox. Create your password only after you open it."
+          ? "A one-time link was sent to that work inbox. Open it to set your password."
           : "Use your own @nzcenergy.co.uk work email. First time: we email a verification link. Later visits: email and password only."}
       </p>
       <form action={action} className="card mt-6 grid gap-3 p-5" data-testid="staff-login">
