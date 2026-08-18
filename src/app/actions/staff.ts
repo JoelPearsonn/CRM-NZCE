@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { authenticateStaff } from "@/lib/staff-accounts";
 import {
   createStaffSessionToken,
+  isNceWorkEmail,
   staffSessionCookieOptions,
   workingAsCookieOptions,
   STAFF_COOKIE,
@@ -24,11 +25,11 @@ export async function signInStaff(
   formData: FormData,
 ): Promise<StaffLoginState> {
   const result = await authenticateStaff({
-    identifier: str(formData.get("identifier")),
+    email: str(formData.get("email")),
     password: str(formData.get("password")),
   });
   if ("error" in result) return result;
-  const token = createStaffSessionToken(result.agent.id);
+  const token = createStaffSessionToken(result.agent.email);
   if (!token) return { error: "Staff sign-in is not configured on this desk." };
   const store = await cookies();
   store.set(STAFF_COOKIE, token, staffSessionCookieOptions());
@@ -62,6 +63,9 @@ export async function setStaffPassword(
     select: { id: true, name: true, email: true },
   });
   if (!agent) return { error: "That person is not on the desk." };
+  if (!isNceWorkEmail(agent.email)) {
+    return { error: "Login is only for an @nzcenergy.co.uk work email. Do not invent an address." };
+  }
   await prisma.agent.update({
     where: { id: agent.id },
     data: { passwordHash: hashPassword(password) },

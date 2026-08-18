@@ -9,9 +9,11 @@ const empty: StaffPasswordState = {};
 export function SetStaffPasswordForm({
   agentId,
   agentName,
+  agentEmail,
 }: {
   agentId: string;
   agentName: string;
+  agentEmail: string;
 }) {
   const [state, action, pending] = useActionState(setStaffPassword, empty);
 
@@ -20,6 +22,7 @@ export function SetStaffPasswordForm({
       <input type="hidden" name="agentId" value={agentId} />
       <ErrorBanner message={state.error} />
       {state.saved ? <p className="text-[0.75rem] text-moss">{state.saved}</p> : null}
+      <p className="text-[0.7rem] text-muted">{agentEmail}</p>
       <Field label={`Set password for ${agentName}`} name={`password-${agentId}`}>
         <input
           id={`password-${agentId}`}

@@ -5,11 +5,25 @@ export const STAFF_COOKIE = "nzce_staff_session";
 export const STAFF_SESSION_HOURS = 12;
 export const STAFF_SESSION_MAX_AGE = STAFF_SESSION_HOURS * 60 * 60;
 export const STAFF_DENIED = { error: "Staff sign-in required." } as const;
+export const STAFF_EMAIL_DOMAIN = "nzcenergy.co.uk";
 
-export type StaffSession = { agentId: string };
+export type StaffSession = { email: string };
 export type PublicAgent = { id: string; name: string; email: string; role: string };
 
 type EnvMap = Record<string, string | undefined>;
+
+/** Staff sign-in is work email only. Do not invent other people’s addresses. */
+export function isNceWorkEmail(value: string): boolean {
+  const email = value.trim().toLowerCase();
+  if (!email.endsWith(`@${STAFF_EMAIL_DOMAIN}`)) return false;
+  const local = email.slice(0, -(STAFF_EMAIL_DOMAIN.length + 1));
+  return Boolean(local) && !local.includes("@") && !local.includes(" ") && !local.includes("..");
+}
+
+export function normalizeStaffEmail(value: string): string | null {
+  const email = value.trim().toLowerCase();
+  return isNceWorkEmail(email) ? email : null;
+}
 
 export function parseStaffPasswordHashes(env: EnvMap = process.env) {
   const raw = env.CRM_STAFF_PASSWORDS ?? "";
@@ -19,7 +33,7 @@ export function parseStaffPasswordHashes(env: EnvMap = process.env) {
     if (!trimmed) continue;
     const eq = trimmed.indexOf("=");
     if (eq <= 0) continue;
-    const email = trimmed.slice(0, eq).trim().toLowerCase();
+    const email = normalizeStaffEmail(trimmed.slice(0, eq));
     const hash = trimmed.slice(eq + 1).trim();
     if (email && isStaffPasswordHash(hash)) map.set(email, hash);
   }
@@ -36,8 +50,10 @@ export function staffPasswordHashFor(
   storedHash: string | null | undefined,
   env: EnvMap = process.env,
 ) {
+  const normalized = normalizeStaffEmail(email);
+  if (!normalized) return null;
   if (storedHash && isStaffPasswordHash(storedHash)) return storedHash;
-  return parseStaffPasswordHashes(env).get(email.trim().toLowerCase()) ?? null;
+  return parseStaffPasswordHashes(env).get(normalized) ?? null;
 }
 
 export function staffHasPassword(
@@ -56,15 +72,30 @@ export function staffSigningSecret(env: EnvMap = process.env) {
   return null;
 }
 
+function encodeSessionEmail(email: string) {
+  return Buffer.from(email, "utf8").toString("base64url");
+}
+
+function decodeSessionEmail(value: string) {
+  try {
+    const email = Buffer.from(value, "base64url").toString("utf8");
+    return normalizeStaffEmail(email);
+  } catch {
+    return null;
+  }
+}
+
+/** Session is bound to the work email, not a shared staff cookie or agent id. */
 export function createStaffSessionToken(
-  agentId: string,
+  email: string,
   now = Date.now(),
   env: EnvMap = process.env,
 ) {
   const secret = staffSigningSecret(env);
-  if (!secret || !agentId || agentId.includes(".")) return null;
+  const normalized = normalizeStaffEmail(email);
+  if (!secret || !normalized) return null;
   const exp = now + STAFF_SESSION_MAX_AGE * 1000;
-  const payload = `v1.${agentId}.${now}.${exp}`;
+  const payload = `v2.${encodeSessionEmail(normalized)}.${now}.${exp}`;
   const signature = createHmac("sha256", secret).update(payload).digest("hex");
   return `${payload}.${signature}`;
 }
@@ -77,21 +108,21 @@ export function verifyStaffSessionToken(
   const secret = staffSigningSecret(env);
   if (!secret || !token) return null;
   const parts = token.split(".");
-  if (parts.length !== 5 || parts[0] !== "v1") return null;
-  const agentId = parts[1];
+  if (parts.length !== 5 || parts[0] !== "v2") return null;
+  const email = decodeSessionEmail(parts[1]);
   const issued = Number(parts[2]);
   const exp = Number(parts[3]);
   const signature = parts[4];
-  if (!agentId || agentId.includes(".") || !signature) return null;
+  if (!email || !signature) return null;
   if (!Number.isFinite(issued) || !Number.isFinite(exp)) return null;
   if (exp <= now || issued > now + 60_000) return null;
-  const payload = `v1.${agentId}.${parts[2]}.${parts[3]}`;
+  const payload = `v2.${parts[1]}.${parts[2]}.${parts[3]}`;
   const expected = createHmac("sha256", secret).update(payload).digest("hex");
   const left = Buffer.from(signature);
   const right = Buffer.from(expected);
   if (left.length !== right.length) return null;
   if (!timingSafeEqual(left, right)) return null;
-  return { agentId };
+  return { email };
 }
 
 export function staffSessionCookieOptions() {

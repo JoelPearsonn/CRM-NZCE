@@ -1,37 +1,33 @@
 import { verifyPassword } from "@/lib/portal-crypto";
 import { prisma } from "@/lib/prisma";
-import { staffPasswordHashFor } from "@/lib/staff-auth";
+import { normalizeStaffEmail, staffPasswordHashFor } from "@/lib/staff-auth";
 
 type StaffEnv = Record<string, string | undefined>;
 
 export async function findStaffAgent(
-  identifier: string,
-  db: { agent: { findMany: typeof prisma.agent.findMany } } = prisma,
+  emailRaw: string,
+  db: { agent: { findUnique: typeof prisma.agent.findUnique } } = prisma,
 ) {
-  const needle = identifier.trim().toLowerCase();
-  if (!needle) return null;
-  const agents = await db.agent.findMany({
+  const email = normalizeStaffEmail(emailRaw);
+  if (!email) return null;
+  return db.agent.findUnique({
+    where: { email },
     select: { id: true, name: true, email: true, role: true, passwordHash: true },
   });
-  return (
-    agents.find((agent) => agent.email.toLowerCase() === needle) ??
-    agents.find((agent) => agent.name.toLowerCase() === needle) ??
-    agents.find((agent) => agent.email.toLowerCase().split("@")[0] === needle) ??
-    null
-  );
 }
 
 export async function authenticateStaff(
-  input: { identifier?: string; password?: string },
-  db: { agent: { findMany: typeof prisma.agent.findMany } } = prisma,
+  input: { email?: string; password?: string },
+  db: { agent: { findUnique: typeof prisma.agent.findUnique } } = prisma,
   env: StaffEnv = process.env,
 ) {
-  const identifier = input.identifier?.trim() ?? "";
+  const email = normalizeStaffEmail(input.email ?? "");
   const password = input.password ?? "";
-  const agent = await findStaffAgent(identifier, db);
-  if (!agent) return { error: "No staff login for that person." };
+  if (!email) return { error: "Use your @nzcenergy.co.uk work email." };
+  const agent = await findStaffAgent(email, db);
+  if (!agent) return { error: "No staff login for that work email." };
   const hash = staffPasswordHashFor(agent.email, agent.passwordHash, env);
-  if (!hash) return { error: "Staff sign-in is not set for that person." };
+  if (!hash) return { error: "Staff sign-in is not set for that work email." };
   if (!verifyPassword(password, hash)) return { error: "Email or password is not right." };
   return {
     ok: true as const,

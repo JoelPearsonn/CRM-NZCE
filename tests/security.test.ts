@@ -14,6 +14,7 @@ import { hashPassword } from "../src/lib/portal-crypto";
 import { authenticateStaff } from "../src/lib/staff-accounts";
 import {
   createStaffSessionToken,
+  isNceWorkEmail,
   isProtectedStaffApiPath,
   parseStaffPasswordHashes,
   planWorkingAsCookie,
@@ -25,6 +26,11 @@ import {
   workingAsCookieMaxAge,
 } from "../src/lib/staff-auth";
 import { withTestDb } from "./helpers/test-db";
+
+/** Test-only addresses. Not real colleagues. */
+const TEST_STAFF_A = "staff.a@nzcenergy.co.uk";
+const TEST_STAFF_B = "staff.b@nzcenergy.co.uk";
+const JOEL_EMAIL = "joel.pearson@nzcenergy.co.uk";
 
 function staffEnv(overrides: Record<string, string> = {}) {
   return {
@@ -44,28 +50,29 @@ test("unauthenticated customer export is 401, including when no staff secret is 
   assert.equal(closed.status, 401);
 
   const env = staffEnv();
-  const token = createStaffSessionToken("agent-a", Date.now(), env);
+  assert.equal(createStaffSessionToken("agent-a", Date.now(), env), null);
+  const token = createStaffSessionToken(TEST_STAFF_A, Date.now(), env);
   assert.ok(token);
-  assert.equal(verifyStaffSessionToken(token, Date.now(), env)?.agentId, "agent-a");
+  assert.equal(verifyStaffSessionToken(token, Date.now(), env)?.email, TEST_STAFF_A);
   assert.equal(verifyStaffSessionToken(token, Date.now(), {}), null);
 });
 
 test("user A’s session cannot be used as user B, and an unknown person cannot sign in", async () => {
   const env = staffEnv();
-  const tokenA = createStaffSessionToken("agent-a", Date.now(), env);
-  const tokenB = createStaffSessionToken("agent-b", Date.now(), env);
+  const tokenA = createStaffSessionToken(TEST_STAFF_A, Date.now(), env);
+  const tokenB = createStaffSessionToken(TEST_STAFF_B, Date.now(), env);
   assert.ok(tokenA);
   assert.ok(tokenB);
-  assert.equal(verifyStaffSessionToken(tokenA, Date.now(), env)?.agentId, "agent-a");
-  assert.notEqual(verifyStaffSessionToken(tokenA, Date.now(), env)?.agentId, "agent-b");
-  assert.equal(verifyStaffSessionToken(tokenB, Date.now(), env)?.agentId, "agent-b");
+  assert.equal(verifyStaffSessionToken(tokenA, Date.now(), env)?.email, TEST_STAFF_A);
+  assert.notEqual(verifyStaffSessionToken(tokenA, Date.now(), env)?.email, TEST_STAFF_B);
+  assert.equal(verifyStaffSessionToken(tokenB, Date.now(), env)?.email, TEST_STAFF_B);
 
   await withTestDb(async (db) => {
     const joelHash = hashPassword("joel-local-test");
     await db.agent.create({
       data: {
         name: "Joel Pearson",
-        email: "joel.pearson@nzcenergy.co.uk",
+        email: JOEL_EMAIL,
         role: "Admin",
         passwordHash: joelHash,
       },
@@ -75,41 +82,74 @@ test("user A’s session cannot be used as user B, and an unknown person cannot 
     });
 
     const unknown = await authenticateStaff(
-      { identifier: "nobody@not-on-the-desk.test", password: "anything-long" },
+      { email: "nobody@not-on-the-desk.test", password: "anything-long" },
       db,
       env,
     );
     assert.equal("error" in unknown, true);
 
-    const noPassword = await authenticateStaff(
-      { identifier: "priya.shah@nzce.co.uk", password: "anything-long" },
+    const seedDomain = await authenticateStaff(
+      { email: "priya.shah@nzce.co.uk", password: "anything-long" },
       db,
       env,
     );
-    assert.equal("error" in noPassword, true);
+    assert.equal("error" in seedDomain, true);
 
     const byName = await authenticateStaff(
-      { identifier: "Joel Pearson", password: "joel-local-test" },
+      { email: "Joel Pearson", password: "joel-local-test" },
       db,
       env,
     );
-    assert.ok("ok" in byName && byName.ok);
-    assert.equal(byName.agent.email, "joel.pearson@nzcenergy.co.uk");
+    assert.equal("error" in byName, true);
+
+    const joelOk = await authenticateStaff(
+      { email: JOEL_EMAIL, password: "joel-local-test" },
+      db,
+      env,
+    );
+    assert.ok("ok" in joelOk && joelOk.ok);
+    assert.equal(joelOk.agent.email, JOEL_EMAIL);
 
     const wrong = await authenticateStaff(
-      { identifier: "joel.pearson@nzcenergy.co.uk", password: "not-joel" },
+      { email: JOEL_EMAIL, password: "not-joel" },
       db,
       env,
     );
     assert.equal("error" in wrong, true);
 
-    const bootstrapHash = hashPassword("priya-bootstrap-test");
-    const bootstrapped = await authenticateStaff(
-      { identifier: "priya.shah@nzce.co.uk", password: "priya-bootstrap-test" },
+    const seedBootstrapHash = hashPassword("priya-bootstrap-test");
+    const seedBootstrapped = await authenticateStaff(
+      { email: "priya.shah@nzce.co.uk", password: "priya-bootstrap-test" },
       db,
-      { ...env, CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${bootstrapHash}` },
+      { ...env, CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${seedBootstrapHash}` },
     );
-    assert.equal("ok" in bootstrapped, true);
+    assert.equal("error" in seedBootstrapped, true);
+
+    const unknownWorkEmail = await authenticateStaff(
+      { email: TEST_STAFF_A, password: "anything-long" },
+      db,
+      env,
+    );
+    assert.equal("error" in unknownWorkEmail, true);
+
+    await db.agent.create({
+      data: { name: "Test Staff A", email: TEST_STAFF_A, role: "Sales" },
+    });
+    const noHash = await authenticateStaff(
+      { email: TEST_STAFF_A, password: "anything-long" },
+      db,
+      env,
+    );
+    assert.equal("error" in noHash, true);
+
+    const envHash = hashPassword("staff-a-env-test");
+    const envLogin = await authenticateStaff(
+      { email: TEST_STAFF_A, password: "staff-a-env-test" },
+      db,
+      { ...env, CRM_STAFF_PASSWORDS: `${TEST_STAFF_A}=${envHash}` },
+    );
+    assert.ok("ok" in envLogin && envLogin.ok);
+    assert.equal(envLogin.agent.email, TEST_STAFF_A);
   });
 });
 
@@ -132,7 +172,7 @@ test("recordings download requires a staff session and a known customer record",
     );
     assert.equal(unauth.status, 401);
 
-    const token = createStaffSessionToken("agent-a");
+    const token = createStaffSessionToken(TEST_STAFF_A);
     assert.ok(token);
     const missing = await handleRecordingDownload(
       staffRequest("http://localhost/api/recordings/no-such", token),
@@ -183,7 +223,7 @@ test("LOA document download requires a staff session and a known customer", asyn
     );
     assert.equal(unauth.status, 401);
 
-    const token = createStaffSessionToken("agent-a");
+    const token = createStaffSessionToken(TEST_STAFF_A);
     assert.ok(token);
     const missing = await handleLoaDocumentDownload(
       staffRequest("http://localhost/api/loa/documents/no-such", token),
@@ -407,8 +447,24 @@ test("source no longer embeds portal passwords, tokens, or a shared staff passwo
     assert.equal(source.includes("claire.debenham@"), false, file);
     assert.equal(source.includes("CRM_STAFF_PASSWORD="), false, file);
     assert.equal(source.includes("CRM_STAFF_PASSWORD?"), false, file);
+    assert.equal(source.includes("identifier"), false, file);
   }
+  const login = readFileSync(path.join(import.meta.dirname, "..", "src/app/login/page.tsx"), "utf8");
+  assert.equal(login.includes("Work email"), true);
+  assert.equal(login.includes('type="email"'), true);
+  assert.equal(login.includes("@nzcenergy.co.uk"), true);
   assert.equal(parseStaffPasswordHashes({ CRM_STAFF_PASSWORDS: "plain@x=not-a-hash" }).size, 0);
   const hash = "ab".repeat(16) + ":" + "cd".repeat(32);
-  assert.equal(staffPasswordHashFor("plain@x", null, { CRM_STAFF_PASSWORDS: `plain@x=${hash}` }), hash);
+  assert.equal(staffPasswordHashFor("plain@x", null, { CRM_STAFF_PASSWORDS: `plain@x=${hash}` }), null);
+  assert.equal(
+    parseStaffPasswordHashes({ CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${hash}` }).size,
+    0,
+  );
+  assert.equal(
+    staffPasswordHashFor(JOEL_EMAIL, null, { CRM_STAFF_PASSWORDS: `${JOEL_EMAIL}=${hash}` }),
+    hash,
+  );
+  assert.equal(isNceWorkEmail(JOEL_EMAIL), true);
+  assert.equal(isNceWorkEmail("priya.shah@nzce.co.uk"), false);
+  assert.equal(isNceWorkEmail("Joel Pearson"), false);
 });

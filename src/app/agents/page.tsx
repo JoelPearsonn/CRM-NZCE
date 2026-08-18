@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SetStaffPasswordForm } from "@/components/set-staff-password";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { prisma } from "@/lib/prisma";
-import { staffHasPassword } from "@/lib/staff-auth";
+import { isNceWorkEmail, staffHasPassword } from "@/lib/staff-auth";
 import { getSignedInStaff, staffIsAdmin } from "@/lib/staff-session";
 
 export default async function AgentsPage() {
@@ -27,7 +27,7 @@ export default async function AgentsPage() {
       <PageHeader
         kicker="Desk"
         title="Agents"
-        description="People who can be allocated to leads and named on meters and contracts. Each person signs in with their own password."
+        description="People who can be allocated to leads and named on meters and contracts. Each person signs in with their own @nzcenergy.co.uk work email and password."
         actions={
           <Link href="/agents/new" className="btn btn-primary">
             Add agent
@@ -68,13 +68,29 @@ export default async function AgentsPage() {
                     </td>
                     <td>{safe.email}</td>
                     <td>{safe.role}</td>
-                    <td>{staffHasPassword(safe.email, passwordHash) ? "Set" : "Not set"}</td>
+                    <td>
+                      {isNceWorkEmail(safe.email)
+                        ? staffHasPassword(safe.email, passwordHash)
+                          ? "Set"
+                          : "Not set"
+                        : "Needs work email"}
+                    </td>
                     <td>{safe._count.leadAllocations}</td>
                     <td>{safe._count.meters}</td>
                     <td>{safe._count.dealAllocations}</td>
                     {admin ? (
                       <td>
-                        <SetStaffPasswordForm agentId={safe.id} agentName={safe.name} />
+                        {isNceWorkEmail(safe.email) ? (
+                          <SetStaffPasswordForm
+                            agentId={safe.id}
+                            agentName={safe.name}
+                            agentEmail={safe.email}
+                          />
+                        ) : (
+                          <p className="text-[0.7rem] text-muted">
+                            Add their real @nzcenergy.co.uk address first. Do not invent one.
+                          </p>
+                        )}
                       </td>
                     ) : null}
                   </tr>

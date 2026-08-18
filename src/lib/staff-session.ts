@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { isDeskAdmin } from "@/lib/desk-reminders";
 import { prisma } from "@/lib/prisma";
 import {
+  normalizeStaffEmail,
   publicAgentOf,
   staffHasPassword,
   STAFF_COOKIE,
@@ -22,8 +23,10 @@ export async function readStaffSessionFromCookies(env: NodeJS.ProcessEnv = proce
 export async function getSignedInStaff(env: NodeJS.ProcessEnv = process.env) {
   const session = await readStaffSessionFromCookies(env);
   if (!session) return null;
+  const email = normalizeStaffEmail(session.email);
+  if (!email) return null;
   const agent = await prisma.agent.findUnique({
-    where: { id: session.agentId },
+    where: { email },
     select: { id: true, name: true, email: true, role: true, passwordHash: true },
   });
   if (!agent || !staffHasPassword(agent.email, agent.passwordHash, env)) return null;

@@ -81,34 +81,33 @@ This desk is for NZCE staff on a private machine. Do **not** put it on a public 
 
 Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until that person has a password and signs in at `/login`.
 
-There is **no shared desk password**. Login is the person’s existing desk email or name, plus their own password. If that person has no hash set, they cannot sign in.
+There is **no shared desk password**. Login is that person’s **@nzcenergy.co.uk work email** plus their own password. Name / username login is closed. Non-work emails (including seed `@nzce.co.uk` rows) cannot sign in. If that work email has no password hash, sign-in fails closed.
 
-### First two people (Joel + one other)
+Do not invent other people’s addresses. Any `@nzcenergy.co.uk` Agent can sign in once a hash exists for that exact email. The first/admin account is Joel’s email: `joel.pearson@nzcenergy.co.uk`.
 
-Use Agent rows that already exist. Do not invent people. Do not put plaintext in git.
+### Joel’s first password (never in git)
 
 1. On the machine (not committed):
 
 ```bash
 npm run staff-hash -- "Joel’s local password"
-npm run staff-hash -- "the other person’s local password"
 ```
 
-Each command prints a `salt:hash`. Keep the passwords out of the repo.
+The command prints a `salt:hash`. The password itself stays on that machine.
 
-2. Put hashes in the server env (`.env` locally, host env in production):
+2. Put **only the hash** in **`.env.local`** (gitignored) or the host env. Do **not** put it in the committed `.env` (that file is only the SQLite URL):
 
 ```
 CRM_SESSION_SECRET=a-long-random-string
-CRM_STAFF_PASSWORDS=joel.pearson@nzcenergy.co.uk=SALT:HASH,existing.agent.email@nzce.co.uk=SALT:HASH
+CRM_STAFF_PASSWORDS=joel.pearson@nzcenergy.co.uk=SALT:HASH
 DOCUSIGN_WEBHOOK_SECRET=
 ```
 
-`existing.agent.email@nzce.co.uk` must already be an Agent on the desk (the second person Joel wants to unlock).
+3. Sign in at `/login` with `joel.pearson@nzcenergy.co.uk` and that password.
 
-3. Sign in at `/login` as Joel. On **Agents**, Joel (Admin) can set or reset another person’s password. That stores a hash on the Agent row. It never goes in git.
+4. After Joel is signed in, he can set a password on **Agents** for any row that already has a real `@nzcenergy.co.uk` address. That stores a hash on the Agent row. It never goes in git. Do not invent addresses for seed demo agents.
 
-The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that person. Working as can only switch to yourself, unless you are Admin.
+The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that work email. Working as can only switch to yourself, unless you are Admin.
 
 DocuSign Connect must send HMAC (`X-DocuSign-Signature-1`). If `DOCUSIGN_WEBHOOK_SECRET` is missing, the webhook is rejected.
 
