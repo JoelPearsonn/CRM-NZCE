@@ -4,12 +4,12 @@ import { EmptyState, PageHeader, Section } from "@/components/ui";
 import {
   filterDealsByMonth,
   financeTotals,
+  fillMonthSpan,
   groupByAgent,
   groupByCustomer,
   groupByMonth,
   groupByPaymentStage,
   isMonthKey,
-  monthKey,
   monthLabel,
   type AnalyticsDeal,
 } from "@/lib/finance";
@@ -20,9 +20,9 @@ import { prisma } from "@/lib/prisma";
 
 function parseMonth(raw: string | string[] | undefined) {
   const value = typeof raw === "string" ? raw : "";
-  if (value === "all") return "";
+  if (value === "all" || !value) return "";
   if (isMonthKey(value)) return value;
-  return monthKey(new Date());
+  return "";
 }
 
 export default async function FinancePage({ searchParams }: SearchPageProps) {
@@ -101,14 +101,10 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
       return legs;
     });
 
-  const byMonth = groupByMonth(lines);
-  const currentKey = monthKey(new Date());
-  const monthOptions = [
-    ...byMonth.map((row) => ({ key: row.key, label: row.label })),
-    ...(byMonth.some((row) => row.key === currentKey)
-      ? []
-      : [{ key: currentKey, label: monthLabel(currentKey) }]),
-  ].sort((a, b) => a.key.localeCompare(b.key));
+  const byMonth = fillMonthSpan(groupByMonth(lines));
+  const monthOptions = byMonth
+    .filter((row) => row.key !== "none")
+    .map((row) => ({ key: row.key, label: row.label }));
 
   const scopedRows = filterDealsByMonth(lines, month);
   const scopedDeals = scopedRows;
@@ -209,12 +205,13 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
             </table>
           </Section>
 
-          <Section title={month ? `Cashflow · ${monthTitle}` : "Cashflow by month"}>
+          <Section title="Cashflow by month">
             <p className="border-b border-rule px-4 py-2 text-xs text-muted">
-              Payout expected date · amount due versus actual paid · remaining
+              Every month on the book. Hover a month for the total and the residual / split lines already
+              stored.
             </p>
             <GroupedBars
-              rows={scopedByMonth}
+              rows={byMonth}
               left="due"
               right="paid"
               leftLabel="Amount due"

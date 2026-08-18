@@ -52,8 +52,17 @@ export async function writeSeedLoa(storedName: string, body: string) {
 }
 
 export async function storeGeneratedLoaPdf(customerId: string, fileName: string, pdf: Buffer) {
+  return storeGeneratedLoaBytes(customerId, fileName, pdf, "pdf");
+}
+
+export async function storeGeneratedLoaBytes(
+  customerId: string,
+  fileName: string,
+  bytes: Buffer,
+  ext = "bin",
+) {
   await mkdir(ROOT, { recursive: true });
-  const storedName = `${customerId}-${Date.now()}-loa.pdf`;
-  await writeFile(path.join(ROOT, storedName), pdf);
+  const storedName = `${customerId}-${Date.now()}-loa.${ext}`;
+  await writeFile(path.join(ROOT, storedName), bytes);
   return { loaFileName: fileName, loaStoredName: storedName };
 }

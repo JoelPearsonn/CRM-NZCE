@@ -1,24 +1,28 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-ink: #101c18;
-  --color-ink-2: #182820;
-  --color-ink-3: #22362c;
-  --color-paper: #f1ece1;
-  --color-paper-2: #faf7f0;
-  --color-card: #fffdf8;
-  --color-brass: #c4922a;
-  --color-brass-dark: #8a6716;
+  --color-navy: #07121f;
+  --color-gold: #c9a46a;
+  --color-gold-soft: #e7d8bd;
+  --color-secondary: #edece5;
+  --color-ink: #07121f;
+  --color-ink-2: #0c1a2b;
+  --color-ink-3: #122337;
+  --color-paper: #f7f6f1;
+  --color-paper-2: #edece5;
+  --color-card: #ffffff;
+  --color-brass: #c9a46a;
+  --color-brass-dark: #a8864a;
   --color-moss: #2d6a4f;
   --color-moss-soft: #d7e8de;
-  --color-rule: #d6cdb8;
-  --color-muted: #5d6c64;
+  --color-rule: #e2e0d7;
+  --color-muted: #5b6470;
   --color-danger: #9b2c2c;
   --color-danger-soft: #f3d6d2;
   --color-warn: #b45309;
   --color-warn-soft: #f6e3c4;
-  --font-sans: var(--font-ibm-plex-sans);
-  --font-serif: var(--font-source-serif);
+  --font-sans: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
+  --font-serif: var(--font-outfit), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-ibm-plex-mono);
 }
 
@@ -30,7 +34,7 @@ body {
 }
 
 body {
-  font-family: var(--font-sans), "IBM Plex Sans", sans-serif;
+  font-family: var(--font-sans), "Outfit", "Helvetica Neue", Arial, sans-serif;
 }
 
 a {
@@ -38,8 +42,8 @@ a {
 }
 
 ::selection {
-  background: #e6d3a0;
-  color: var(--color-ink);
+  background: var(--color-gold-soft);
+  color: var(--color-navy);
 }
 
 .desk-table {
@@ -57,7 +61,7 @@ a {
   color: var(--color-muted);
   padding: 0.55rem 0.7rem;
   border-bottom: 1px solid var(--color-rule);
-  background: #f6f1e6;
+  background: var(--color-secondary);
   white-space: nowrap;
 }
 
@@ -94,12 +98,27 @@ a {
 
 .desk-header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid var(--color-rule);
-  background: var(--color-paper-2);
-  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-gold) 35%, var(--color-navy));
+  background: var(--color-navy);
+  color: var(--color-gold-soft);
+  padding: 0.65rem 1.5rem;
+}
+
+.desk-logo {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.desk-logo img {
+  display: block;
+  height: 2.35rem;
+  width: auto;
+  max-width: min(14rem, 42vw);
 }
 
 .master-search {
@@ -170,7 +189,7 @@ a {
   overflow-x: scroll;
   overflow-y: hidden;
   scrollbar-width: auto;
-  scrollbar-color: #8a6716 #ebe4d4;
+  scrollbar-color: var(--color-gold) var(--color-secondary);
   padding: 0.75rem 0 0.15rem;
 }
 
@@ -180,11 +199,11 @@ a {
 }
 
 .lead-board::-webkit-scrollbar-track {
-  background: #ebe4d4;
+  background: var(--color-secondary);
 }
 
 .lead-board::-webkit-scrollbar-thumb {
-  background: #8a6716;
+  background: var(--color-gold);
   border-radius: 6px;
 }
 
@@ -226,16 +245,16 @@ a {
   width: 2.75rem;
   height: 2.75rem;
   flex-shrink: 0;
-  border: 1px solid var(--color-rule);
-  background: var(--color-card);
-  color: var(--color-ink);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 40%, transparent);
+  background: transparent;
+  color: var(--color-gold-soft);
 }
 
 .nav-toggle span {
   display: block;
   width: 1.1rem;
   height: 2px;
-  background: var(--color-ink);
+  background: var(--color-gold);
 }
 
 .nav-toggle-close {
@@ -262,7 +281,7 @@ a {
 
 .desk-table th:first-child {
   z-index: 3;
-  background: #f6f1e6;
+  background: var(--color-secondary);
 }
 
 .desk-table td:first-child {
@@ -322,7 +341,7 @@ a {
 .field input:focus,
 .field select:focus,
 .field textarea:focus {
-  outline: 2px solid #c4922a55;
+  outline: 2px solid color-mix(in srgb, var(--color-gold) 45%, transparent);
   border-color: var(--color-brass);
 }
 
@@ -348,21 +367,21 @@ a {
 }
 
 .btn-primary {
-  background: var(--color-ink);
-  color: #f6f0e4;
+  background: var(--color-navy);
+  color: var(--color-gold-soft);
 }
 
 .btn-primary:hover {
-  background: #1c3228;
+  background: #122337;
 }
 
 .btn-brass {
-  background: var(--color-brass);
-  color: #1a1406;
+  background: var(--color-gold);
+  color: var(--color-navy);
 }
 
 .btn-brass:hover {
-  background: #d4a53a;
+  background: #d4b27d;
 }
 
 .btn-ghost {
@@ -448,7 +467,7 @@ a {
 }
 
 .section-title {
-  font-family: var(--font-serif), "Source Serif 4", serif;
+  font-family: var(--font-sans), "Outfit", "Helvetica Neue", Arial, sans-serif;
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -497,6 +516,15 @@ a {
 
   .working-as {
     margin-left: auto;
+  }
+
+  .desk-logo {
+    order: 2;
+    margin-left: 0;
+  }
+
+  .desk-logo img {
+    height: 1.85rem;
   }
 
   .working-as-hint {

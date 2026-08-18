@@ -82,7 +82,7 @@ export default function HelpPage() {
 
         <Guide
           title="Send an LOA"
-          body="Open the customer (or a lead) and use Send LOA. The letter fills from the company, contact and every MPAN/MPRN. Preview it, then send. If DocuSign is not connected you download the PDF and supplies are marked requested — nothing is emailed. When DocuSign is connected the contact is emailed, the envelope and sig link are stored, and a completed envelope marks supplies received. You can still upload the signed copy on the existing Signed LOA panel."
+          body="Open the customer and use Generate LOA or the Letters of Authority panel. LOA copies live on the customer — upload one, save, then upload another and both stay stored. Older per-meter files still show on that list. Preview or open a file in a new tab so the customer record stays open. Send LOA still fills every MPAN/MPRN. If DocuSign is not connected you download the PDF and supplies are marked requested."
         >
           <Link href="/customers" className="btn btn-ghost">
             Open customers

@@ -30,8 +30,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={`flex min-h-11 flex-col justify-center rounded-sm px-3 py-2.5 ${
               active
-                ? "bg-ink-3 text-[#f4e7c3] shadow-[inset_3px_0_0_#c4922a]"
-                : "text-[#c9c2b2] hover:bg-white/5 hover:text-[#f3eee3]"
+                ? "bg-ink-3 text-gold-soft shadow-[inset_3px_0_0_#c9a46a]"
+                : "text-[#d8d2c4] hover:bg-white/5 hover:text-gold-soft"
             }`}
           >
             <div className="text-sm font-semibold">{link.label}</div>
@@ -46,8 +46,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div className="border-b border-white/10 px-5 py-5">
-      <p className="font-serif text-[1.65rem] leading-none tracking-tight text-[#f4e7c3]">NZCE</p>
-      <p className="mt-1 text-[0.68rem] font-semibold tracking-[0.16em] text-brass uppercase">
+      <p className="font-sans text-[1.45rem] leading-none tracking-tight text-gold-soft">NZCE</p>
+      <p className="mt-1 text-[0.68rem] font-semibold tracking-[0.16em] text-gold uppercase">
         Brokerage desk
       </p>
     </div>
@@ -66,7 +66,7 @@ function Foot() {
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-60 shrink-0 flex-col bg-ink text-[#e8e2d4] md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col bg-navy text-gold-soft md:flex">
       <Brand />
       <nav className="flex flex-1 flex-col gap-0.5 p-3">
         <NavLinks />
@@ -112,11 +112,11 @@ export function MobileNav() {
             aria-label="Close menu"
             onClick={() => setOpen(false)}
           />
-          <aside className="relative flex h-full w-[min(18rem,86vw)] flex-col bg-ink text-[#e8e2d4] shadow-2xl">
+          <aside className="relative flex h-full w-[min(18rem,86vw)] flex-col bg-navy text-gold-soft shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
               <div>
-                <p className="font-serif text-[1.45rem] leading-none tracking-tight text-[#f4e7c3]">NZCE</p>
-                <p className="mt-1 text-[0.68rem] font-semibold tracking-[0.16em] text-brass uppercase">
+                <p className="font-sans text-[1.45rem] leading-none tracking-tight text-gold-soft">NZCE</p>
+                <p className="mt-1 text-[0.68rem] font-semibold tracking-[0.16em] text-gold uppercase">
                   Brokerage desk
                 </p>
               </div>

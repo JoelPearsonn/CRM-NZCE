@@ -10,7 +10,9 @@ import {
 import {
   contractMonths,
   filterDealsByMonth,
+  fillMonthSpan,
   groupByAgent,
+  groupByMonth,
   groupByPaymentStage,
   liveDealPreview,
   monthKey,
@@ -85,6 +87,52 @@ test("monthly finance only includes deals due in that month", () => {
   assert.equal(month.length, 1);
   assert.equal(month[0]?.amountDue, 2100);
   assert.equal(filterDealsByMonth(deals, "").length, 3);
+});
+
+test("cashflow months fill the gap and keep residual / split lines", () => {
+  const deals = [
+    {
+      id: "split-aug",
+      customerId: "c1",
+      dueDate: new Date(Date.UTC(2026, 7, 14)),
+      salespersonId: null,
+      customerName: "Book A",
+      salespersonName: null,
+      supplier: "EDF Energy",
+      agentIds: [],
+      agentNames: [],
+      amountDue: 1000,
+      actualPaid: 200,
+      estimatedCommission: 1000,
+      stage: "ON_SIGN",
+    },
+    {
+      id: "residual-oct",
+      customerId: "c1",
+      dueDate: new Date(Date.UTC(2026, 9, 1)),
+      salespersonId: null,
+      customerName: "Book A",
+      salespersonName: null,
+      supplier: "EDF Energy",
+      agentIds: [],
+      agentNames: [],
+      amountDue: 300,
+      actualPaid: 0,
+      estimatedCommission: 300,
+      stage: "RESIDUAL",
+    },
+  ];
+  const months = fillMonthSpan(groupByMonth(deals));
+  assert.deepEqual(
+    months.map((row) => row.key),
+    ["2026-08", "2026-09", "2026-10"],
+  );
+  assert.equal(months[0]?.due, 1000);
+  assert.equal(months[0]?.splitDue, 1000);
+  assert.equal(months[0]?.residualDue, 0);
+  assert.equal(months[1]?.due, 0);
+  assert.equal(months[2]?.residualDue, 300);
+  assert.equal(months[2]?.splitDue, 0);
 });
 
 test("TPI deduction: Infinite 20% leaves 80% net", () => {

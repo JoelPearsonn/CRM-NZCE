@@ -109,7 +109,7 @@ export function MasterSearch() {
         }}
       >
         <label
-          className="mb-0.5 block text-[0.68rem] font-semibold tracking-[0.12em] text-muted uppercase"
+          className="mb-0.5 block text-[0.68rem] font-semibold tracking-[0.12em] text-gold-soft uppercase"
           htmlFor="master-search"
         >
           Search the book
@@ -124,7 +124,7 @@ export function MasterSearch() {
           placeholder="Customer, contact, MPAN, MPRN, email…"
           autoComplete="off"
           disabled={pending}
-          className="h-11 w-full border border-rule bg-paper-2 px-3 py-2 font-sans text-base text-ink outline-none focus:border-brass md:text-sm"
+          className="h-11 w-full border border-gold/40 bg-card px-3 py-2 font-sans text-base text-ink outline-none focus:border-gold md:text-sm"
         />
       </form>
       {open && query.trim().length >= 2 ? (

@@ -32,6 +32,9 @@ export function ShellFrame({
           <MobileNav />
           <MasterSearch />
           <WorkingAsPicker agents={agents} currentId={currentId} />
+          <a href="/" className="desk-logo" aria-label="Net Zero Commercial Energy">
+            <img src="/brand/logo-lockup-on-dark.png" alt="Net Zero Commercial Energy" />
+          </a>
         </header>
         <main className="desk-main">
           <TableLabels>{children}</TableLabels>

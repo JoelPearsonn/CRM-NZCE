@@ -228,6 +228,10 @@ export type Bucket = {
   remaining: number;
   variance: number;
   dealCount: number;
+  residualDue: number;
+  splitDue: number;
+  residualPaid: number;
+  splitPaid: number;
 };
 
 export function dealRemaining(deal: FinanceDeal) {
@@ -257,16 +261,56 @@ export function financeTotals(deals: FinanceDeal[]) {
 }
 
 function emptyBucket(key: string, label: string): Bucket {
-  return { key, label, due: 0, paid: 0, estimated: 0, remaining: 0, variance: 0, dealCount: 0 };
+  return {
+    key,
+    label,
+    due: 0,
+    paid: 0,
+    estimated: 0,
+    remaining: 0,
+    variance: 0,
+    dealCount: 0,
+    residualDue: 0,
+    splitDue: 0,
+    residualPaid: 0,
+    splitPaid: 0,
+  };
 }
 
-function addDeal(bucket: Bucket, deal: FinanceDeal) {
+function addDeal(bucket: Bucket, deal: FinanceDeal & { stage?: string }) {
   bucket.due += deal.amountDue ?? 0;
   bucket.paid += deal.actualPaid ?? 0;
   bucket.estimated += deal.estimatedCommission ?? 0;
   bucket.remaining = Math.max(0, bucket.due - bucket.paid);
   bucket.variance = bucket.estimated - bucket.paid;
   bucket.dealCount += 1;
+  if (deal.stage === "RESIDUAL") {
+    bucket.residualDue += deal.amountDue ?? 0;
+    bucket.residualPaid += deal.actualPaid ?? 0;
+  } else {
+    bucket.splitDue += deal.amountDue ?? 0;
+    bucket.splitPaid += deal.actualPaid ?? 0;
+  }
+}
+
+export function fillMonthSpan(rows: Bucket[]): Bucket[] {
+  const months = rows.filter((row) => isMonthKey(row.key)).sort((a, b) => a.key.localeCompare(b.key));
+  const extras = rows.filter((row) => !isMonthKey(row.key));
+  if (months.length === 0) return extras;
+  const byKey = new Map(months.map((row) => [row.key, row]));
+  const filled: Bucket[] = [];
+  let [year, month] = months[0].key.split("-").map(Number);
+  const [endYear, endMonth] = months[months.length - 1].key.split("-").map(Number);
+  while (year < endYear || (year === endYear && month <= endMonth)) {
+    const key = `${year}-${String(month).padStart(2, "0")}`;
+    filled.push(byKey.get(key) ?? emptyBucket(key, monthLabel(key)));
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return [...filled, ...extras];
 }
 
 export function monthKey(date: Date) {

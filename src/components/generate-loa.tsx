@@ -14,7 +14,7 @@ function GenerateForm({
   primary?: boolean;
 }) {
   return (
-    <form action={`/api/loa/tpi/${customerId}`} method="post">
+    <form action={`/api/loa/tpi/${customerId}`} method="post" target="_blank">
       <input type="hidden" name="kind" value={kind} />
       {leadId ? <input type="hidden" name="leadId" value={leadId} /> : null}
       <button className={primary ? "btn btn-primary" : "btn btn-ghost"} type="submit">
@@ -43,7 +43,7 @@ export function GenerateLoaButton({
     );
   }
   return (
-    <form action={`/api/loa/tpi/${customerId}`} method="post">
+    <form action={`/api/loa/tpi/${customerId}`} method="post" target="_blank">
       <input type="hidden" name="kind" value={kind} />
       {leadId ? <input type="hidden" name="leadId" value={leadId} /> : null}
       <button className={className} type="submit">
