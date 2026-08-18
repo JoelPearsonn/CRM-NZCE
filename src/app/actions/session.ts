@@ -6,14 +6,16 @@ import { WORKING_AS_COOKIE } from "@/lib/working-as";
 import { optionalStr } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { planWorkingAsCookie, workingAsCookieOptions } from "@/lib/staff-auth";
-import { hasStaffSessionFromCookies } from "@/lib/staff-session";
+import { getSignedInStaff, staffIsAdmin } from "@/lib/staff-session";
 
 export async function setWorkingAs(formData: FormData) {
   const agentId = optionalStr(formData.get("agentId"));
-  const hasStaffSession = await hasStaffSessionFromCookies();
+  const staff = await getSignedInStaff();
   const agent = agentId ? await prisma.agent.findUnique({ where: { id: agentId } }) : null;
   const plan = planWorkingAsCookie({
-    hasStaffSession,
+    hasStaffSession: Boolean(staff),
+    actorAgentId: staff?.id ?? null,
+    actorIsAdmin: staffIsAdmin(staff),
     agentId,
     agentExists: Boolean(agent),
   });

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { LeadForm } from "@/components/forms";
 import { PageHeader } from "@/components/ui";
 import type { IdPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 
 export default async function EditLeadPage({ params }: IdPageProps) {
@@ -12,7 +13,7 @@ export default async function EditLeadPage({ params }: IdPageProps) {
       include: { allocations: true, customer: true },
     }),
     prisma.customer.findMany({ orderBy: { companyName: "asc" } }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
   ]);
   if (!lead) notFound();
 

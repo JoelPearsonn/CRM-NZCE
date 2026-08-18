@@ -734,7 +734,11 @@ export function TenderForm({
   );
 }
 
-export function AgentForm({ agent }: { agent?: Agent }) {
+export function AgentForm({
+  agent,
+}: {
+  agent?: Pick<Agent, "id" | "name" | "email" | "role">;
+}) {
   const [state, action, pending] = useActionState(saveAgent, empty as AgentState);
   return (
     <form action={action} className="card grid gap-4 p-5 md:grid-cols-2">

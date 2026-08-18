@@ -10,12 +10,16 @@ import { handleRecordingDownload } from "../src/app/api/recordings/[id]/route";
 import { csvTemplate } from "../src/lib/csv-import";
 import { previewMeterImport } from "../src/lib/csv-import-preview";
 import { dealRefsBelongToCustomer } from "../src/lib/deals";
+import { hashPassword } from "../src/lib/portal-crypto";
+import { authenticateStaff } from "../src/lib/staff-accounts";
 import {
   createStaffSessionToken,
   isProtectedStaffApiPath,
+  parseStaffPasswordHashes,
   planWorkingAsCookie,
   STAFF_COOKIE,
   STAFF_SESSION_MAX_AGE,
+  staffPasswordHashFor,
   staffSessionCookieOptions,
   verifyStaffSessionToken,
   workingAsCookieMaxAge,
@@ -24,7 +28,6 @@ import { withTestDb } from "./helpers/test-db";
 
 function staffEnv(overrides: Record<string, string> = {}) {
   return {
-    CRM_STAFF_PASSWORD: "desk-lock-test",
     CRM_SESSION_SECRET: "session-secret-test",
     ...overrides,
   };
@@ -36,24 +39,83 @@ function staffRequest(url: string, token?: string | null) {
   return new Request(url, { headers });
 }
 
-test("unauthenticated customer export is 401, including when the staff password is unset", async () => {
+test("unauthenticated customer export is 401, including when no staff secret is set", async () => {
   const closed = await exportCustomers(new Request("http://localhost/api/export/customers"));
   assert.equal(closed.status, 401);
 
   const env = staffEnv();
-  const token = createStaffSessionToken(Date.now(), env);
+  const token = createStaffSessionToken("agent-a", Date.now(), env);
   assert.ok(token);
-  const authed = verifyStaffSessionToken(token, Date.now(), env);
-  assert.equal(authed, true);
-  assert.equal(verifyStaffSessionToken(token, Date.now(), { CRM_STAFF_PASSWORD: "" }), false);
+  assert.equal(verifyStaffSessionToken(token, Date.now(), env)?.agentId, "agent-a");
+  assert.equal(verifyStaffSessionToken(token, Date.now(), {}), null);
+});
+
+test("user A’s session cannot be used as user B, and an unknown person cannot sign in", async () => {
+  const env = staffEnv();
+  const tokenA = createStaffSessionToken("agent-a", Date.now(), env);
+  const tokenB = createStaffSessionToken("agent-b", Date.now(), env);
+  assert.ok(tokenA);
+  assert.ok(tokenB);
+  assert.equal(verifyStaffSessionToken(tokenA, Date.now(), env)?.agentId, "agent-a");
+  assert.notEqual(verifyStaffSessionToken(tokenA, Date.now(), env)?.agentId, "agent-b");
+  assert.equal(verifyStaffSessionToken(tokenB, Date.now(), env)?.agentId, "agent-b");
+
+  await withTestDb(async (db) => {
+    const joelHash = hashPassword("joel-local-test");
+    await db.agent.create({
+      data: {
+        name: "Joel Pearson",
+        email: "joel.pearson@nzcenergy.co.uk",
+        role: "Admin",
+        passwordHash: joelHash,
+      },
+    });
+    await db.agent.create({
+      data: { name: "Priya Shah", email: "priya.shah@nzce.co.uk", role: "Sales" },
+    });
+
+    const unknown = await authenticateStaff(
+      { identifier: "nobody@not-on-the-desk.test", password: "anything-long" },
+      db,
+      env,
+    );
+    assert.equal("error" in unknown, true);
+
+    const noPassword = await authenticateStaff(
+      { identifier: "priya.shah@nzce.co.uk", password: "anything-long" },
+      db,
+      env,
+    );
+    assert.equal("error" in noPassword, true);
+
+    const byName = await authenticateStaff(
+      { identifier: "Joel Pearson", password: "joel-local-test" },
+      db,
+      env,
+    );
+    assert.ok("ok" in byName && byName.ok);
+    assert.equal(byName.agent.email, "joel.pearson@nzcenergy.co.uk");
+
+    const wrong = await authenticateStaff(
+      { identifier: "joel.pearson@nzcenergy.co.uk", password: "not-joel" },
+      db,
+      env,
+    );
+    assert.equal("error" in wrong, true);
+
+    const bootstrapHash = hashPassword("priya-bootstrap-test");
+    const bootstrapped = await authenticateStaff(
+      { identifier: "priya.shah@nzce.co.uk", password: "priya-bootstrap-test" },
+      db,
+      { ...env, CRM_STAFF_PASSWORDS: `priya.shah@nzce.co.uk=${bootstrapHash}` },
+    );
+    assert.equal("ok" in bootstrapped, true);
+  });
 });
 
 test("recordings download requires a staff session and a known customer record", async () => {
-  const env = { ...process.env, ...staffEnv() };
-  const previousPassword = process.env.CRM_STAFF_PASSWORD;
   const previousSecret = process.env.CRM_SESSION_SECRET;
-  process.env.CRM_STAFF_PASSWORD = env.CRM_STAFF_PASSWORD;
-  process.env.CRM_SESSION_SECRET = env.CRM_SESSION_SECRET;
+  process.env.CRM_SESSION_SECRET = "session-secret-test";
   try {
     const unauth = await handleRecordingDownload(
       staffRequest("http://localhost/api/recordings/rec-1"),
@@ -70,7 +132,7 @@ test("recordings download requires a staff session and a known customer record",
     );
     assert.equal(unauth.status, 401);
 
-    const token = createStaffSessionToken();
+    const token = createStaffSessionToken("agent-a");
     assert.ok(token);
     const missing = await handleRecordingDownload(
       staffRequest("http://localhost/api/recordings/no-such", token),
@@ -97,17 +159,13 @@ test("recordings download requires a staff session and a known customer record",
     );
     assert.equal(orphan.status, 404);
   } finally {
-    if (previousPassword === undefined) delete process.env.CRM_STAFF_PASSWORD;
-    else process.env.CRM_STAFF_PASSWORD = previousPassword;
     if (previousSecret === undefined) delete process.env.CRM_SESSION_SECRET;
     else process.env.CRM_SESSION_SECRET = previousSecret;
   }
 });
 
 test("LOA document download requires a staff session and a known customer", async () => {
-  const previousPassword = process.env.CRM_STAFF_PASSWORD;
   const previousSecret = process.env.CRM_SESSION_SECRET;
-  process.env.CRM_STAFF_PASSWORD = "desk-lock-test";
   process.env.CRM_SESSION_SECRET = "session-secret-test";
   try {
     const unauth = await handleLoaDocumentDownload(
@@ -125,7 +183,7 @@ test("LOA document download requires a staff session and a known customer", asyn
     );
     assert.equal(unauth.status, 401);
 
-    const token = createStaffSessionToken();
+    const token = createStaffSessionToken("agent-a");
     assert.ok(token);
     const missing = await handleLoaDocumentDownload(
       staffRequest("http://localhost/api/loa/documents/no-such", token),
@@ -137,8 +195,6 @@ test("LOA document download requires a staff session and a known customer", asyn
     );
     assert.equal(missing.status, 404);
   } finally {
-    if (previousPassword === undefined) delete process.env.CRM_STAFF_PASSWORD;
-    else process.env.CRM_STAFF_PASSWORD = previousPassword;
     if (previousSecret === undefined) delete process.env.CRM_SESSION_SECRET;
     else process.env.CRM_SESSION_SECRET = previousSecret;
   }
@@ -270,27 +326,51 @@ test("import preview labels a new customer’s first row CREATE_CUSTOMER", async
 test("setWorkingAs cannot mint a year-long arbitrary cookie without a staff session", () => {
   const denied = planWorkingAsCookie({
     hasStaffSession: false,
+    actorAgentId: null,
+    actorIsAdmin: false,
     agentId: "agent-anyone",
     agentExists: true,
   });
   assert.equal(denied.action, "deny");
   assert.equal(denied.maxAge, undefined);
 
+  const otherPerson = planWorkingAsCookie({
+    hasStaffSession: true,
+    actorAgentId: "agent-a",
+    actorIsAdmin: false,
+    agentId: "agent-b",
+    agentExists: true,
+  });
+  assert.equal(otherPerson.action, "deny");
+
   const unknown = planWorkingAsCookie({
     hasStaffSession: true,
+    actorAgentId: "agent-a",
+    actorIsAdmin: true,
     agentId: "not-a-real-agent",
     agentExists: false,
   });
   assert.equal(unknown.action, "deny");
 
-  const allowed = planWorkingAsCookie({
+  const self = planWorkingAsCookie({
     hasStaffSession: true,
-    agentId: "agent-1",
+    actorAgentId: "agent-a",
+    actorIsAdmin: false,
+    agentId: "agent-a",
     agentExists: true,
   });
-  assert.equal(allowed.action, "set");
-  assert.equal(allowed.maxAge, 12 * 60 * 60);
-  assert.ok((allowed.maxAge ?? 0) < 60 * 60 * 24);
+  assert.equal(self.action, "set");
+  assert.equal(self.maxAge, 12 * 60 * 60);
+
+  const adminSwitch = planWorkingAsCookie({
+    hasStaffSession: true,
+    actorAgentId: "agent-a",
+    actorIsAdmin: true,
+    agentId: "agent-b",
+    agentExists: true,
+  });
+  assert.equal(adminSwitch.action, "set");
+  assert.ok((adminSwitch.maxAge ?? 0) < 60 * 60 * 24);
   assert.equal(workingAsCookieMaxAge(), STAFF_SESSION_MAX_AGE);
   assert.notEqual(workingAsCookieMaxAge(), 60 * 60 * 24 * 365);
   assert.equal(staffSessionCookieOptions().maxAge, 12 * 60 * 60);
@@ -309,11 +389,14 @@ test("staff API matcher locks exports and downloads, not the portal or webhook",
   assert.equal(isProtectedStaffApiPath("/customers"), false);
 });
 
-test("source no longer embeds portal passwords or tokens", () => {
+test("source no longer embeds portal passwords, tokens, or a shared staff password", () => {
   const files = [
     "src/lib/portal-constants.ts",
     "src/lib/portal-seed.ts",
     "src/app/portal/login/page.tsx",
+    "src/lib/staff-auth.ts",
+    "src/app/actions/staff.ts",
+    "src/app/login/page.tsx",
   ];
   for (const file of files) {
     const source = readFileSync(path.join(import.meta.dirname, "..", file), "utf8");
@@ -322,5 +405,10 @@ test("source no longer embeds portal passwords or tokens", () => {
     assert.equal(source.includes("bakery-view"), false, file);
     assert.equal(source.includes("bakery-portal"), false, file);
     assert.equal(source.includes("claire.debenham@"), false, file);
+    assert.equal(source.includes("CRM_STAFF_PASSWORD="), false, file);
+    assert.equal(source.includes("CRM_STAFF_PASSWORD?"), false, file);
   }
+  assert.equal(parseStaffPasswordHashes({ CRM_STAFF_PASSWORDS: "plain@x=not-a-hash" }).size, 0);
+  const hash = "ab".repeat(16) + ":" + "cd".repeat(32);
+  assert.equal(staffPasswordHashFor("plain@x", null, { CRM_STAFF_PASSWORDS: `plain@x=${hash}` }), hash);
 });

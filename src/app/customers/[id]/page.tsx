@@ -28,6 +28,7 @@ import { financeTotals } from "@/lib/finance";
 import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import { groupMetersBySite } from "@/lib/sites";
 import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 import { mergeCustomerLoaItems } from "@/lib/customer-loa";
 import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
@@ -65,7 +66,7 @@ export default async function CustomerDetailPage({
         loaDocuments: { orderBy: { createdAt: "desc" } },
       },
     }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
     getWorkingAsId(),
   ]);
 

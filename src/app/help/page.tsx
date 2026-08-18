@@ -178,7 +178,7 @@ export default function HelpPage() {
 
         <Guide
           title="Staff lock"
-          body="The pages can stay on screen, but exports, imports, recordings, LOA files and writes stay locked until you sign in at /login with the staff password set on the server. There is no Google or Clerk login on this desk. Do not put the CRM on a public URL."
+          body="The pages can stay on screen, but exports, imports, recordings, LOA files and writes stay locked until you sign in at /login with your own desk email and password. There is no shared code and no Google or Clerk login. If your password has not been set, ask Joel. Do not put the CRM on a public URL."
         >
           <Link href="/login" className="btn btn-ghost">
             Staff sign-in

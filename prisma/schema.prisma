@@ -8,12 +8,13 @@ datasource db {
 }
 
 model Agent {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      String   @default("Sales")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  role         String   @default("Sales")
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   meters          Meter[]
   deals            Deal[]

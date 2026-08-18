@@ -16,12 +16,21 @@ export default function StaffLoginPage() {
       </p>
       <h1 className="mt-2 font-serif text-3xl text-ink">Staff sign-in</h1>
       <p className="mt-2 text-sm text-muted">
-        Exports, imports, recordings, LOAs and writes stay locked until a staff session is set.
-        There is no public login provider on this desk yet.
+        Use your own desk email or name, and your password. There is no shared code and no public
+        login provider.
       </p>
       <form action={action} className="card mt-6 grid gap-3 p-5" data-testid="staff-login">
         <ErrorBanner message={state.error} />
-        <Field label="Staff password" name="password">
+        <Field label="Email or name" name="identifier">
+          <input
+            id="identifier"
+            name="identifier"
+            type="text"
+            autoComplete="username"
+            required
+          />
+        </Field>
+        <Field label="Password" name="password">
           <input
             id="password"
             name="password"
@@ -34,8 +43,8 @@ export default function StaffLoginPage() {
           {pending ? "Signing in…" : "Unlock desk writes"}
         </button>
         <p className="text-[0.7rem] text-muted">
-          Set <code>CRM_STAFF_PASSWORD</code> on the server. If it is unset, this form cannot open
-          the book.
+          If your login has not been set, this form stays closed. An admin can set it on the Agents
+          page after they sign in.
         </p>
       </form>
     </div>

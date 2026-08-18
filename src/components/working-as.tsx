@@ -1,17 +1,19 @@
 "use client";
 
-import type { Agent } from "@prisma/client";
 import { setWorkingAs } from "@/app/actions/session";
 import { signOutStaff } from "@/app/actions/staff";
+import type { PublicAgent } from "@/lib/staff-auth";
 
 export function WorkingAsPicker({
   agents,
   currentId,
   staffSignedIn,
+  staffName,
 }: {
-  agents: Agent[];
+  agents: PublicAgent[];
   currentId: string | null;
   staffSignedIn: boolean;
+  staffName: string | null;
 }) {
   const current = agents.find((agent) => agent.id === currentId);
 
@@ -26,11 +28,11 @@ export function WorkingAsPicker({
           key={currentId ?? "desk"}
           name="agentId"
           defaultValue={currentId ?? ""}
-          disabled={!staffSignedIn}
+          disabled={!staffSignedIn || agents.length === 0}
           onChange={(event) => event.currentTarget.form?.requestSubmit()}
           className="h-11 max-w-[12rem] border border-gold/40 bg-card px-2 text-base text-ink md:h-auto md:py-1 md:text-sm"
         >
-          <option value="">Desk — no actor</option>
+          {staffSignedIn && agents.length > 1 ? <option value="">Desk — no actor</option> : null}
           {agents.map((agent) => (
             <option key={agent.id} value={agent.id}>
               {agent.name}
@@ -42,7 +44,9 @@ export function WorkingAsPicker({
         {staffSignedIn
           ? current
             ? `${current.name} · ${current.role}`
-            : "Notes and activity stay unattributed"
+            : staffName
+              ? `Signed in as ${staffName}`
+              : "Notes and activity stay unattributed"
           : "Writes and exports stay locked"}
       </p>
       {staffSignedIn ? (

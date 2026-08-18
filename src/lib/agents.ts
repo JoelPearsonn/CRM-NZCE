@@ -1,3 +1,19 @@
+import { prisma } from "@/lib/prisma";
+
+export const deskAgentSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+} as const;
+
+export function listDeskAgents(db: { agent: { findMany: typeof prisma.agent.findMany } } = prisma) {
+  return db.agent.findMany({
+    select: deskAgentSelect,
+    orderBy: { name: "asc" },
+  });
+}
+
 export function agentNames(agents: { name: string }[]) {
   if (agents.length === 0) return "—";
   return agents.map((agent) => agent.name).join(" · ");

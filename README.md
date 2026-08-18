@@ -73,23 +73,42 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 - Tender-email generation
 - Monthly report PDFs
 - Hard delete of live customer data
-- Google / Clerk / OAuth staff login (Joel has not picked a provider — the desk uses a local staff password only)
+- Google / Clerk / OAuth staff login (each desk person uses their own local password)
 
 ## Staff lock
 
 This desk is for NZCE staff on a private machine. Do **not** put it on a public URL. Do **not** add a Cloudflare tunnel.
 
-Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until a staff session exists.
+Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until that person has a password and signs in at `/login`.
 
-Set these on the server, never in git:
+There is **no shared desk password**. Login is the person’s existing desk email or name, plus their own password. If that person has no hash set, they cannot sign in.
+
+### First two people (Joel + one other)
+
+Use Agent rows that already exist. Do not invent people. Do not put plaintext in git.
+
+1. On the machine (not committed):
+
+```bash
+npm run staff-hash -- "Joel’s local password"
+npm run staff-hash -- "the other person’s local password"
+```
+
+Each command prints a `salt:hash`. Keep the passwords out of the repo.
+
+2. Put hashes in the server env (`.env` locally, host env in production):
 
 ```
-CRM_STAFF_PASSWORD=
-CRM_SESSION_SECRET=
+CRM_SESSION_SECRET=a-long-random-string
+CRM_STAFF_PASSWORDS=joel.pearson@nzcenergy.co.uk=SALT:HASH,existing.agent.email@nzce.co.uk=SALT:HASH
 DOCUSIGN_WEBHOOK_SECRET=
 ```
 
-If `CRM_STAFF_PASSWORD` is unset, mutating and download routes stay **401**. Sign in at `/login`. The session cookie is httpOnly, Secure, SameSite=Lax, and lasts 12 hours.
+`existing.agent.email@nzce.co.uk` must already be an Agent on the desk (the second person Joel wants to unlock).
+
+3. Sign in at `/login` as Joel. On **Agents**, Joel (Admin) can set or reset another person’s password. That stores a hash on the Agent row. It never goes in git.
+
+The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that person. Working as can only switch to yourself, unless you are Admin.
 
 DocuSign Connect must send HMAC (`X-DocuSign-Signature-1`). If `DOCUSIGN_WEBHOOK_SECRET` is missing, the webhook is rejected.
 
