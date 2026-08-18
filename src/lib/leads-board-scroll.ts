@@ -67,5 +67,5 @@ export function scrollLeadsBoardToColumn(board: HTMLElement, stage: string) {
   if (!column) return;
 
   const left = column.getBoundingClientRect().left - row.getBoundingClientRect().left;
-  board.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+  board.scrollLeft = Math.max(0, left);
 }

@@ -27,7 +27,7 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
 body {
@@ -109,20 +109,20 @@ a {
 }
 
 .desk-pane {
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
 .desk-pane-main {
   min-width: 0;
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
 .desk-main {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: clip;
   overflow-y: visible;
   padding: 1.5rem;
 }
@@ -132,7 +132,7 @@ a {
 .leads-board-host {
   min-width: 0;
   max-width: 100%;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
 .leads-board-shell,
@@ -143,7 +143,7 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: visible;
+  overflow-x: clip;
 }
 
 .leads-jump,
@@ -185,7 +185,7 @@ a {
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   scrollbar-width: auto;
   scrollbar-color: #8a6716 #ebe4d4;
   padding: 0.75rem 0 0.15rem;
@@ -234,8 +234,9 @@ a {
 .leads-column-cards,
 .lead-column-cards {
   min-width: 0;
+  max-height: min(70vh, 42rem);
   overflow-x: hidden;
-  overflow-y: visible;
+  overflow-y: auto;
 }
 
 .nav-toggle {
@@ -499,7 +500,7 @@ a {
 
   .desk-main {
     padding: 1rem max(1rem, env(safe-area-inset-right)) 1.5rem max(1rem, env(safe-area-inset-left));
-    overflow-x: visible;
+    overflow-x: clip;
   }
 
   .master-search {
