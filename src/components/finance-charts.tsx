@@ -43,6 +43,7 @@ export function GroupedBars({
                   data-testid="cashflow-month"
                   data-month={row.key}
                   tabIndex={0}
+                  aria-label={`${caption.month} ${caption.value}`}
                 >
                   <div className="cashflow-bar-lift">
                     <div className="cashflow-bar-pair">
