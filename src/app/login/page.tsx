@@ -15,13 +15,11 @@ export default function StaffLoginPage() {
       <p className="text-[0.68rem] font-semibold tracking-[0.14em] text-gold uppercase">
         NZCE brokerage desk
       </p>
-      <h1 className="mt-2 font-serif text-3xl text-ink">
-        {step === "create" ? "Create your password" : "Staff sign-in"}
-      </h1>
+      <h1 className="mt-2 font-serif text-3xl text-ink">Staff sign-in</h1>
       <p className="mt-2 text-sm text-muted">
-        {step === "create"
-          ? "Type a password only you know. It is hashed on this desk and never shown, logged, or put in git."
-          : "Use your own @nzcenergy.co.uk work email. There is no shared code and no public login provider."}
+        {step === "check"
+          ? "A one-time link was sent to that work inbox. Create your password only after you open it."
+          : "Use your own @nzcenergy.co.uk work email. First time: we email a verification link. Later visits: email and password only."}
       </p>
       <form action={action} className="card mt-6 grid gap-3 p-5" data-testid="staff-login">
         <ErrorBanner message={state.error} />
@@ -36,6 +34,7 @@ export default function StaffLoginPage() {
                 autoComplete="username"
                 inputMode="email"
                 placeholder="name@nzcenergy.co.uk"
+                defaultValue={state.email}
                 required
               />
             </Field>
@@ -51,39 +50,13 @@ export default function StaffLoginPage() {
           </>
         ) : null}
 
-        {step === "create" ? (
+        {step === "check" ? (
           <>
-            <input type="hidden" name="email" value={state.email ?? ""} />
             <p className="text-sm text-ink">{state.email}</p>
-            <Field label="Create your password" name="password">
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                minLength={10}
-                required
-              />
-            </Field>
-            <Field label="Confirm password" name="confirm">
-              <input
-                id="confirm"
-                name="confirm"
-                type="password"
-                autoComplete="new-password"
-                minLength={10}
-                required
-              />
-            </Field>
-            <button
-              className="btn btn-primary"
-              type="submit"
-              name="intent"
-              value="create"
-              disabled={pending}
-            >
-              {pending ? "Saving…" : "Save password and sign in"}
-            </button>
+            <p className="text-sm text-muted">
+              Check that inbox for the verification link. This page will not ask for a password
+              until you open it.
+            </p>
             <button
               className="btn btn-ghost"
               type="submit"
@@ -133,8 +106,8 @@ export default function StaffLoginPage() {
         ) : null}
 
         <p className="text-[0.7rem] text-muted">
-          First time on a work email: create your own password. Later visits: the same email and
-          password. Nobody else needs to know it. Writes stay locked until that step is done.
+          Writes stay locked until the verification link is used and a password is set. Nobody else
+          needs to know that password.
         </p>
       </form>
     </div>

@@ -178,7 +178,7 @@ export default function HelpPage() {
 
         <Guide
           title="Staff lock"
-          body="The pages can stay on screen, but exports, imports, recordings, LOA files and writes stay locked until you open /login, type your @nzcenergy.co.uk work email, and create or enter your own password. Nobody else needs to know it. There is no shared code and no Google or Clerk login. Do not put the CRM on a public URL."
+          body="The pages can stay on screen, but exports, imports, recordings, LOA files and writes stay locked until you open /login with your @nzcenergy.co.uk work email. First time: a verification link is emailed, then you create your own password. Later visits: email and password only. Nobody else needs to know it. There is no shared code and no Google or Clerk login. Do not put the CRM on a public URL."
         >
           <Link href="/login" className="btn btn-ghost">
             Staff sign-in

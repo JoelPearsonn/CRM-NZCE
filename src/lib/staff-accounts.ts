@@ -8,6 +8,10 @@ import {
   staffPasswordHashFor,
   type PublicAgent,
 } from "@/lib/staff-auth";
+import {
+  consumeStaffVerifyToken,
+  readStaffVerifyToken,
+} from "@/lib/staff-verify";
 
 export const STAFF_PASSWORD_MIN_LENGTH = 10;
 
@@ -21,11 +25,15 @@ type StaffWriteDb = {
     create: typeof prisma.agent.create;
     update: typeof prisma.agent.update;
   };
+  staffVerifyToken: {
+    findUnique: typeof prisma.staffVerifyToken.findUnique;
+    update: typeof prisma.staffVerifyToken.update;
+  };
 };
 
 export type StaffEmailStep =
   | { error: string }
-  | { step: "create"; email: string }
+  | { step: "verify"; email: string }
   | { step: "signin"; email: string };
 
 function nameFromWorkEmail(email: string) {
@@ -66,22 +74,14 @@ export async function staffEmailLoginStep(
   if (agent && staffHasPassword(agent.email, agent.passwordHash)) {
     return { step: "signin", email };
   }
-  return { step: "create", email };
+  return { step: "verify", email };
 }
 
-export async function createStaffPassword(
-  input: { email?: string; password?: string; confirm?: string },
-  db: StaffWriteDb = prisma,
+async function storeStaffPassword(
+  email: string,
+  password: string,
+  db: StaffWriteDb,
 ): Promise<{ error: string } | { ok: true; agent: PublicAgent }> {
-  const email = normalizeStaffEmail(input.email ?? "");
-  const password = input.password ?? "";
-  const confirm = input.confirm ?? "";
-  if (!email) return { error: "Use your @nzcenergy.co.uk work email." };
-  if (password.length < STAFF_PASSWORD_MIN_LENGTH) {
-    return { error: `Use at least ${STAFF_PASSWORD_MIN_LENGTH} characters.` };
-  }
-  if (password !== confirm) return { error: "Those passwords do not match." };
-
   const existing = await findStaffAgent(email, db);
   if (existing && staffHasPassword(existing.email, existing.passwordHash)) {
     return { error: "This work email already has a password. Sign in instead." };
@@ -109,6 +109,27 @@ export async function createStaffPassword(
   return { ok: true, agent: publicAgent(agent) };
 }
 
+/** First-time password only after a valid, unused verification token. */
+export async function createStaffPasswordFromToken(
+  input: { token?: string; password?: string; confirm?: string },
+  db: StaffWriteDb = prisma,
+  now = Date.now(),
+): Promise<{ error: string; status?: 401 } | { ok: true; agent: PublicAgent }> {
+  const password = input.password ?? "";
+  const confirm = input.confirm ?? "";
+  const verified = await readStaffVerifyToken(input.token, db, now);
+  if ("error" in verified) return verified;
+  if (password.length < STAFF_PASSWORD_MIN_LENGTH) {
+    return { error: `Use at least ${STAFF_PASSWORD_MIN_LENGTH} characters.` };
+  }
+  if (password !== confirm) return { error: "Those passwords do not match." };
+
+  const stored = await storeStaffPassword(verified.email, password, db);
+  if ("error" in stored) return stored;
+  await consumeStaffVerifyToken(verified.id, db);
+  return stored;
+}
+
 export async function authenticateStaff(
   input: { email?: string; password?: string },
   db: StaffLookupDb = prisma,
@@ -119,7 +140,7 @@ export async function authenticateStaff(
   const agent = await findStaffAgent(email, db);
   if (!agent) return { error: "No staff login for that work email." };
   const hash = staffPasswordHashFor(agent.email, agent.passwordHash);
-  if (!hash) return { error: "Create your password first." };
+  if (!hash) return { error: "Open the verification email before creating a password." };
   if (!verifyPassword(password, hash)) return { error: "Email or password is not right." };
   return { ok: true as const, agent: publicAgent(agent) };
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/portal-crypto";
@@ -8,9 +8,11 @@ import { optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import {
   authenticateStaff,
-  createStaffPassword,
+  createStaffPasswordFromToken,
   staffEmailLoginStep,
 } from "@/lib/staff-accounts";
+import { deskPublicOrigin } from "@/lib/staff-mail";
+import { startStaffEmailVerification } from "@/lib/staff-verify";
 import {
   createStaffSessionToken,
   isNceWorkEmail,
@@ -24,15 +26,27 @@ import { WORKING_AS_COOKIE } from "@/lib/working-as";
 
 export type StaffLoginState = {
   error?: string;
-  step?: "email" | "create" | "signin";
+  step?: "email" | "check" | "signin";
   email?: string;
 };
 
+export type StaffVerifyState = { error?: string };
+
 export type StaffPasswordState = { error?: string; saved?: string };
 
-async function finishStaffSession(agent: PublicAgent): Promise<StaffLoginState> {
+async function requestOrigin() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (!host) return null;
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  return `${proto}://${host}`;
+}
+
+async function finishStaffSession(agent: PublicAgent): Promise<never> {
   const token = createStaffSessionToken(agent.email);
-  if (!token) return { error: "Staff sign-in is not configured on this desk." };
+  if (!token) {
+    redirect("/login?error=config");
+  }
   const store = await cookies();
   store.set(STAFF_COOKIE, token, staffSessionCookieOptions());
   store.set(WORKING_AS_COOKIE, agent.id, workingAsCookieOptions());
@@ -50,23 +64,6 @@ export async function continueStaffLogin(
     return { step: "email" };
   }
 
-  if (intent === "create") {
-    const result = await createStaffPassword({
-      email: emailRaw,
-      password: str(formData.get("password")),
-      confirm: str(formData.get("confirm")),
-    });
-    if ("error" in result) {
-      const step = await staffEmailLoginStep(emailRaw);
-      return {
-        error: result.error,
-        step: "step" in step ? step.step : "create",
-        email: "email" in step ? step.email : undefined,
-      };
-    }
-    return finishStaffSession(result.agent);
-  }
-
   if (intent === "signin") {
     const result = await authenticateStaff({
       email: emailRaw,
@@ -76,16 +73,35 @@ export async function continueStaffLogin(
       const step = await staffEmailLoginStep(emailRaw);
       return {
         error: result.error,
-        step: "step" in step ? step.step : "signin",
+        step: "step" in step ? (step.step === "verify" ? "email" : step.step) : "signin",
         email: "email" in step ? step.email : undefined,
       };
     }
-    return finishStaffSession(result.agent);
+    await finishStaffSession(result.agent);
   }
 
   const step = await staffEmailLoginStep(emailRaw);
   if ("error" in step) return { error: step.error, step: "email" };
-  return { step: step.step, email: step.email };
+  if (step.step === "signin") return { step: "signin", email: step.email };
+
+  const sent = await startStaffEmailVerification(step.email, {
+    publicOrigin: deskPublicOrigin(process.env, await requestOrigin()),
+  });
+  if ("error" in sent) return { error: sent.error, step: "email", email: step.email };
+  return { step: "check", email: sent.email };
+}
+
+export async function createVerifiedStaffPassword(
+  _prev: StaffVerifyState,
+  formData: FormData,
+): Promise<StaffVerifyState> {
+  const result = await createStaffPasswordFromToken({
+    token: str(formData.get("token")),
+    password: str(formData.get("password")),
+    confirm: str(formData.get("confirm")),
+  });
+  if ("error" in result) return { error: result.error };
+  await finishStaffSession(result.agent);
 }
 
 export async function signOutStaff() {

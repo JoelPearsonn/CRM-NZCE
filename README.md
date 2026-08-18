@@ -81,13 +81,15 @@ This desk is for NZCE staff on a private machine. Do **not** put it on a public 
 
 Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until that person has a password and signs in at `/login`.
 
-There is **no shared desk password** and no password in env, chat, or git. Joel opens `/login`, types `joel.pearson@nzcenergy.co.uk`, and creates his own password (typed twice). It is hashed on the server and stored on his Agent row. Nobody else needs to know it.
+There is **no shared desk password** and no password in env, chat, or git.
 
-The same first-time path works for any other `@nzcenergy.co.uk` work email. Other domains are rejected. Name / username login is closed. Seed `@nzce.co.uk` rows cannot sign in. Writes, exports, and downloads stay **closed** until that person has completed create-password and has a session.
+First time: open `/login`, type an `@nzcenergy.co.uk` work email (Joel’s is `joel.pearson@nzcenergy.co.uk`). The desk emails a one-time link to that inbox. **Create password is not shown until the link is opened.** The link is `/login/verify?token=…`, lasts one hour, is stored as a hash, and can be used once. Then they type a password twice; it is hashed and stored. They are signed in.
 
-Do not invent other people’s addresses. The first/admin account is Joel’s email: `joel.pearson@nzcenergy.co.uk`.
+Later visits: work email + that password only. No verification email that time.
 
-Later visits: the same work email plus that password. The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that work email. Working as can only switch to yourself, unless you are Admin.
+Other domains are rejected. If `RESEND_API_KEY` is missing, the desk fails closed: no email claimed, no account created. Joel adds `RESEND_API_KEY`, optional `CRM_MAIL_FROM` (defaults to `info@nzcenergy.co.uk`), and `CRM_PUBLIC_URL` himself. Do not paste those into chat. Do not start a Cloudflare tunnel.
+
+Writes, exports, and downloads stay **closed** until that person has completed verification and create-password. The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that work email.
 
 DocuSign Connect must send HMAC (`X-DocuSign-Signature-1`). If `DOCUSIGN_WEBHOOK_SECRET` is missing, the webhook is rejected.
 

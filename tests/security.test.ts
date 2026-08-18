@@ -12,9 +12,15 @@ import { previewMeterImport } from "../src/lib/csv-import-preview";
 import { dealRefsBelongToCustomer } from "../src/lib/deals";
 import {
   authenticateStaff,
-  createStaffPassword,
+  createStaffPasswordFromToken,
   staffEmailLoginStep,
 } from "../src/lib/staff-accounts";
+import { MAIL_NOT_SET_UP } from "../src/lib/staff-mail";
+import {
+  issueStaffVerifyToken,
+  readStaffVerifyToken,
+  startStaffEmailVerification,
+} from "../src/lib/staff-verify";
 import {
   createStaffSessionToken,
   isNceWorkEmail,
@@ -78,43 +84,91 @@ test("user A’s session cannot be used as user B, and an unknown person cannot 
       data: { name: "Priya Shah", email: "priya.shah@nzce.co.uk", role: "Sales" },
     });
 
-    const otherDomain = await createStaffPassword({
-      email: "nobody@not-on-the-desk.test",
-      password: "first-time-secret",
-      confirm: "first-time-secret",
-    }, db);
+    const otherDomain = await staffEmailLoginStep("nobody@not-on-the-desk.test", db);
     assert.equal("error" in otherDomain, true);
 
-    const seedDomain = await createStaffPassword({
-      email: "priya.shah@nzce.co.uk",
-      password: "first-time-secret",
-      confirm: "first-time-secret",
-    }, db);
+    const seedDomain = await startStaffEmailVerification("priya.shah@nzce.co.uk", {
+      db,
+      env: { RESEND_API_KEY: "re_test_not_a_real_key" },
+      publicOrigin: "http://desk.test",
+      send: async () => ({ ok: true }),
+    });
     assert.equal("error" in seedDomain, true);
 
     const byName = await staffEmailLoginStep("Joel Pearson", db);
     assert.equal("error" in byName, true);
 
     const firstVisit = await staffEmailLoginStep(JOEL_EMAIL, db);
-    assert.ok("step" in firstVisit && firstVisit.step === "create");
+    assert.ok("step" in firstVisit && firstVisit.step === "verify");
 
-    const created = await createStaffPassword({
-      email: JOEL_EMAIL,
-      password: "joel-local-test",
-      confirm: "joel-local-test",
-    }, db);
+    const noMailer = await startStaffEmailVerification(TEST_STAFF_A, {
+      db,
+      env: {},
+      publicOrigin: "http://desk.test",
+    });
+    assert.equal("error" in noMailer, true);
+    if ("error" in noMailer) assert.equal(noMailer.error, MAIL_NOT_SET_UP);
+    assert.equal(await db.agent.findUnique({ where: { email: TEST_STAFF_A } }), null);
+    assert.equal(await db.staffVerifyToken.count(), 0);
+    const joelBefore = await db.agent.findUnique({
+      where: { email: JOEL_EMAIL },
+      select: { passwordHash: true },
+    });
+    assert.equal(joelBefore?.passwordHash ?? null, null);
+
+    const forged = await readStaffVerifyToken("forged-token", db);
+    assert.equal("error" in forged && forged.status, 401);
+    const noTokenCreate = await createStaffPasswordFromToken(
+      { token: "forged-token", password: "first-time-secret", confirm: "first-time-secret" },
+      db,
+    );
+    assert.equal("error" in noTokenCreate && noTokenCreate.status, 401);
+
+    let sent = 0;
+    const mailed = await startStaffEmailVerification(JOEL_EMAIL, {
+      db,
+      env: { RESEND_API_KEY: "re_test_not_a_real_key" },
+      publicOrigin: "http://desk.test",
+      send: async () => {
+        sent += 1;
+        return { ok: true };
+      },
+    });
+    assert.ok("ok" in mailed && mailed.ok);
+    assert.equal(sent, 1);
+    assert.equal(
+      (await db.agent.findUnique({
+        where: { email: JOEL_EMAIL },
+        select: { passwordHash: true },
+      }))?.passwordHash ?? null,
+      null,
+    );
+
+    const expired = await issueStaffVerifyToken(JOEL_EMAIL, db, Date.now() - 2 * 60 * 60 * 1000);
+    assert.ok("raw" in expired);
+    const expiredRead = await readStaffVerifyToken(expired.raw, db);
+    assert.equal("error" in expiredRead && expiredRead.status, 401);
+
+    const issued = await issueStaffVerifyToken(JOEL_EMAIL, db);
+    assert.ok("raw" in issued);
+    const created = await createStaffPasswordFromToken(
+      { token: issued.raw, password: "joel-local-test", confirm: "joel-local-test" },
+      db,
+    );
     assert.ok("ok" in created && created.ok);
     assert.equal(created.agent.email, JOEL_EMAIL);
     const createdDump = JSON.stringify(created);
     assert.equal(createdDump.includes("joel-local-test"), false);
     assert.equal(createdDump.includes("passwordHash"), false);
+    assert.equal(createdDump.includes(issued.raw), false);
 
-    const secondCreate = await createStaffPassword({
-      email: JOEL_EMAIL,
-      password: "another-secret",
-      confirm: "another-secret",
-    }, db);
-    assert.equal("error" in secondCreate, true);
+    const reused = await readStaffVerifyToken(issued.raw, db);
+    assert.equal("error" in reused && reused.status, 401);
+    const reusedCreate = await createStaffPasswordFromToken(
+      { token: issued.raw, password: "another-secret", confirm: "another-secret" },
+      db,
+    );
+    assert.equal("error" in reusedCreate && reusedCreate.status, 401);
 
     const laterVisit = await staffEmailLoginStep(JOEL_EMAIL, db);
     assert.ok("step" in laterVisit && laterVisit.step === "signin");
@@ -128,27 +182,6 @@ test("user A’s session cannot be used as user B, and an unknown person cannot 
 
     const wrong = await authenticateStaff({ email: JOEL_EMAIL, password: "not-joel" }, db);
     assert.equal("error" in wrong, true);
-
-    const noHashYet = await authenticateStaff(
-      { email: TEST_STAFF_A, password: "anything-long" },
-      db,
-    );
-    assert.equal("error" in noHashYet, true);
-
-    const otherWork = await createStaffPassword({
-      email: TEST_STAFF_A,
-      password: "staff-a-own-password",
-      confirm: "staff-a-own-password",
-    }, db);
-    assert.ok("ok" in otherWork && otherWork.ok);
-    assert.equal(otherWork.agent.email, TEST_STAFF_A);
-    assert.equal(JSON.stringify(otherWork).includes("staff-a-own-password"), false);
-
-    const otherSignin = await authenticateStaff(
-      { email: TEST_STAFF_A, password: "staff-a-own-password" },
-      db,
-    );
-    assert.ok("ok" in otherSignin && otherSignin.ok);
   });
 });
 
@@ -436,6 +469,8 @@ test("source no longer embeds portal passwords, tokens, or a shared staff passwo
     "src/lib/staff-auth.ts",
     "src/app/actions/staff.ts",
     "src/app/login/page.tsx",
+    "src/lib/staff-mail.ts",
+    "src/lib/staff-verify.ts",
   ];
   for (const file of files) {
     const source = readFileSync(path.join(import.meta.dirname, "..", file), "utf8");
@@ -451,9 +486,14 @@ test("source no longer embeds portal passwords, tokens, or a shared staff passwo
   }
   const login = readFileSync(path.join(import.meta.dirname, "..", "src/app/login/page.tsx"), "utf8");
   assert.equal(login.includes("Work email"), true);
-  assert.equal(login.includes("Create your password"), true);
+  assert.equal(login.includes("Create your password"), false);
   assert.equal(login.includes('type="email"'), true);
   assert.equal(login.includes("@nzcenergy.co.uk"), true);
+  const verifyPage = readFileSync(
+    path.join(import.meta.dirname, "..", "src/app/login/verify/page.tsx"),
+    "utf8",
+  );
+  assert.equal(verifyPage.includes("Create your password"), true);
   const hash = "ab".repeat(16) + ":" + "cd".repeat(32);
   assert.equal(staffPasswordHashFor("plain@x", hash), null);
   assert.equal(staffPasswordHashFor(JOEL_EMAIL, null), null);
