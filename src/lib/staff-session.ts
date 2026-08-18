@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { isDeskAdmin } from "@/lib/desk-reminders";
+import { isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { prisma } from "@/lib/prisma";
 import {
   normalizeStaffEmail,
@@ -21,6 +22,7 @@ export async function readStaffSessionFromCookies(env: NodeJS.ProcessEnv = proce
 }
 
 export async function getSignedInStaff(env: NodeJS.ProcessEnv = process.env) {
+  if (!isDeskDatabaseConfigured(env)) return null;
   const session = await readStaffSessionFromCookies(env);
   if (!session) return null;
   const email = normalizeStaffEmail(session.email);

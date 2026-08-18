@@ -111,13 +111,14 @@ Joel adds these on the Vercel project (empty names only live in `.env.example` �
 
 | Var | Role |
 |---|---|
+| `DATABASE_URL` | **Required on Vercel for desk data.** Postgres URL from Neon or Vercel Postgres (`postgresql://` or `postgres://`). A `file:` SQLite path 500s or is rejected on Vercel. Missing ⇒ `/` and `/login` show “database isn’t set” (no 500). Do not invent credentials. |
 | `RESEND_API_KEY` | Required to send the first-time verification email. Missing ⇒ fail closed. |
 | `CRM_MAIL_FROM` | From-address. Defaults to `info@nzcenergy.co.uk`. |
 | `CRM_PUBLIC_URL` | Set to the Vercel production URL once it exists (used in the verify link). |
 | `CRM_SESSION_SECRET` | Optional cookie-signing key. Not a login password. |
 | `DOCUSIGN_WEBHOOK_SECRET` | Connect HMAC. Missing ⇒ webhook 401. |
 
-`npm run build` runs `prisma generate && next build` (not `prisma db push`). If `DATABASE_URL` is unset at compile time, generate uses a dummy `file:./dev.db` so Vercel Hobby does not need a live database. Local `npm run dev` still pushes the SQLite schema. Do not seed live customer data onto Vercel.
+`npm run build` generates the Prisma client (sqlite if `DATABASE_URL` is `file:` or unset; postgresql if the URL is `postgres://` / `postgresql://`) then `next build`. It does not `db push`. After a CRM Postgres store exists, push the schema from a machine that can reach it (`npx prisma db push` or `npm run db:push`) and Redeploy. Do not seed live customer data onto Vercel.
 
 ## Demo book
 

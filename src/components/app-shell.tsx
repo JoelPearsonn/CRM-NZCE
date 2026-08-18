@@ -1,14 +1,26 @@
 import { ShellFrame } from "@/components/shell-frame";
 import { listDeskAgents } from "@/lib/agents";
+import { isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { getSignedInStaff, staffIsAdmin } from "@/lib/staff-session";
 import { getWorkingAsId } from "@/lib/working-as";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
-  const [agents, currentId, staff] = await Promise.all([
-    listDeskAgents(),
-    getWorkingAsId(),
-    getSignedInStaff(),
-  ]);
+  if (!isDeskDatabaseConfigured()) {
+    return <>{children}</>;
+  }
+
+  let agents: Awaited<ReturnType<typeof listDeskAgents>> = [];
+  let currentId: string | null = null;
+  let staff: Awaited<ReturnType<typeof getSignedInStaff>> = null;
+  try {
+    [agents, currentId, staff] = await Promise.all([
+      listDeskAgents(),
+      getWorkingAsId(),
+      getSignedInStaff(),
+    ]);
+  } catch {
+    return <>{children}</>;
+  }
   const allowedAgents = staffIsAdmin(staff)
     ? agents
     : agents.filter((agent) => agent.id === staff?.id);

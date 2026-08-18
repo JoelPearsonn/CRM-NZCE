@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/portal-crypto";
 import { optionalStr, str } from "@/lib/format";
+import { DESK_DATABASE_MISSING, isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { prisma } from "@/lib/prisma";
 import {
   authenticateStaff,
@@ -57,6 +58,10 @@ export async function continueStaffLogin(
   prev: StaffLoginState,
   formData: FormData,
 ): Promise<StaffLoginState> {
+  if (!isDeskDatabaseConfigured()) {
+    return { error: DESK_DATABASE_MISSING, step: "email" };
+  }
+
   const intent = str(formData.get("intent")) || "email";
   const emailRaw = str(formData.get("email")) || prev.email || "";
 
@@ -95,6 +100,10 @@ export async function createVerifiedStaffPassword(
   _prev: StaffVerifyState,
   formData: FormData,
 ): Promise<StaffVerifyState> {
+  if (!isDeskDatabaseConfigured()) {
+    return { error: DESK_DATABASE_MISSING };
+  }
+
   const result = await createStaffPasswordFromToken({
     token: str(formData.get("token")),
     password: str(formData.get("password")),

@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma generate && prisma db push && next dev --turbopack",
-    "build": "DATABASE_URL=\"${DATABASE_URL:-file:./dev.db}\" prisma generate && next build",
-    "start": "prisma generate && next start",
+    "dev": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && next dev --turbopack",
+    "build": "node scripts/prisma-with-provider.mjs generate && next build",
+    "start": "node scripts/prisma-with-provider.mjs generate && next start",
     "lint": "eslint",
-    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts",
+    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts tests/desk-database.test.ts",
     "staff-hash": "tsx scripts/staff-hash.ts",
-    "seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
-    "db:seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
-    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
-    "postinstall": "prisma generate"
+    "seed": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && tsx prisma/seed.ts",
+    "db:seed": "node scripts/prisma-with-provider.mjs generate && node scripts/prisma-with-provider.mjs db push && tsx prisma/seed.ts",
+    "db:reset": "node scripts/prisma-with-provider.mjs db push --force-reset && tsx prisma/seed.ts",
+    "db:push": "node scripts/prisma-with-provider.mjs db push",
+    "postinstall": "node scripts/prisma-with-provider.mjs generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DatabaseSetup } from "@/components/database-setup";
+import { isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { readStaffVerifyToken } from "@/lib/staff-verify";
 import { CreateVerifiedPasswordForm } from "./create-form";
 
@@ -7,6 +9,10 @@ export default async function StaffVerifyPage({
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  if (!isDeskDatabaseConfigured()) {
+    return <DatabaseSetup />;
+  }
+
   const { token } = await searchParams;
   const verified = await readStaffVerifyToken(token);
 

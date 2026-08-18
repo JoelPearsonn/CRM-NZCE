@@ -15,12 +15,23 @@ import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
 import { countLeadsByColumn } from "@/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
+import { DatabaseSetup } from "@/components/database-setup";
+import { isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { prisma } from "@/lib/prisma";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export default async function DashboardPage() {
-  const liveCustomers = await prisma.customer.count({ where: { archivedAt: null } });
+  if (!isDeskDatabaseConfigured()) {
+    return <DatabaseSetup />;
+  }
+
+  let liveCustomers: number;
+  try {
+    liveCustomers = await prisma.customer.count({ where: { archivedAt: null } });
+  } catch {
+    return <DatabaseSetup />;
+  }
   if (liveCustomers === 0) {
     return <StartBook />;
   }
