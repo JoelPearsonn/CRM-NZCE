@@ -466,6 +466,21 @@ a {
   background: #f3e6c4;
 }
 
+.cashflow-bar-caption {
+  min-height: 4.35rem;
+  padding: 0 0.1rem 0.35rem;
+}
+
+.cashflow-bar-lift {
+  width: 100%;
+  transform-origin: center bottom;
+  transition: transform 160ms ease;
+}
+
+.cashflow-bar-lift.is-lifted {
+  transform: translateY(-0.45rem) scale(1.12);
+}
+
 .section-title {
   font-family: var(--font-sans), "Outfit", "Helvetica Neue", Arial, sans-serif;
   font-size: 1.15rem;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { gbp } from "@/lib/format";
-import type { Bucket } from "@/lib/finance";
+import { cashflowBarCaption, type Bucket } from "@/lib/finance";
 
 export function GroupedBars({
   rows,
@@ -36,103 +36,80 @@ export function GroupedBars({
         </div>
         <div className="overflow-x-auto" data-testid="cashflow-chart">
           <div
-            className="flex h-56 items-end gap-3 pb-1"
-            style={{ minWidth: `${Math.max(rows.length, 1) * 3.4}rem` }}
+            className="flex items-end gap-2 pb-1"
+            style={{ minWidth: `${Math.max(rows.length, 1) * 3.6}rem` }}
           >
-            {rows.map((row) => (
-              <div
-                key={row.key}
-                className="relative flex min-w-0 flex-1 flex-col items-center gap-2"
-                data-testid="cashflow-month"
-                data-month={row.key}
-                onMouseEnter={() => setHoverKey(row.key)}
-                onMouseLeave={() => setHoverKey(null)}
-                onFocus={() => setHoverKey(row.key)}
-                onBlur={() => setHoverKey(null)}
-                tabIndex={0}
-              >
-                <div className="flex h-44 w-full items-end justify-center gap-1">
-                  <Bar value={row[left]} max={max} tone="brass" label={gbp(row[left])} />
-                  <Bar value={row[right]} max={max} tone="moss" label={gbp(row[right])} />
+            {rows.map((row) => {
+              const active = hoverKey === row.key;
+              const caption = cashflowBarCaption(row, left);
+              return (
+                <div
+                  key={row.key}
+                  className={`flex min-w-0 flex-1 flex-col items-center ${active ? "z-10" : ""}`}
+                  data-testid="cashflow-month"
+                  data-month={row.key}
+                  data-active={active ? "true" : "false"}
+                  onMouseEnter={() => setHoverKey(row.key)}
+                  onMouseLeave={() => setHoverKey(null)}
+                  onFocus={() => setHoverKey(row.key)}
+                  onBlur={() => setHoverKey(null)}
+                  tabIndex={0}
+                >
+                  <div
+                    className="cashflow-bar-caption flex w-full items-end justify-center"
+                    data-testid="cashflow-bar-caption"
+                    aria-hidden={!active}
+                  >
+                    {active ? (
+                      <div className="w-full text-center leading-tight">
+                        <p className="text-[0.68rem] font-semibold text-ink">{caption.month}</p>
+                        <p className="text-[0.78rem] font-semibold text-navy">{caption.value}</p>
+                        {caption.parts.length ? (
+                          <p className="mt-0.5 text-[0.62rem] text-muted">{caption.parts.join(" · ")}</p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className={`cashflow-bar-lift ${active ? "is-lifted" : ""}`}>
+                    <div className="flex h-40 w-full items-end justify-center gap-1">
+                      <Bar value={row[left]} max={max} tone="brass" />
+                      <Bar value={row[right]} max={max} tone="moss" />
+                    </div>
+                  </div>
+                  <p className="mt-2 text-center text-[0.7rem] font-medium text-ink">{row.label}</p>
                 </div>
-                <p className="text-center text-[0.7rem] font-medium text-ink">{row.label}</p>
-                {hoverKey === row.key ? (
-                  <CashflowTooltip row={row} leftLabel={leftLabel} rightLabel={rightLabel} />
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
       <ul className="space-y-2 p-4 md:hidden">
-        {rows.map((row) => (
-          <li key={row.key} className="rounded-sm border border-rule bg-paper px-3 py-2.5">
-            <div className="mb-1.5 flex items-baseline justify-between gap-2">
-              <span className="font-medium">{row.label}</span>
-              <span className="text-[0.7rem] text-muted">
-                {leftLabel} {gbp(row[left])} · {rightLabel} {gbp(row[right])}
-              </span>
-            </div>
-            <MonthBreakdown row={row} />
-            <div className="mt-2 space-y-1">
-              <div className="h-2 bg-[#ebe4d4]">
-                <div className="h-2 bg-brass" style={{ width: `${(row[left] / max) * 100}%` }} />
+        {rows.map((row) => {
+          const caption = cashflowBarCaption(row, left);
+          return (
+            <li key={row.key} className="rounded-sm border border-rule bg-paper px-3 py-2.5">
+              <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="font-medium">{caption.month}</span>
+                <span className="text-[0.7rem] text-muted">
+                  {leftLabel} {caption.value} · {rightLabel} {gbp(row.paid)}
+                </span>
               </div>
-              <div className="h-2 bg-[#ebe4d4]">
-                <div className="h-2 bg-moss" style={{ width: `${(row[right] / max) * 100}%` }} />
+              {caption.parts.length ? (
+                <p className="mb-2 text-[0.7rem] text-muted">{caption.parts.join(" · ")}</p>
+              ) : null}
+              <div className="space-y-1">
+                <div className="h-2 bg-[#ebe4d4]">
+                  <div className="h-2 bg-brass" style={{ width: `${(row[left] / max) * 100}%` }} />
+                </div>
+                <div className="h-2 bg-[#ebe4d4]">
+                  <div className="h-2 bg-moss" style={{ width: `${(row[right] / max) * 100}%` }} />
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </>
-  );
-}
-
-function CashflowTooltip({
-  row,
-  leftLabel,
-  rightLabel,
-}: {
-  row: Bucket;
-  leftLabel: string;
-  rightLabel: string;
-}) {
-  return (
-    <div
-      className="cashflow-tooltip pointer-events-none absolute bottom-[calc(100%-0.25rem)] z-20 w-52 rounded-sm border border-rule bg-navy px-3 py-2 text-left text-[0.7rem] text-gold-soft shadow-lg"
-      data-testid="cashflow-tooltip"
-      role="tooltip"
-    >
-      <p className="font-semibold text-gold">{row.label}</p>
-      <p className="mt-1 text-[#f7f6f1]">Cashflow {gbp(row.due)}</p>
-      <p>
-        {leftLabel} {gbp(row.due === undefined ? 0 : row.due)}
-      </p>
-      <p>
-        {rightLabel} {gbp(row.paid)}
-      </p>
-      <p>Remaining {gbp(row.remaining)}</p>
-      <MonthBreakdown row={row} tone="dark" />
-    </div>
-  );
-}
-
-function MonthBreakdown({ row, tone }: { row: Bucket; tone?: "dark" }) {
-  const lines = [
-    row.residualDue > 0.004 ? `Residual due ${gbp(row.residualDue)}` : null,
-    row.splitDue > 0.004 ? `Split due ${gbp(row.splitDue)}` : null,
-    row.residualPaid > 0.004 ? `Residual paid ${gbp(row.residualPaid)}` : null,
-    row.splitPaid > 0.004 ? `Split paid ${gbp(row.splitPaid)}` : null,
-    row.estimated > 0.004 ? `Estimated ${gbp(row.estimated)}` : null,
-  ].filter(Boolean);
-  if (lines.length === 0) return null;
-  return (
-    <ul className={`mt-1 space-y-0.5 ${tone === "dark" ? "text-gold-soft" : "text-muted"}`}>
-      {lines.map((line) => (
-        <li key={line}>{line}</li>
-      ))}
-    </ul>
   );
 }
 
@@ -140,23 +117,17 @@ function Bar({
   value,
   max,
   tone,
-  label,
 }: {
   value: number;
   max: number;
   tone: "brass" | "moss";
-  label: string;
 }) {
-  const height = Math.max(value > 0 ? 8 : 2, Math.round((value / max) * 160));
+  const height = Math.max(value > 0 ? 8 : 2, Math.round((value / max) * 148));
   return (
-    <div className="flex w-7 flex-col items-center justify-end">
-      <span className="mb-1 text-[0.62rem] text-muted">{value > 0 ? label : ""}</span>
-      <div
-        className={tone === "brass" ? "w-full bg-brass" : "w-full bg-moss"}
-        style={{ height }}
-        title={label}
-      />
-    </div>
+    <div
+      className={tone === "brass" ? "w-7 bg-brass" : "w-7 bg-moss"}
+      style={{ height }}
+    />
   );
 }
 

@@ -1,4 +1,4 @@
-import { parseMoney } from "@/lib/format";
+import { gbp, parseMoney } from "@/lib/format";
 
 export type FinanceDeal = {
   amountDue?: number | null;
@@ -333,6 +333,23 @@ export function monthLabel(key: string) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+/** Figures that sit above a hovered month bar — only values already on the bucket. */
+export function cashflowBarCaption(
+  row: Bucket,
+  valueKey: "due" | "estimated" | "paid" | "remaining" = "due",
+) {
+  const parts: string[] = [];
+  if (row.paid > 0.004 && valueKey !== "paid") parts.push(`Paid ${gbp(row.paid)}`);
+  if (row.remaining > 0.004) parts.push(`Remaining ${gbp(row.remaining)}`);
+  if (row.residualDue > 0.004) parts.push(`Residual ${gbp(row.residualDue)}`);
+  if (row.splitDue > 0.004 && row.residualDue > 0.004) parts.push(`Split ${gbp(row.splitDue)}`);
+  return {
+    month: row.label,
+    value: gbp(row[valueKey]),
+    parts,
+  };
 }
 
 export function groupByMonth(deals: AnalyticsDeal[]): Bucket[] {

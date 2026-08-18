@@ -10,6 +10,7 @@ import {
 import {
   contractMonths,
   filterDealsByMonth,
+  cashflowBarCaption,
   fillMonthSpan,
   groupByAgent,
   groupByMonth,
@@ -133,6 +134,21 @@ test("cashflow months fill the gap and keep residual / split lines", () => {
   assert.equal(months[1]?.due, 0);
   assert.equal(months[2]?.residualDue, 300);
   assert.equal(months[2]?.splitDue, 0);
+
+  const august = cashflowBarCaption(months[0]!, "due");
+  assert.equal(august.month, "Aug 2026");
+  assert.equal(august.value, "£1,000");
+  assert.ok(august.parts.some((part) => part.includes("Paid")));
+  assert.ok(august.parts.some((part) => part.includes("Remaining")));
+  assert.equal(
+    august.parts.some((part) => part.includes("Residual")),
+    false,
+  );
+
+  const october = cashflowBarCaption(months[2]!, "due");
+  assert.equal(october.month, "Oct 2026");
+  assert.equal(october.value, "£300");
+  assert.ok(october.parts.some((part) => part.includes("Residual")));
 });
 
 test("TPI deduction: Infinite 20% leaves 80% net", () => {

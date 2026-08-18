@@ -207,8 +207,8 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
 
           <Section title="Cashflow by month">
             <p className="border-b border-rule px-4 py-2 text-xs text-muted">
-              Every month on the book. Hover a month for the total and the residual / split lines already
-              stored.
+              Every month on the book. Hover a month to lift that bar — the month, cashflow total and any
+              residual / split already on the model sit above it.
             </p>
             <GroupedBars
               rows={byMonth}
