@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { gbp } from "@/lib/format";
 import { cashflowBarCaption, type Bucket } from "@/lib/finance";
 
@@ -21,11 +20,10 @@ export function GroupedBars({
     1,
     ...rows.map((row) => Math.max(row[left], row[right], row.remaining)),
   );
-  const [hoverKey, setHoverKey] = useState<string | null>(null);
 
   return (
     <>
-      <div className="hidden px-4 pb-4 pt-2 md:block">
+      <div className="cashflow-chart-panel">
         <div className="mb-3 flex gap-4 text-[0.7rem] text-muted">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 bg-brass" /> {leftLabel}
@@ -34,46 +32,31 @@ export function GroupedBars({
             <span className="inline-block h-2.5 w-2.5 bg-moss" /> {rightLabel}
           </span>
         </div>
-        <div
-          className="cashflow-chart"
-          data-testid="cashflow-chart"
-          onMouseLeave={() => setHoverKey(null)}
-        >
+        <div className="cashflow-chart" data-testid="cashflow-chart">
           <div className="cashflow-chart-track">
             {rows.map((row) => {
-              const active = hoverKey === row.key;
-              const dimmed = hoverKey != null && !active;
               const caption = cashflowBarCaption(row, left);
               return (
                 <div
                   key={row.key}
-                  className={`cashflow-month${active ? " is-active" : ""}${dimmed ? " is-dim" : ""}`}
+                  className="cashflow-month"
                   data-testid="cashflow-month"
                   data-month={row.key}
-                  data-active={active ? "true" : "false"}
-                  onMouseEnter={() => setHoverKey(row.key)}
-                  onFocus={() => setHoverKey(row.key)}
                   tabIndex={0}
                 >
-                  <div
-                    className="cashflow-bar-caption"
-                    data-testid="cashflow-bar-caption"
-                    aria-hidden={!active}
-                  >
-                    {active ? (
-                      <div className="cashflow-bar-caption-text">
-                        <p className="cashflow-bar-caption-month">{caption.month}</p>
-                        <p className="cashflow-bar-caption-value">{caption.value}</p>
-                        {caption.parts.length ? (
-                          <p className="cashflow-bar-caption-parts">{caption.parts.join(" · ")}</p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className={`cashflow-bar-lift${active ? " is-lifted" : ""}`}>
+                  <div className="cashflow-bar-lift">
                     <div className="cashflow-bar-pair">
                       <Bar value={row[left]} max={max} tone="brass" />
                       <Bar value={row[right]} max={max} tone="moss" />
+                    </div>
+                  </div>
+                  <div className="cashflow-bar-caption" data-testid="cashflow-bar-caption">
+                    <div className="cashflow-bar-caption-text">
+                      <p className="cashflow-bar-caption-month">{caption.month}</p>
+                      <p className="cashflow-bar-caption-value">{caption.value}</p>
+                      {caption.parts.length ? (
+                        <p className="cashflow-bar-caption-parts">{caption.parts.join(" · ")}</p>
+                      ) : null}
                     </div>
                   </div>
                   <p className="cashflow-month-label">{row.label}</p>
@@ -83,7 +66,7 @@ export function GroupedBars({
           </div>
         </div>
       </div>
-      <ul className="space-y-2 p-4 md:hidden">
+      <ul className="cashflow-chart-list space-y-2 p-4">
         {rows.map((row) => {
           const caption = cashflowBarCaption(row, left);
           return (

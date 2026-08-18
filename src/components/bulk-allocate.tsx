@@ -61,7 +61,7 @@ export function BulkAllocate({
           {pending ? "Assigning…" : "Assign to selected"}
         </button>
       </form>
-      <div className="min-w-0 overflow-x-visible">{children}</div>
+      <div className="lead-board-wrap">{children}</div>
     </BulkSelectContext.Provider>
   );
 }

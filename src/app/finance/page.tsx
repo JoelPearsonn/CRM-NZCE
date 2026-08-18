@@ -205,7 +205,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
             </table>
           </Section>
 
-          <Section title="Cashflow by month" className="overflow-visible">
+          <Section title="Cashflow by month">
             <p className="border-b border-rule px-4 py-2 text-xs text-muted">
               Every month on the book. Hover a month column to lift that bar — siblings dim, and the
               month total sits above it.
@@ -252,7 +252,7 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
           </Section>
 
           <div className="grid gap-6 xl:grid-cols-2">
-            <Section title={month ? `Profit · ${monthTitle}` : "Profit — estimated vs paid"} className="overflow-visible">
+            <Section title={month ? `Profit · ${monthTitle}` : "Profit — estimated vs paid"}>
               <p className="border-b border-rule px-4 py-2 text-xs text-muted">
                 Same all-months hover as cashflow. Variance is estimated commission minus actual paid.
               </p>

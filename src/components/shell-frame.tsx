@@ -25,9 +25,9 @@ export function ShellFrame({
   }
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="desk-shell">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="desk-column">
         <header className="desk-header">
           <MobileNav />
           <MasterSearch />

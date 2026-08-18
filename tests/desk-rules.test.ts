@@ -343,14 +343,18 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadBoardColumns("Won").length, 1);
 
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*scroll/s);
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-y:\s*hidden/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*flex:\s*1 1 auto/s);
+  assert.match(css, /\.lead-board\s*\{[^}]*min-height:\s*0/s);
   assert.match(css, /\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
   assert.match(css, /\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
   assert.match(css, /\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
-  assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.desk-main:has\(\.lead-board-shell\)\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.lead-page\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.equal(css.includes("overflow: scroll hidden"), false);
+  assert.equal(/overflow-x:\s*visible[\s\S]*overflow-y:\s*visible/.test(css.match(/\.cashflow-chart\s*\{[^}]*\}/)?.[0] ?? ""), false);
+  assert.match(css, /\.cashflow-chart\s*\{[^}]*overflow-x:\s*auto/s);
+  assert.match(css, /\.cashflow-bar-caption\s*\{[^}]*pointer-events:\s*none/s);
+  assert.match(css, /\.cashflow-month:hover\s+\.cashflow-bar-lift/s);
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
   assert.equal(kanban.includes("column.length === 0"), true);
