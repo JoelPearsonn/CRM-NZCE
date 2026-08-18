@@ -1,3 +1,4 @@
+import "../src/lib/demo-sqlite";
 import { PrismaClient } from "@prisma/client";
 import { applyPayouts, applyResidual, type BuiltPayment } from "../src/lib/deal-payouts";
 import { writeSeedLoa } from "../src/lib/loa-files";
