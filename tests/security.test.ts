@@ -486,7 +486,8 @@ test("source no longer embeds portal passwords, tokens, or a shared staff passwo
   }
   const login = readFileSync(path.join(import.meta.dirname, "..", "src/app/login/page.tsx"), "utf8");
   assert.equal(login.includes("Work email"), true);
-  assert.equal(login.includes("Create your password"), false);
+  assert.equal(login.includes('name="confirm"'), false);
+  assert.equal(login.includes("staff-create-password"), false);
   assert.equal(login.includes('type="email"'), true);
   assert.equal(login.includes("@nzcenergy.co.uk"), true);
   const verifyPage = readFileSync(
