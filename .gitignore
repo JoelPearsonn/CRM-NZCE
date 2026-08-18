@@ -28,8 +28,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files — keep the committed SQLite URL
+# env files — never commit .env (use .env.example placeholders only)
+.env
 .env*.local
+!.env.example
 
 # vercel
 .vercel
