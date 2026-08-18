@@ -1,0 +1,39 @@
+{
+  "name": "nzce-crm",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "prisma generate && prisma db push && next dev --turbopack",
+    "build": "prisma generate && prisma db push && next build",
+    "start": "prisma generate && next start",
+    "lint": "eslint",
+    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts",
+    "staff-hash": "tsx scripts/staff-hash.ts",
+    "seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
+    "db:seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
+    "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
+    "postinstall": "prisma generate"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.2",
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
+    "prisma": "^6.19.2",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}

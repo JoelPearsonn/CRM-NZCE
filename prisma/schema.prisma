@@ -1,0 +1,376 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  role         String   @default("Sales")
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  meters          Meter[]
+  deals            Deal[]
+  leadAllocations  LeadAllocation[]
+  dealAllocations  DealAllocation[]
+  reconciliations  DealReconciliation[]
+  notes            CallNote[]
+  recordings       CallRecording[]
+  tasks            Task[]
+  activities       Activity[]
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  companyName  String
+  tradingName  String?
+  contactName  String
+  email        String
+  phone        String?
+  addressLine1 String?
+  city         String?
+  postcode     String?
+  industry     String?
+  archivedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  meters          Meter[]
+  leads           Lead[]
+  deals           Deal[]
+  tenderResponses TenderResponse[]
+  notes           CallNote[]
+  recordings      CallRecording[]
+  emails          EmailLog[]
+  tasks           Task[]
+  activities      Activity[]
+  portalAccount   CustomerAccount?
+  loaEnvelopes    LoaEnvelope[]
+  loaDocuments    LoaDocument[]
+}
+
+model CustomerAccount {
+  id            String    @id @default(cuid())
+  customerId    String    @unique
+  email         String    @unique
+  passwordHash  String?
+  magicToken    String?   @unique
+  sessionToken  String?   @unique
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Meter {
+  id            String    @id @default(cuid())
+  customerId    String
+  siteName      String?
+  siteAddress   String?
+  fuelType      String
+  mpan          String?
+  mprn          String?
+  electricEac   Int?
+  gasAq         Int?
+  supplier      String?
+  contractStart DateTime?
+  contractEnd   DateTime?
+  meterType     String?
+  settlement    String?
+  currentRates  String?
+  renewalDate   DateTime?
+  loaStatus          String    @default("NOT_REQUESTED")
+  loaSignedOn        DateTime?
+  loaSignedBy        String?
+  loaFileName        String?
+  loaStoredName      String?
+  objectionStatus    String    @default("NONE")
+  objectionNote      String?
+  objectionRaisedOn  DateTime?
+  objectionClearedOn DateTime?
+  salespersonId      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  salesperson Agent?   @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  deals       Deal[]
+
+  @@index([customerId])
+  @@index([mpan])
+  @@index([mprn])
+  @@index([objectionStatus])
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  customerId String
+  title      String
+  stage      String   @default("Potential Lead Joel")
+  source         String?
+  jobTitle       String?
+  notes          String?
+  outcomeReason  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  customer        Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  allocations     LeadAllocation[]
+  deals           Deal[]
+  tenderResponses TenderResponse[]
+  loaEnvelopes    LoaEnvelope[]
+
+  @@index([customerId])
+  @@index([stage])
+}
+
+model LeadAllocation {
+  leadId  String
+  agentId String
+  lead    Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  agent   Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([leadId, agentId])
+}
+
+model Deal {
+  id                  String    @id @default(cuid())
+  customerId          String
+  meterId             String?
+  leadId              String?
+  salespersonId       String?
+  supplier            String
+  fuelType            String
+  contractStart       DateTime?
+  contractEnd         DateTime?
+  renewalDate         DateTime?
+  status              String    @default("LIVE")
+  dueDate             DateTime?
+  amountDue           Float?
+  estimatedCommission Float?
+  actualPaid          Float?
+  actualPaidDate      DateTime?
+  tpiPartner          String    @default("NONE")
+  tpiPercent          Float     @default(0)
+  payoutType          String    @default("SPLIT")
+  residualMonthly     Float?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer    Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  meter       Meter?           @relation(fields: [meterId], references: [id], onDelete: SetNull)
+  lead        Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  salesperson     Agent?               @relation(fields: [salespersonId], references: [id], onDelete: SetNull)
+  allocations     DealAllocation[]
+  reconciliations DealReconciliation[]
+  payments        DealPayment[]
+
+  @@index([customerId])
+  @@index([renewalDate])
+}
+
+model DealPayment {
+  id           String    @id @default(cuid())
+  dealId       String
+  stage        String
+  label        String
+  percent      Float
+  expectedDate DateTime?
+  amountDue    Float?
+  actualPaid   Float     @default(0)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  deal Deal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, sortOrder])
+}
+
+model DealReconciliation {
+  id            String   @id @default(cuid())
+  dealId        String
+  actorId       String?
+  actualPaidOld Float?
+  actualPaidNew Float?
+  amountDueOld  Float?
+  amountDueNew  Float?
+  estimatedOld  Float?
+  estimatedNew  Float?
+  createdAt     DateTime @default(now())
+
+  deal  Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  actor Agent? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([dealId, createdAt])
+}
+
+model DealAllocation {
+  dealId  String
+  agentId String
+  deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  agent   Agent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, agentId])
+}
+
+model TenderResponse {
+  id                  String    @id @default(cuid())
+  customerId          String
+  leadId              String?
+  supplier            String
+  fuelType            String
+  receivedOn          DateTime?
+  standingCharge      Float?
+  unitRates           String?
+  contractLengthMonths Int?
+  estimatedAnnualCost Float?
+  status              String    @default("RECEIVED")
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([status])
+}
+
+model CallNote {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String?
+  kind       String   @default("NOTE")
+  body       String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   Agent?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+}
+
+model CallRecording {
+  id         String   @id @default(cuid())
+  customerId String
+  authorId   String?
+  note       String
+  fileName   String
+  storedName String
+  mimeType   String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  author   Agent?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+model EmailLog {
+  id         String   @id @default(cuid())
+  customerId String
+  subject    String
+  fromAddr   String
+  toAddr     String
+  body       String
+  loggedAt   DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id         String    @id @default(cuid())
+  customerId String
+  assigneeId String?
+  title      String
+  dueDate    DateTime?
+  status     String    @default("OPEN")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignee Agent?   @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+}
+
+model Activity {
+  id         String   @id @default(cuid())
+  customerId String
+  actorId    String?
+  type       String
+  summary    String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  actor    Agent?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+model LoaDocument {
+  id         String   @id @default(cuid())
+  customerId String
+  fileName   String
+  storedName String
+  mimeType   String?
+  source     String   @default("UPLOAD")
+  meterId    String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, createdAt])
+}
+
+model LoaEnvelope {
+  id            String    @id @default(cuid())
+  customerId    String
+  leadId        String?
+  envelopeId    String?
+  sigLink       String?
+  status        String    @default("PREPARED")
+  channel       String    @default("DOWNLOAD")
+  sentAt        DateTime?
+  completedAt   DateTime?
+  pdfFileName   String?
+  pdfStoredName String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  lead     Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+  @@index([envelopeId])
+}
+
+model DeskReminder {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  title     String
+  dueDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/** One-time staff signup link. Store the hash only — never the raw token. */
+model StaffVerifyToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}

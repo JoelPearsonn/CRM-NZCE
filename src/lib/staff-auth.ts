@@ -1,0 +1,183 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { NextResponse } from "next/server";
+
+export const STAFF_COOKIE = "nzce_staff_session";
+export const STAFF_SESSION_HOURS = 12;
+export const STAFF_SESSION_MAX_AGE = STAFF_SESSION_HOURS * 60 * 60;
+export const STAFF_DENIED = { error: "Staff sign-in required." } as const;
+export const STAFF_EMAIL_DOMAIN = "nzcenergy.co.uk";
+
+export type StaffSession = { email: string };
+export type PublicAgent = { id: string; name: string; email: string; role: string };
+
+type EnvMap = Record<string, string | undefined>;
+
+/** Staff sign-in is work email only. Do not invent other people’s addresses. */
+export function isNceWorkEmail(value: string): boolean {
+  const email = value.trim().toLowerCase();
+  if (!email.endsWith(`@${STAFF_EMAIL_DOMAIN}`)) return false;
+  const local = email.slice(0, -(STAFF_EMAIL_DOMAIN.length + 1));
+  return Boolean(local) && !local.includes("@") && !local.includes(" ") && !local.includes("..");
+}
+
+export function normalizeStaffEmail(value: string): string | null {
+  const email = value.trim().toLowerCase();
+  return isNceWorkEmail(email) ? email : null;
+}
+
+export function isStaffPasswordHash(value: string) {
+  const [salt, hash] = value.split(":");
+  return Boolean(salt && hash && /^[a-f0-9]+$/i.test(salt) && /^[a-f0-9]+$/i.test(hash));
+}
+
+/** Only a hash already stored on the Agent row. No env password bootstrap. */
+export function staffPasswordHashFor(email: string, storedHash: string | null | undefined) {
+  const normalized = normalizeStaffEmail(email);
+  if (!normalized) return null;
+  if (storedHash && isStaffPasswordHash(storedHash)) return storedHash;
+  return null;
+}
+
+export function staffHasPassword(email: string, storedHash: string | null | undefined) {
+  return Boolean(staffPasswordHashFor(email, storedHash));
+}
+
+export function staffSigningSecret(env: EnvMap = process.env) {
+  const explicit = env.CRM_SESSION_SECRET?.trim();
+  if (explicit) return explicit;
+  // Cookie signing only — not a login password. Tests that pass a custom env stay fail-closed.
+  if (env === process.env) return "nzce-private-desk-cookie-v2";
+  return null;
+}
+
+function encodeSessionEmail(email: string) {
+  return Buffer.from(email, "utf8").toString("base64url");
+}
+
+function decodeSessionEmail(value: string) {
+  try {
+    const email = Buffer.from(value, "base64url").toString("utf8");
+    return normalizeStaffEmail(email);
+  } catch {
+    return null;
+  }
+}
+
+/** Session is bound to the work email, not a shared staff cookie or agent id. */
+export function createStaffSessionToken(
+  email: string,
+  now = Date.now(),
+  env: EnvMap = process.env,
+) {
+  const secret = staffSigningSecret(env);
+  const normalized = normalizeStaffEmail(email);
+  if (!secret || !normalized) return null;
+  const exp = now + STAFF_SESSION_MAX_AGE * 1000;
+  const payload = `v2.${encodeSessionEmail(normalized)}.${now}.${exp}`;
+  const signature = createHmac("sha256", secret).update(payload).digest("hex");
+  return `${payload}.${signature}`;
+}
+
+export function verifyStaffSessionToken(
+  token: string | undefined | null,
+  now = Date.now(),
+  env: EnvMap = process.env,
+): StaffSession | null {
+  const secret = staffSigningSecret(env);
+  if (!secret || !token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 5 || parts[0] !== "v2") return null;
+  const email = decodeSessionEmail(parts[1]);
+  const issued = Number(parts[2]);
+  const exp = Number(parts[3]);
+  const signature = parts[4];
+  if (!email || !signature) return null;
+  if (!Number.isFinite(issued) || !Number.isFinite(exp)) return null;
+  if (exp <= now || issued > now + 60_000) return null;
+  const payload = `v2.${parts[1]}.${parts[2]}.${parts[3]}`;
+  const expected = createHmac("sha256", secret).update(payload).digest("hex");
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) return null;
+  if (!timingSafeEqual(left, right)) return null;
+  return { email };
+}
+
+export function staffSessionCookieOptions() {
+  return {
+    path: "/",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax" as const,
+    maxAge: STAFF_SESSION_MAX_AGE,
+  };
+}
+
+export function staffCookieFromRequest(request: Request) {
+  const header = request.headers.get("cookie") ?? "";
+  for (const part of header.split(";")) {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith(`${STAFF_COOKIE}=`)) continue;
+    return decodeURIComponent(trimmed.slice(STAFF_COOKIE.length + 1));
+  }
+  return undefined;
+}
+
+export function readStaffSessionFromRequest(request: Request, env: EnvMap = process.env) {
+  return verifyStaffSessionToken(staffCookieFromRequest(request), Date.now(), env);
+}
+
+export function requestHasStaffSession(request: Request, env: EnvMap = process.env) {
+  return Boolean(readStaffSessionFromRequest(request, env));
+}
+
+export function isProtectedStaffApiPath(pathname: string) {
+  if (!pathname.startsWith("/api/")) return false;
+  if (pathname === "/api/docusign/webhook" || pathname.startsWith("/api/docusign/webhook/")) {
+    return false;
+  }
+  if (pathname === "/api/portal" || pathname.startsWith("/api/portal/")) {
+    return false;
+  }
+  return true;
+}
+
+export function unauthorizedStaff() {
+  return NextResponse.json(STAFF_DENIED, { status: 401 });
+}
+
+export function rejectUnlessStaff(request: Request, env: EnvMap = process.env) {
+  if (requestHasStaffSession(request, env)) return null;
+  return unauthorizedStaff();
+}
+
+export function workingAsCookieMaxAge() {
+  return STAFF_SESSION_MAX_AGE;
+}
+
+export function workingAsCookieOptions() {
+  return {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax" as const,
+    maxAge: workingAsCookieMaxAge(),
+  };
+}
+
+export function planWorkingAsCookie(input: {
+  hasStaffSession: boolean;
+  actorAgentId: string | null;
+  actorIsAdmin: boolean;
+  agentId: string | null;
+  agentExists: boolean;
+}): { action: "deny" | "clear" | "set"; maxAge?: number } {
+  if (!input.hasStaffSession || !input.actorAgentId) return { action: "deny" };
+  if (!input.agentId) return { action: "clear" };
+  if (!input.agentExists) return { action: "deny" };
+  if (!input.actorIsAdmin && input.agentId !== input.actorAgentId) return { action: "deny" };
+  return { action: "set", maxAge: workingAsCookieMaxAge() };
+}
+
+export function publicAgentOf(agent: PublicAgent): PublicAgent {
+  return { id: agent.id, name: agent.name, email: agent.email, role: agent.role };
+}

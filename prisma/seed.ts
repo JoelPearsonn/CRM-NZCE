@@ -1,0 +1,1436 @@
+import { PrismaClient } from "@prisma/client";
+import { applyPayouts, applyResidual, type BuiltPayment } from "../src/lib/deal-payouts";
+import { writeSeedLoa } from "../src/lib/loa-files";
+import { writeSeedRecording } from "../src/lib/recording-files";
+import { ensureQuarterlyMarketReminder } from "../src/lib/desk-reminders";
+import { ensurePortalAccounts } from "../src/lib/portal-seed";
+import { ensureLeadBoardStages } from "../src/lib/lead-board";
+import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
+
+const prisma = new PrismaClient();
+
+function daysFromNow(offset: number) {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + offset);
+  return date;
+}
+
+async function ensureDemoObjection() {
+  const already = await prisma.meter.count({ where: { objectionStatus: "IN_OBJECTION" } });
+  if (already > 0) return;
+  const steel = await prisma.meter.findFirst({
+    where: { mpan: "000080016600223344556" },
+  });
+  if (!steel) return;
+  await prisma.meter.update({
+    where: { id: steel.id },
+    data: {
+      objectionStatus: "IN_OBJECTION",
+      objectionNote: "Debt on account — TotalEnergies raised 8 Aug 2026. Works manager chasing arrears.",
+      objectionRaisedOn: daysFromNow(-6),
+      objectionClearedOn: null,
+    },
+  });
+}
+
+async function ensureDemoTenders() {
+  const already = await prisma.tenderResponse.count();
+  if (already > 0) return;
+  await seedHarbourViewTenders();
+  await seedOakfieldTenders();
+}
+
+async function ensureDemoLoa() {
+  const already = await prisma.meter.count({ where: { loaStatus: "SIGNED" } });
+  if (already > 0) return;
+  await seedHarbourViewSignedLoa();
+}
+
+async function ensureDemoDealSplits() {
+  const deals = await prisma.deal.findMany({
+    include: { lead: { include: { allocations: true } }, allocations: true },
+  });
+  for (const deal of deals) {
+    if (deal.allocations.length > 0) continue;
+    const ids = [
+      deal.salespersonId,
+      ...(deal.lead?.allocations.map((row) => row.agentId) ?? []),
+    ].filter((id): id is string => Boolean(id));
+    for (const agentId of [...new Set(ids)]) {
+      await prisma.dealAllocation.create({ data: { dealId: deal.id, agentId } });
+    }
+  }
+
+  const harbourDeal = await prisma.deal.findFirst({
+    where: { supplier: "EDF Energy", customer: { companyName: "Harbour View Hotels Ltd" } },
+  });
+  const priya = await prisma.agent.findUnique({ where: { email: "priya.shah@nzce.co.uk" } });
+  const helen = await prisma.agent.findUnique({ where: { email: "helen.crowe@nzce.co.uk" } });
+  if (harbourDeal && priya && helen) {
+    for (const agentId of [priya.id, helen.id]) {
+      const exists = await prisma.dealAllocation.findUnique({
+        where: { dealId_agentId: { dealId: harbourDeal.id, agentId } },
+      });
+      if (!exists) {
+        await prisma.dealAllocation.create({ data: { dealId: harbourDeal.id, agentId } });
+      }
+    }
+  }
+}
+
+function payoutDraft(
+  percents: number[],
+  dates: Array<Date | null>,
+  paid: number[] = [],
+): BuiltPayment[] {
+  const stages = percents.length === 2 ? ["ON_SIGN", "ON_LIVE"] : ["ON_SIGN", "ON_LIVE", "EOC"];
+  const labels = percents.length === 2 ? ["On Sign", "On Live"] : ["On Sign", "On Live", "EOC"];
+  return percents.map((percent, index) => ({
+    stage: stages[index] ?? "ON_SIGN",
+    label: labels[index] ?? `Payment ${index + 1}`,
+    percent,
+    expectedDate: dates[index] ?? null,
+    amountDue: 0,
+    actualPaid: paid[index] ?? 0,
+    sortOrder: index,
+  }));
+}
+
+async function writeDealFinance(
+  dealId: string,
+  tpiPartner: string,
+  tpiPercent: number,
+  gross: number,
+  drafts: BuiltPayment[],
+) {
+  const built = applyPayouts(gross, tpiPercent, drafts);
+  await prisma.deal.update({
+    where: { id: dealId },
+    data: {
+      tpiPartner,
+      tpiPercent,
+      payoutType: "SPLIT",
+      residualMonthly: null,
+      estimatedCommission: gross,
+      amountDue: built.rollup.amountDue,
+      actualPaid: built.rollup.actualPaid,
+      dueDate: built.rollup.dueDate,
+      payments: {
+        deleteMany: {},
+        create: built.payments.map((row) => ({
+          stage: row.stage,
+          label: row.label,
+          percent: row.percent,
+          expectedDate: row.expectedDate,
+          amountDue: row.amountDue,
+          actualPaid: row.actualPaid,
+          sortOrder: row.sortOrder,
+        })),
+      },
+    },
+  });
+}
+
+async function ensureDemoPayouts() {
+  const deals = await prisma.deal.findMany({
+    include: { payments: true, customer: true },
+  });
+  for (const deal of deals) {
+    if (deal.payments.length > 0) continue;
+    const harbour =
+      deal.supplier === "EDF Energy" && deal.customer.companyName === "Harbour View Hotels Ltd";
+    const mersey =
+      deal.supplier === "SmartestEnergy" && deal.customer.companyName === "Mersey Logistics Ltd";
+    if (harbour) {
+      await writeDealFinance(
+        deal.id,
+        "INFINITE",
+        20,
+        deal.estimatedCommission ?? 6800,
+        payoutDraft(
+          [40, 40, 20],
+          [daysFromNow(14), deal.contractStart, deal.contractEnd],
+        ),
+      );
+      continue;
+    }
+    if (mersey) {
+      const built = applyPayouts(deal.estimatedCommission ?? 9100, 30, payoutDraft(
+        [40, 40, 20],
+        [daysFromNow(30), deal.contractStart, deal.contractEnd],
+      ));
+      built.payments[0].actualPaid = built.payments[0].amountDue;
+      await writeDealFinance(
+        deal.id,
+        "JOOSE_UCR",
+        30,
+        deal.estimatedCommission ?? 9100,
+        built.payments,
+      );
+      continue;
+    }
+    const drafts = payoutDraft(
+      [40, 40, 20],
+      [deal.dueDate ?? deal.contractStart, deal.contractStart, deal.contractEnd],
+    );
+    const built = applyPayouts(deal.estimatedCommission ?? deal.amountDue ?? 0, 0, drafts);
+    let remainingPaid = deal.actualPaid ?? 0;
+    for (const payment of built.payments) {
+      const take = Math.min(payment.amountDue, remainingPaid);
+      payment.actualPaid = take;
+      remainingPaid = Math.round((remainingPaid - take) * 100) / 100;
+    }
+    await writeDealFinance(deal.id, "NONE", 0, deal.estimatedCommission ?? 0, built.payments);
+  }
+}
+
+async function ensureDemoTpiNames() {
+  const deals = await prisma.deal.findMany({ include: { payments: true, customer: true } });
+  for (const deal of deals) {
+    if (deal.tpiPartner === "INFINITE_20") {
+      await prisma.deal.update({
+        where: { id: deal.id },
+        data: { tpiPartner: "INFINITE", tpiPercent: 20 },
+      });
+      continue;
+    }
+    if (deal.tpiPartner === "JOOSE_UCR" && deal.tpiPercent !== 30) {
+      const paidShare =
+        deal.payments[0] && deal.payments[0].amountDue
+          ? (deal.payments[0].actualPaid ?? 0) / deal.payments[0].amountDue
+          : 0;
+      const built = applyPayouts(
+        deal.estimatedCommission ?? 0,
+        30,
+        deal.payments.length
+          ? deal.payments.map((row, index) => ({
+              stage: row.stage,
+              label: row.label,
+              percent: row.percent,
+              expectedDate: row.expectedDate,
+              amountDue: 0,
+              actualPaid: 0,
+              sortOrder: index,
+            }))
+          : payoutDraft(
+              [40, 40, 20],
+              [deal.dueDate ?? deal.contractStart, deal.contractStart, deal.contractEnd],
+            ),
+      );
+      if (built.payments[0]) {
+        built.payments[0].actualPaid = Math.round(built.payments[0].amountDue * paidShare * 100) / 100;
+      }
+      await writeDealFinance(deal.id, "JOOSE_UCR", 30, deal.estimatedCommission ?? 0, built.payments);
+    }
+  }
+}
+
+async function ensureDemoResidual() {
+  const coastal = await prisma.deal.findFirst({
+    where: { supplier: "SSE", customer: { companyName: "Coastal Leisure Parks Ltd" } },
+    include: { payments: true },
+  });
+  if (!coastal || coastal.payoutType === "RESIDUAL") return;
+  if (!coastal.contractStart || !coastal.contractEnd) return;
+  const built = applyResidual(
+    coastal.estimatedCommission ?? 3750,
+    0,
+    coastal.contractStart,
+    coastal.contractEnd,
+    null,
+  );
+  await prisma.deal.update({
+    where: { id: coastal.id },
+    data: {
+      payoutType: "RESIDUAL",
+      residualMonthly: null,
+      tpiPartner: "NONE",
+      tpiPercent: 0,
+      estimatedCommission: coastal.estimatedCommission ?? 3750,
+      amountDue: built.rollup.amountDue,
+      actualPaid: built.rollup.actualPaid,
+      dueDate: built.rollup.dueDate,
+      notes: "Monthly residual from live date to CED. Net split evenly across the term.",
+      payments: {
+        deleteMany: {},
+        create: built.payments.map((row) => ({
+          stage: row.stage,
+          label: row.label,
+          percent: row.percent,
+          expectedDate: row.expectedDate,
+          amountDue: row.amountDue,
+          actualPaid: row.actualPaid,
+          sortOrder: row.sortOrder,
+        })),
+      },
+    },
+  });
+}
+
+async function ensureDemoInbox() {
+  const overdue = await prisma.task.findFirst({
+    where: { status: "OPEN", dueDate: { lt: new Date() } },
+  });
+  if (overdue) return;
+  const chase = await prisma.task.findFirst({
+    where: { title: { contains: "signed LOA" } },
+  });
+  if (!chase) return;
+  await prisma.task.update({
+    where: { id: chase.id },
+    data: { dueDate: daysFromNow(-2), status: "OPEN" },
+  });
+}
+
+async function seedHarbourViewSignedLoa() {
+  const meter = await prisma.meter.findFirst({
+    where: { mpan: "002160013300112233445" },
+    include: { customer: true },
+  });
+  if (!meter) return;
+
+  const storedName = `${meter.id}-harbour-view-loa.txt`;
+  await writeSeedLoa(
+    storedName,
+    [
+      "LETTER OF AUTHORITY — NZCE",
+      "",
+      "Customer: Harbour View Hotels Ltd",
+      "Site: Marine Parade hotel, Brighton",
+      "MPAN: 002160013300112233445",
+      "Signed: Claire Debenham, General Manager",
+      "Date: 20 July 2026",
+      "",
+      "This is a stored copy for the desk. It was not generated by the CRM.",
+    ].join("\n"),
+  );
+
+  await prisma.meter.update({
+    where: { id: meter.id },
+    data: {
+      loaStatus: "SIGNED",
+      loaSignedOn: daysFromNow(-25),
+      loaSignedBy: "Claire Debenham",
+      loaFileName: "Harbour-View-Marine-Parade-LOA.txt",
+      loaStoredName: storedName,
+    },
+  });
+
+  const priya = await prisma.agent.findFirst({ where: { email: "priya.shah@nzce.co.uk" } });
+  await prisma.activity.create({
+    data: {
+      customerId: meter.customerId,
+      actorId: priya?.id,
+      type: "LOA_STATUS_CHANGED",
+      summary: "LOA on MPAN 002160013300112233445 set to Signed. Signed by Claire Debenham. Copy stored: Harbour-View-Marine-Parade-LOA.txt.",
+    },
+  });
+}
+
+async function seedHarbourViewTenders() {
+  const harbour = await prisma.customer.findFirst({
+    where: { companyName: "Harbour View Hotels Ltd" },
+  });
+  if (!harbour) return;
+
+  const priya = await prisma.agent.findFirst({ where: { email: "priya.shah@nzce.co.uk" } });
+  let lead = await prisma.lead.findFirst({
+    where: { customerId: harbour.id, title: "Hotel group 2026 retender" },
+  });
+  if (!lead) {
+    lead = await prisma.lead.create({
+      data: {
+        customerId: harbour.id,
+        title: "Hotel group 2026 retender",
+        stage: "QUOTED",
+        source: "Existing book",
+        notes: "Quotes in from Octopus, British Gas and TotalEnergies. Claire reviewing the 24-month Octopus.",
+        allocations: priya ? { create: [{ agentId: priya.id }] } : undefined,
+      },
+    });
+  }
+
+  await prisma.tenderResponse.createMany({
+    data: [
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "Octopus Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-8),
+        standingCharge: 118,
+        unitRates: "Day 25.8p / Night 15.1p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 98400,
+        status: "PREFERRED",
+        notes: "24-month fixed, no exit. Best day rate of the pack — Claire leaning this way.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "British Gas",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-7),
+        standingCharge: 132,
+        unitRates: "Day 26.4p / Night 15.9p",
+        contractLengthMonths: 12,
+        estimatedAnnualCost: 102200,
+        status: "RECEIVED",
+        notes: "12-month only. Competitive but Claire prefers a longer fix if the rate holds.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "TotalEnergies",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-10),
+        standingCharge: 145,
+        unitRates: "Day 28.1p / Night 16.8p",
+        contractLengthMonths: 36,
+        estimatedAnnualCost: 108900,
+        status: "DECLINED",
+        notes: "Long fix but above the incumbent. Declined 11 Aug.",
+      },
+      {
+        customerId: harbour.id,
+        leadId: lead.id,
+        supplier: "E.ON Next",
+        fuelType: "GAS",
+        receivedOn: daysFromNow(-6),
+        standingCharge: 34,
+        unitRates: "6.85p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 41200,
+        status: "RECEIVED",
+        notes: "Gas-only. Sitting with the electric pack for a dual walkthrough.",
+      },
+    ],
+  });
+
+  await prisma.activity.create({
+    data: {
+      customerId: harbour.id,
+      actorId: priya?.id,
+      type: "TENDER_RECORDED",
+      summary: "Octopus, British Gas, TotalEnergies and E.ON Next quotes logged on Harbour View.",
+    },
+  });
+}
+
+async function seedOakfieldTenders() {
+  const oakfield = await prisma.customer.findFirst({
+    where: { companyName: "Oakfield Primary Academy" },
+  });
+  if (!oakfield) return;
+  const lead = await prisma.lead.findFirst({
+    where: { customerId: oakfield.id, title: "Academy electric retender" },
+  });
+
+  await prisma.tenderResponse.createMany({
+    data: [
+      {
+        customerId: oakfield.id,
+        leadId: lead?.id,
+        supplier: "Octopus Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-12),
+        standingCharge: 86,
+        unitRates: "Day 24.9p",
+        contractLengthMonths: 24,
+        estimatedAnnualCost: 18600,
+        status: "PREFERRED",
+        notes: "Governors pack — Priya’s recommendation.",
+      },
+      {
+        customerId: oakfield.id,
+        leadId: lead?.id,
+        supplier: "EDF Energy",
+        fuelType: "ELECTRIC",
+        receivedOn: daysFromNow(-11),
+        standingCharge: 92,
+        unitRates: "Day 25.6p",
+        contractLengthMonths: 12,
+        estimatedAnnualCost: 19450,
+        status: "RECEIVED",
+        notes: "Incumbent 12-month. Waiting on governors.",
+      },
+    ],
+  });
+}
+
+async function ensureJoelAdmin() {
+  const email = "joel.pearson@nzcenergy.co.uk";
+  const existing = await prisma.agent.findUnique({ where: { email } });
+  if (existing) {
+    if (existing.role !== "Admin") {
+      await prisma.agent.update({ where: { id: existing.id }, data: { role: "Admin" } });
+    }
+    return;
+  }
+  await prisma.agent.create({
+    data: { name: "Joel Pearson", email, role: "Admin" },
+  });
+}
+
+export async function seedDesk() {
+  const existing = await prisma.agent.count();
+  if (existing > 0) {
+    await ensureDemoObjection();
+    await ensureDemoTenders();
+    await ensureDemoLoa();
+    await ensureDemoDealSplits();
+    await ensureDemoPayouts();
+    await ensureDemoResidual();
+    await ensureDemoTpiNames();
+    await ensureDemoInbox();
+    await ensureDemoReconciliations();
+    await ensureJoelAdmin();
+    await ensureQuarterlyMarketReminder();
+    await ensurePortalAccounts();
+    await ensureRenewalReminderTasks();
+    await ensureDemoOutcomes();
+    await ensureLeadBoardStages();
+    await ensureDemoArchive();
+    await ensureDemoCallKinds();
+    await ensureDemoRecording();
+    console.log("Desk already seeded — skipping (demo extras checked).");
+    return;
+  }
+
+  const james = await prisma.agent.create({
+    data: { name: "James Whitaker", email: "james.whitaker@nzce.co.uk", role: "Sales" },
+  });
+  const priya = await prisma.agent.create({
+    data: { name: "Priya Shah", email: "priya.shah@nzce.co.uk", role: "Sales" },
+  });
+  const tom = await prisma.agent.create({
+    data: { name: "Tom Brennan", email: "tom.brennan@nzce.co.uk", role: "Sales" },
+  });
+  const helen = await prisma.agent.create({
+    data: { name: "Helen Crowe", email: "helen.crowe@nzce.co.uk", role: "Operations" },
+  });
+
+  const riverside = await prisma.customer.create({
+    data: {
+      companyName: "Riverside Care Group Ltd",
+      tradingName: "Riverside Care",
+      contactName: "Margaret Hale",
+      email: "margaret.hale@riverside-care.co.uk",
+      phone: "0161 555 0142",
+      addressLine1: "18 Quay Street",
+      city: "Manchester",
+      postcode: "M3 4AE",
+      industry: "Care homes",
+    },
+  });
+
+  const oakfield = await prisma.customer.create({
+    data: {
+      companyName: "Oakfield Primary Academy",
+      contactName: "David Okonkwo",
+      email: "d.okonkwo@oakfield-academy.sch.uk",
+      phone: "0113 555 2088",
+      addressLine1: "Oakfield Lane",
+      city: "Leeds",
+      postcode: "LS6 2AB",
+      industry: "Education",
+    },
+  });
+
+  const harbour = await prisma.customer.create({
+    data: {
+      companyName: "Harbour View Hotels Ltd",
+      tradingName: "Harbour View",
+      contactName: "Claire Debenham",
+      email: "claire.debenham@harbourviewhotels.co.uk",
+      phone: "01273 555 441",
+      addressLine1: "2 Marine Parade",
+      city: "Brighton",
+      postcode: "BN2 1TL",
+      industry: "Hospitality",
+    },
+  });
+
+  const bakery = await prisma.customer.create({
+    data: {
+      companyName: "Greenfield Artisan Bakery",
+      contactName: "Samira Khan",
+      email: "samira@greenfieldbakery.co.uk",
+      phone: "0117 555 9033",
+      addressLine1: "44 Stokes Croft",
+      city: "Bristol",
+      postcode: "BS1 3QD",
+      industry: "Food manufacturing",
+    },
+  });
+
+  const mersey = await prisma.customer.create({
+    data: {
+      companyName: "Mersey Logistics Ltd",
+      contactName: "Paul McKenna",
+      email: "paul.mckenna@merseylogistics.co.uk",
+      phone: "0151 555 7760",
+      addressLine1: "Unit 9, Speke Industrial Park",
+      city: "Liverpool",
+      postcode: "L24 8RJ",
+      industry: "Warehousing & logistics",
+    },
+  });
+
+  const parish = await prisma.customer.create({
+    data: {
+      companyName: "St Anne's Parish Hall",
+      contactName: "Rev. Eleanor Briggs",
+      email: "eleanor.briggs@stannes-york.org",
+      phone: "01904 555 118",
+      addressLine1: "12 Bootham",
+      city: "York",
+      postcode: "YO30 7BL",
+      industry: "Charity / community",
+    },
+  });
+
+  const steel = await prisma.customer.create({
+    data: {
+      companyName: "Northern Steel Fabrications",
+      contactName: "Ian Croft",
+      email: "ian.croft@nsfab.co.uk",
+      phone: "0114 555 6621",
+      addressLine1: "Attercliffe Road",
+      city: "Sheffield",
+      postcode: "S9 3RA",
+      industry: "Manufacturing",
+    },
+  });
+
+  const coastal = await prisma.customer.create({
+    data: {
+      companyName: "Coastal Leisure Parks Ltd",
+      tradingName: "Atlantic Dunes",
+      contactName: "Becky Trevelyan",
+      email: "becky.trevelyan@coastalleisure.co.uk",
+      phone: "01736 555 290",
+      addressLine1: "Atlantic Dunes Holiday Park",
+      city: "Hayle",
+      postcode: "TR27 5AA",
+      industry: "Leisure / holiday parks",
+    },
+  });
+
+  const riversideM1 = await prisma.meter.create({
+    data: {
+      customerId: riverside.id,
+      siteName: "Quay Street home",
+      siteAddress: "18 Quay Street, Manchester M3 4AE",
+      fuelType: "ELECTRIC",
+      mpan: "008010011234567890123",
+      electricEac: 186400,
+      supplier: "E.ON Next",
+      contractStart: daysFromNow(-400),
+      contractEnd: daysFromNow(70),
+      meterType: "Whole current",
+      settlement: "NHH",
+      currentRates: "Day 26.4p / Night 15.1p / SC £0.82",
+      renewalDate: daysFromNow(70),
+      loaStatus: "RECEIVED",
+      salespersonId: james.id,
+    },
+  });
+  const riversideM2 = await prisma.meter.create({
+    data: {
+      customerId: riverside.id,
+      siteName: "Salford annex",
+      siteAddress: "4 Irwell Place, Salford M5 4WT",
+      fuelType: "ELECTRIC",
+      mpan: "008010011234567890456",
+      electricEac: 94200,
+      supplier: "E.ON Next",
+      contractStart: daysFromNow(-400),
+      contractEnd: daysFromNow(70),
+      meterType: "Smart",
+      settlement: "NHH",
+      currentRates: "Day 26.4p / SC £0.82",
+      renewalDate: daysFromNow(70),
+      loaStatus: "RECEIVED",
+      salespersonId: james.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: riverside.id,
+      siteName: "Quay Street home",
+      siteAddress: "18 Quay Street, Manchester M3 4AE",
+      fuelType: "GAS",
+      mprn: "1234567801",
+      gasAq: 312000,
+      supplier: "British Gas",
+      contractStart: daysFromNow(-400),
+      contractEnd: daysFromNow(70),
+      meterType: "Traditional",
+      currentRates: "Unit 6.8p / SC £0.31",
+      renewalDate: daysFromNow(70),
+      loaStatus: "RECEIVED",
+      salespersonId: james.id,
+    },
+  });
+
+  await prisma.meter.create({
+    data: {
+      customerId: oakfield.id,
+      siteName: "Main school",
+      siteAddress: "Oakfield Lane, Leeds LS6 2AB",
+      fuelType: "ELECTRIC",
+      mpan: "001590012200334455667",
+      electricEac: 128000,
+      supplier: "Octopus Energy",
+      contractStart: daysFromNow(-280),
+      contractEnd: daysFromNow(110),
+      meterType: "Whole current",
+      settlement: "NHH",
+      currentRates: "Day 24.9p / SC £0.74",
+      renewalDate: daysFromNow(110),
+      loaStatus: "RECEIVED",
+      salespersonId: priya.id,
+    },
+  });
+
+  const harbourM1 = await prisma.meter.create({
+    data: {
+      customerId: harbour.id,
+      siteName: "Marine Parade hotel",
+      siteAddress: "2 Marine Parade, Brighton BN2 1TL",
+      fuelType: "ELECTRIC",
+      mpan: "002160013300112233445",
+      electricEac: 410500,
+      supplier: "EDF Energy",
+      contractStart: daysFromNow(-320),
+      contractEnd: daysFromNow(45),
+      meterType: "CT",
+      settlement: "NHH",
+      currentRates: "Day 27.2p / Night 16.4p / SC £1.40",
+      renewalDate: daysFromNow(45),
+      loaStatus: "SIGNED",
+      loaSignedOn: daysFromNow(-25),
+      loaSignedBy: "Claire Debenham",
+      salespersonId: priya.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: harbour.id,
+      siteName: "Marine Parade hotel",
+      siteAddress: "2 Marine Parade, Brighton BN2 1TL",
+      fuelType: "GAS",
+      mprn: "8822110099",
+      gasAq: 540000,
+      supplier: "EDF Energy",
+      contractStart: daysFromNow(-320),
+      contractEnd: daysFromNow(45),
+      meterType: "Traditional",
+      currentRates: "Unit 7.1p / SC £0.38",
+      renewalDate: daysFromNow(45),
+      loaStatus: "RECEIVED",
+      salespersonId: priya.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: harbour.id,
+      siteName: "Hove townhouse",
+      siteAddress: "19 Church Road, Hove BN3 2AH",
+      fuelType: "ELECTRIC",
+      mpan: "002160013300112233778",
+      electricEac: 98000,
+      supplier: "EDF Energy",
+      contractStart: daysFromNow(-320),
+      contractEnd: daysFromNow(45),
+      meterType: "Smart",
+      settlement: "NHH",
+      currentRates: "Day 27.2p / SC £0.90",
+      renewalDate: daysFromNow(45),
+      loaStatus: "RECEIVED",
+      salespersonId: priya.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: harbour.id,
+      siteName: "Hove townhouse",
+      siteAddress: "19 Church Road, Hove BN3 2AH",
+      fuelType: "GAS",
+      mprn: "8822110100",
+      gasAq: 86000,
+      supplier: "EDF Energy",
+      contractStart: daysFromNow(-320),
+      contractEnd: daysFromNow(45),
+      meterType: "Smart",
+      currentRates: "Unit 7.1p / SC £0.28",
+      renewalDate: daysFromNow(45),
+      loaStatus: "RECEIVED",
+      salespersonId: priya.id,
+    },
+  });
+
+  await prisma.meter.create({
+    data: {
+      customerId: bakery.id,
+      siteName: "Stokes Croft bakery",
+      siteAddress: "44 Stokes Croft, Bristol BS1 3QD",
+      fuelType: "ELECTRIC",
+      mpan: "001470014400556677889",
+      electricEac: 76400,
+      supplier: "Yu Energy",
+      contractStart: daysFromNow(-190),
+      contractEnd: daysFromNow(175),
+      meterType: "Whole current",
+      settlement: "NHH",
+      currentRates: "Day 29.1p / SC £0.68",
+      renewalDate: daysFromNow(175),
+      loaStatus: "REQUESTED",
+      salespersonId: tom.id,
+    },
+  });
+
+  const merseyM1 = await prisma.meter.create({
+    data: {
+      customerId: mersey.id,
+      siteName: "Speke warehouse A",
+      siteAddress: "Unit 9, Speke Industrial Park, Liverpool L24 8RJ",
+      fuelType: "ELECTRIC",
+      mpan: "000080015500998877665",
+      electricEac: 1280000,
+      supplier: "SmartestEnergy",
+      contractStart: daysFromNow(-200),
+      contractEnd: daysFromNow(200),
+      meterType: "CT",
+      settlement: "HH",
+      currentRates: "HH profile / SC £3.20",
+      renewalDate: daysFromNow(200),
+      loaStatus: "RECEIVED",
+      salespersonId: tom.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: mersey.id,
+      siteName: "Speke warehouse B",
+      siteAddress: "Unit 11, Speke Industrial Park, Liverpool L24 8RJ",
+      fuelType: "ELECTRIC",
+      mpan: "000080015500998877666",
+      electricEac: 860000,
+      supplier: "SmartestEnergy",
+      contractStart: daysFromNow(-200),
+      contractEnd: daysFromNow(200),
+      meterType: "CT",
+      settlement: "HH",
+      currentRates: "HH profile / SC £3.20",
+      renewalDate: daysFromNow(200),
+      loaStatus: "RECEIVED",
+      salespersonId: tom.id,
+    },
+  });
+
+  await prisma.meter.create({
+    data: {
+      customerId: parish.id,
+      siteName: "Parish hall",
+      siteAddress: "12 Bootham, York YO30 7BL",
+      fuelType: "GAS",
+      mprn: "4411220098",
+      gasAq: 18400,
+      supplier: "British Gas",
+      contractStart: daysFromNow(-500),
+      contractEnd: daysFromNow(40),
+      meterType: "Traditional",
+      currentRates: "Unit 8.4p / SC £0.27",
+      renewalDate: daysFromNow(40),
+      loaStatus: "NOT_REQUESTED",
+      salespersonId: james.id,
+    },
+  });
+
+  await prisma.meter.create({
+    data: {
+      customerId: steel.id,
+      siteName: "Attercliffe works",
+      siteAddress: "Attercliffe Road, Sheffield S9 3RA",
+      fuelType: "ELECTRIC",
+      mpan: "000080016600223344556",
+      electricEac: 2100000,
+      supplier: "TotalEnergies",
+      contractStart: daysFromNow(-353),
+      contractEnd: daysFromNow(12),
+      meterType: "CT",
+      settlement: "HH",
+      currentRates: "HH profile / SC £4.10",
+      renewalDate: daysFromNow(12),
+      loaStatus: "RECEIVED",
+      objectionStatus: "IN_OBJECTION",
+      objectionNote: "Debt on account — TotalEnergies raised 8 Aug 2026. Works manager chasing arrears.",
+      objectionRaisedOn: daysFromNow(-6),
+      salespersonId: james.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: steel.id,
+      siteName: "Attercliffe works",
+      siteAddress: "Attercliffe Road, Sheffield S9 3RA",
+      fuelType: "GAS",
+      mprn: "7766554433",
+      gasAq: 890000,
+      supplier: "TotalEnergies",
+      contractStart: daysFromNow(-353),
+      contractEnd: daysFromNow(12),
+      meterType: "Traditional",
+      currentRates: "Unit 6.2p / SC £0.55",
+      renewalDate: daysFromNow(12),
+      loaStatus: "RECEIVED",
+      salespersonId: james.id,
+    },
+  });
+
+  const coastalM1 = await prisma.meter.create({
+    data: {
+      customerId: coastal.id,
+      siteName: "Reception & amenities",
+      siteAddress: "Atlantic Dunes Holiday Park, Hayle TR27 5AA",
+      fuelType: "ELECTRIC",
+      mpan: "001590017700334455112",
+      electricEac: 245000,
+      supplier: "SSE",
+      contractStart: daysFromNow(-345),
+      contractEnd: daysFromNow(20),
+      meterType: "Whole current",
+      settlement: "NHH",
+      currentRates: "Day 28.0p / Night 16.8p / SC £1.05",
+      renewalDate: daysFromNow(20),
+      loaStatus: "REQUESTED",
+      salespersonId: helen.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: coastal.id,
+      siteName: "Reception & amenities",
+      siteAddress: "Atlantic Dunes Holiday Park, Hayle TR27 5AA",
+      fuelType: "GAS",
+      mprn: "9900112233",
+      gasAq: 160000,
+      supplier: "SSE",
+      contractStart: daysFromNow(-345),
+      contractEnd: daysFromNow(20),
+      meterType: "Smart",
+      currentRates: "Unit 7.4p / SC £0.33",
+      renewalDate: daysFromNow(20),
+      loaStatus: "REQUESTED",
+      salespersonId: helen.id,
+    },
+  });
+  await prisma.meter.create({
+    data: {
+      customerId: coastal.id,
+      siteName: "Static caravan block C",
+      siteAddress: "Atlantic Dunes Holiday Park, Hayle TR27 5AA",
+      fuelType: "ELECTRIC",
+      mpan: "001590017700334455113",
+      electricEac: 188000,
+      supplier: "SSE",
+      contractStart: daysFromNow(-345),
+      contractEnd: daysFromNow(20),
+      meterType: "Whole current",
+      settlement: "NHH",
+      currentRates: "Day 28.0p / SC £0.88",
+      renewalDate: daysFromNow(20),
+      loaStatus: "REQUESTED",
+      salespersonId: helen.id,
+    },
+  });
+
+  const riversideLead = await prisma.lead.create({
+    data: {
+      customerId: riverside.id,
+      title: "Care group dual-fuel renewal",
+      stage: "Won",
+      source: "Existing book",
+      notes: "Three-site book sold onto E.ON / British Gas 12-month.\nMonday group: Won",
+      outcomeReason: "Incumbent beat on a 12-month E.ON / British Gas.",
+      allocations: { create: [{ agentId: james.id }] },
+    },
+  });
+  const oakfieldLead = await prisma.lead.create({
+    data: {
+      customerId: oakfield.id,
+      title: "Academy electric retender",
+      stage: "NEW",
+      source: "Inbound",
+      notes: "Waiting on governors to sign off Octopus vs EDF.\nMonday group: Proposal Sent",
+      allocations: { create: [{ agentId: priya.id }] },
+    },
+  });
+  const harbourLead = await prisma.lead.create({
+    data: {
+      customerId: harbour.id,
+      title: "Hotel group 2026 renewal",
+      stage: "Won",
+      source: "Existing book",
+      notes: "Four supplies across Brighton and Hove.\nMonday group: Won",
+      outcomeReason: "Governors signed the EDF dual-fuel basket.",
+      allocations: { create: [{ agentId: priya.id }, { agentId: helen.id }] },
+    },
+  });
+  await prisma.lead.create({
+    data: {
+      customerId: bakery.id,
+      title: "Bakery first conversation",
+      stage: "Hot lead Joel",
+      source: "Cold call",
+      notes: "Samira asked for a callback after the Easter rush.\nMonday group: Hot lead Joel",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+  await prisma.lead.create({
+    data: {
+      customerId: bakery.id,
+      title: "Night-shift site enquiry",
+      stage: "Lost",
+      source: "Cold call",
+      notes: "Second site — they stayed with the incumbent.\nMonday group: Lost",
+      outcomeReason: "Stayed with incumbent on price.",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+  const merseyLead = await prisma.lead.create({
+    data: {
+      customerId: mersey.id,
+      title: "HH warehouse book",
+      stage: "Won",
+      source: "Referral",
+      notes: "Two HH MPANs onto SmartestEnergy.\nMonday group: Won",
+      outcomeReason: "HH book sold onto SmartestEnergy.",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+  await prisma.lead.create({
+    data: {
+      customerId: parish.id,
+      title: "Parish hall gas",
+      stage: "Potential Lead Joel",
+      source: "Website",
+      notes: "Small AQ, charity rates requested.\nMonday group: Potential Lead Joel",
+      allocations: { create: [{ agentId: james.id }] },
+    },
+  });
+  await prisma.lead.create({
+    data: {
+      customerId: steel.id,
+      title: "Works HH + gas retender",
+      stage: "Sent For Tender",
+      source: "Existing book",
+      notes: "Contract ends in 12 days. Quotes in from Total, SSE, Smartest.\nMonday group: Sent For Tender",
+      allocations: { create: [{ agentId: james.id }, { agentId: priya.id }] },
+    },
+  });
+  await prisma.lead.create({
+    data: {
+      customerId: coastal.id,
+      title: "Holiday park renewal",
+      stage: "Sent For Tender",
+      source: "Existing book",
+      notes: "LOA out to Becky. Three supplies, seasonal load.\nMonday group: Sent For Tender",
+      allocations: { create: [{ agentId: helen.id }, { agentId: tom.id }] },
+    },
+  });
+
+  await prisma.deal.create({
+    data: {
+      customerId: riverside.id,
+      meterId: riversideM1.id,
+      leadId: riversideLead.id,
+      salespersonId: james.id,
+      supplier: "E.ON Next",
+      fuelType: "ELECTRIC",
+      contractStart: daysFromNow(-400),
+      contractEnd: daysFromNow(70),
+      renewalDate: daysFromNow(70),
+      status: "LIVE",
+      dueDate: daysFromNow(-20),
+      amountDue: 0,
+      estimatedCommission: 4200,
+      actualPaid: 4200,
+      notes: "Paid in full after start confirmation.",
+    },
+  });
+  await prisma.deal.create({
+    data: {
+      customerId: riverside.id,
+      meterId: riversideM2.id,
+      salespersonId: james.id,
+      supplier: "British Gas",
+      fuelType: "GAS",
+      contractStart: daysFromNow(-400),
+      contractEnd: daysFromNow(70),
+      renewalDate: daysFromNow(70),
+      status: "LIVE",
+      dueDate: daysFromNow(-20),
+      amountDue: 0,
+      estimatedCommission: 1850,
+      actualPaid: 1850,
+    },
+  });
+  await prisma.deal.create({
+    data: {
+      customerId: harbour.id,
+      meterId: harbourM1.id,
+      leadId: harbourLead.id,
+      salespersonId: priya.id,
+      supplier: "EDF Energy",
+      fuelType: "DUAL",
+      contractStart: daysFromNow(-320),
+      contractEnd: daysFromNow(45),
+      renewalDate: daysFromNow(45),
+      status: "LIVE",
+      dueDate: daysFromNow(14),
+      amountDue: 6800,
+      estimatedCommission: 6800,
+      actualPaid: 0,
+      notes: "Commission invoice with finance — due in a fortnight. Priya and Helen split 50/50.",
+      allocations: { create: [{ agentId: priya.id }, { agentId: helen.id }] },
+    },
+  });
+  await prisma.deal.create({
+    data: {
+      customerId: mersey.id,
+      meterId: merseyM1.id,
+      leadId: merseyLead.id,
+      salespersonId: tom.id,
+      supplier: "SmartestEnergy",
+      fuelType: "ELECTRIC",
+      contractStart: daysFromNow(-200),
+      contractEnd: daysFromNow(200),
+      renewalDate: daysFromNow(200),
+      status: "LIVE",
+      dueDate: daysFromNow(30),
+      amountDue: 4600,
+      estimatedCommission: 9100,
+      actualPaid: 4500,
+      notes: "First tranche paid. Balance after HH D0010 check.",
+    },
+  });
+  await prisma.deal.create({
+    data: {
+      customerId: coastal.id,
+      meterId: coastalM1.id,
+      salespersonId: helen.id,
+      supplier: "SSE",
+      fuelType: "ELECTRIC",
+      contractStart: daysFromNow(-345),
+      contractEnd: daysFromNow(20),
+      renewalDate: daysFromNow(20),
+      status: "LIVE",
+      dueDate: daysFromNow(-5),
+      amountDue: 3750,
+      estimatedCommission: 3750,
+      actualPaid: 0,
+      notes: "Overdue — chase supplier statement.",
+    },
+  });
+
+  await prisma.callNote.createMany({
+    data: [
+      {
+        customerId: riverside.id,
+        authorId: james.id,
+        kind: "VISIT",
+        body: "Spoke with Margaret. Happy with E.ON service. Wants a 12-month again if the day rate stays under 27p.",
+      },
+      {
+        customerId: harbour.id,
+        authorId: priya.id,
+        kind: "PHONE",
+        body: "Claire confirmed both sites stay on the same start date. Ask EDF for a dual-fuel basket if they can beat last year's SC.",
+      },
+      {
+        customerId: steel.id,
+        authorId: james.id,
+        kind: "PHONE",
+        body: "Ian is under pressure from the works manager. Needs prices by Friday or they roll onto out-of-contract.",
+      },
+      {
+        customerId: bakery.id,
+        authorId: tom.id,
+        kind: "PHONE",
+        body: "Left voicemail. Samira texted back — call after 3pm once the ovens are down.",
+      },
+    ],
+  });
+
+  await prisma.emailLog.createMany({
+    data: [
+      {
+        customerId: oakfield.id,
+        subject: "Oakfield Academy — electric quote pack",
+        fromAddr: "priya.shah@nzce.co.uk",
+        toAddr: "d.okonkwo@oakfield-academy.sch.uk",
+        body: "David — attached three options (Octopus 12m, EDF 24m, SSE 12m). Happy to walk the governors through EAC vs cost.",
+        loggedAt: daysFromNow(-4),
+      },
+      {
+        customerId: coastal.id,
+        subject: "LOA for Atlantic Dunes supplies",
+        fromAddr: "helen.crowe@nzce.co.uk",
+        toAddr: "becky.trevelyan@coastalleisure.co.uk",
+        body: "Becky — LOA covering the three park supplies. Sign and return and we will go to market this week.",
+        loggedAt: daysFromNow(-2),
+      },
+      {
+        customerId: mersey.id,
+        subject: "HH start confirmation — Speke",
+        fromAddr: "tom.brennan@nzce.co.uk",
+        toAddr: "paul.mckenna@merseylogistics.co.uk",
+        body: "Paul — SmartestEnergy have confirmed both MPANs. First commission tranche released.",
+        loggedAt: daysFromNow(-18),
+      },
+    ],
+  });
+
+  await prisma.task.createMany({
+    data: [
+      {
+        customerId: steel.id,
+        assigneeId: james.id,
+        title: "Get three HH quotes on the desk before Friday",
+        dueDate: daysFromNow(2),
+        status: "OPEN",
+      },
+      {
+        customerId: coastal.id,
+        assigneeId: helen.id,
+        title: "Chase Becky for signed LOA",
+        dueDate: daysFromNow(1),
+        status: "OPEN",
+      },
+      {
+        customerId: harbour.id,
+        assigneeId: priya.id,
+        title: "Raise 90-day renewal pack for Harbour View",
+        dueDate: daysFromNow(5),
+        status: "OPEN",
+      },
+      {
+        customerId: oakfield.id,
+        assigneeId: priya.id,
+        title: "Book governors call for quote walkthrough",
+        dueDate: daysFromNow(7),
+        status: "OPEN",
+      },
+      {
+        customerId: mersey.id,
+        assigneeId: tom.id,
+        title: "Confirm second commission tranche with finance",
+        dueDate: daysFromNow(12),
+        status: "OPEN",
+      },
+      {
+        customerId: riverside.id,
+        assigneeId: james.id,
+        title: "Send care-home renewal reminder",
+        dueDate: daysFromNow(-3),
+        status: "DONE",
+      },
+    ],
+  });
+
+  await prisma.activity.createMany({
+    data: [
+      { customerId: riverside.id, actorId: james.id, type: "CUSTOMER_CREATED", summary: "Customer Riverside Care Group Ltd added to the desk." },
+      { customerId: riverside.id, actorId: james.id, type: "DEAL_RECORDED", summary: "E.ON Next contract recorded for Riverside Care Group Ltd." },
+      { customerId: oakfield.id, actorId: priya.id, type: "LEAD_CREATED", summary: "Lead opened: Academy electric retender." },
+      { customerId: oakfield.id, actorId: priya.id, type: "LEAD_STAGE_CHANGED", summary: "Academy electric retender moved to Quoted." },
+      { customerId: harbour.id, actorId: priya.id, type: "DEAL_RECORDED", summary: "EDF Energy contract recorded for Harbour View Hotels Ltd." },
+      { customerId: harbour.id, actorId: priya.id, type: "FINANCE_RECONCILED", summary: "Finance reconciled on EDF Energy for Harbour View Hotels Ltd: due 6800, paid 0." },
+      { customerId: steel.id, actorId: james.id, type: "OBJECTION_CHANGED", summary: "Objection on MPAN 000080016600223344556 set to In objection." },
+      { customerId: bakery.id, actorId: tom.id, type: "LEAD_CREATED", summary: "Lead opened: Bakery first conversation." },
+      { customerId: mersey.id, actorId: tom.id, type: "DEAL_RECORDED", summary: "SmartestEnergy contract recorded for Mersey Logistics Ltd." },
+      { customerId: parish.id, actorId: james.id, type: "LEAD_CREATED", summary: "Lead opened: Parish hall gas." },
+      { customerId: steel.id, actorId: james.id, type: "LEAD_STAGE_CHANGED", summary: "Works HH + gas retender moved to Tendering." },
+      { customerId: coastal.id, actorId: helen.id, type: "EMAIL_LOGGED", summary: "Email logged: LOA for Atlantic Dunes supplies." },
+    ],
+  });
+
+  await seedHarbourViewTenders();
+  await seedOakfieldTenders();
+  await seedHarbourViewSignedLoa();
+  await ensureDemoDealSplits();
+  await ensureDemoPayouts();
+  await ensureDemoResidual();
+  await ensureDemoTpiNames();
+  await ensureDemoInbox();
+  await ensureDemoReconciliations();
+  await ensureJoelAdmin();
+  await ensureQuarterlyMarketReminder();
+  await ensurePortalAccounts();
+  await ensureRenewalReminderTasks();
+  await ensureDemoOutcomes();
+  await ensureLeadBoardStages();
+  await ensureDemoArchive();
+  await ensureDemoCallKinds();
+  await ensureDemoRecording();
+
+  console.log("Seeded NZCE desk: 5 agents, 8 customers, meters, leads, contracts, tenders, LOAs.");
+}
+
+async function ensureDemoOutcomes() {
+  const sold = await prisma.lead.findMany({
+    where: { stage: { in: ["SOLD", "Won"] }, outcomeReason: null },
+  });
+  const reasons: Record<string, string> = {
+    "Care group dual-fuel renewal": "Incumbent beat on a 12-month E.ON / British Gas.",
+    "Hotel group 2026 renewal": "Governors signed the EDF dual-fuel basket.",
+    "HH warehouse book": "HH book sold onto SmartestEnergy.",
+  };
+  for (const lead of sold) {
+    const reason = reasons[lead.title] ?? "Won on price and start date.";
+    await prisma.lead.update({ where: { id: lead.id }, data: { outcomeReason: reason } });
+  }
+
+  const lost = await prisma.lead.findFirst({ where: { stage: { in: ["LOST", "Lost"] } } });
+  if (lost) {
+    if (!lost.outcomeReason) {
+      await prisma.lead.update({
+        where: { id: lost.id },
+        data: { outcomeReason: "Stayed with incumbent on price." },
+      });
+    }
+    return;
+  }
+  const bakery = await prisma.customer.findFirst({
+    where: { companyName: { contains: "Bakery" } },
+  });
+  const tom = await prisma.agent.findUnique({ where: { email: "tom.brennan@nzce.co.uk" } });
+  if (!bakery || !tom) return;
+  await prisma.lead.create({
+    data: {
+      customerId: bakery.id,
+      title: "Night-shift site enquiry",
+      stage: "Lost",
+      source: "Cold call",
+      notes: "Second site — they stayed with the incumbent.\nMonday group: Lost",
+      outcomeReason: "Stayed with incumbent on price.",
+      allocations: { create: [{ agentId: tom.id }] },
+    },
+  });
+}
+
+async function ensureDemoRecording() {
+  const already = await prisma.callRecording.count();
+  if (already > 0) return;
+  const harbour = await prisma.customer.findFirst({
+    where: { companyName: "Harbour View Hotels Ltd" },
+  });
+  const priya = await prisma.agent.findUnique({ where: { email: "priya.shah@nzce.co.uk" } });
+  if (!harbour) return;
+  const storedName = `${harbour.id}-harbour-view-transcript.txt`;
+  await writeSeedRecording(
+    storedName,
+    [
+      "Harbour View — Claire Debenham, 11 Aug 2026",
+      "Priya: Both sites stay on the same start date.",
+      "Claire: Ask EDF for a dual-fuel basket if they can beat last year's standing charge.",
+      "Priya: I'll store the signed LOA on Marine Parade and come back with the pack.",
+    ].join("\n"),
+  );
+  await prisma.callRecording.create({
+    data: {
+      customerId: harbour.id,
+      authorId: priya?.id,
+      note: "Claire, 11 Aug — renewal walkthrough (transcript).",
+      fileName: "harbour-view-claire-11-aug.txt",
+      storedName,
+      mimeType: "text/plain",
+    },
+  });
+}
+
+async function ensureDemoCallKinds() {
+  const tagged = await prisma.callNote.findFirst({ where: { kind: { not: "NOTE" } } });
+  if (tagged) return;
+  const notes = await prisma.callNote.findMany({ orderBy: { createdAt: "asc" } });
+  const kinds = ["VISIT", "PHONE", "PHONE", "PHONE"] as const;
+  for (const [index, note] of notes.entries()) {
+    await prisma.callNote.update({
+      where: { id: note.id },
+      data: { kind: kinds[index] ?? "NOTE" },
+    });
+  }
+}
+
+async function ensureDemoArchive() {
+  const parish = await prisma.customer.findFirst({
+    where: { companyName: { contains: "Parish" } },
+  });
+  if (!parish || parish.archivedAt) return;
+  await prisma.customer.update({
+    where: { id: parish.id },
+    data: { archivedAt: daysFromNow(-1) },
+  });
+}
+
+async function ensureDemoReconciliations() {
+  const already = await prisma.dealReconciliation.count();
+  if (already > 0) return;
+
+  const mersey = await prisma.deal.findFirst({
+    where: { supplier: "SmartestEnergy", customer: { companyName: "Mersey Logistics Ltd" } },
+  });
+  const tom = await prisma.agent.findUnique({ where: { email: "tom.brennan@nzce.co.uk" } });
+  if (mersey && tom) {
+    await prisma.dealReconciliation.create({
+      data: {
+        dealId: mersey.id,
+        actorId: tom.id,
+        actualPaidOld: 0,
+        actualPaidNew: mersey.actualPaid,
+        amountDueOld: mersey.amountDue,
+        amountDueNew: mersey.amountDue,
+        estimatedOld: mersey.estimatedCommission,
+        estimatedNew: mersey.estimatedCommission,
+        createdAt: daysFromNow(-18),
+      },
+    });
+  }
+
+  const riverside = await prisma.deal.findFirst({
+    where: { supplier: "E.ON Next", customer: { companyName: "Riverside Care Group Ltd" } },
+  });
+  const james = await prisma.agent.findUnique({ where: { email: "james.whitaker@nzce.co.uk" } });
+  if (riverside && james) {
+    await prisma.dealReconciliation.create({
+      data: {
+        dealId: riverside.id,
+        actorId: james.id,
+        actualPaidOld: 0,
+        actualPaidNew: riverside.actualPaid,
+        amountDueOld: riverside.amountDue,
+        amountDueNew: riverside.amountDue,
+        estimatedOld: riverside.estimatedCommission,
+        estimatedNew: riverside.estimatedCommission,
+        createdAt: daysFromNow(-20),
+      },
+    });
+  }
+}
+
+const entry = (process.argv[1] ?? "").replaceAll("\\", "/");
+const runningAsScript = entry.endsWith("seed.ts") || entry.endsWith("seed.js") || entry.includes("prisma/seed");
+if (runningAsScript) {
+  seedDesk()
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
