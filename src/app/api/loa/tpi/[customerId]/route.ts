@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { optionalStr, str } from "@/lib/format";
 import { storeGeneratedLoaBytes } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
+import { rejectUnlessStaff } from "@/lib/staff-auth";
 import { generateTpiLoa, parseTpiLoaKind } from "@/lib/tpi-loa";
 
 async function loadLetter(
@@ -41,6 +42,8 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ customerId: string }> },
 ) {
+  const denied = rejectUnlessStaff(request);
+  if (denied) return denied;
   const { customerId } = await params;
   const result = await loadLetter(customerId, request, false);
   if (result.error || !result.document) {
@@ -56,6 +59,8 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ customerId: string }> },
 ) {
+  const denied = rejectUnlessStaff(request);
+  if (denied) return denied;
   const { customerId } = await params;
   const result = await loadLetter(customerId, request, true);
   if (result.error || !result.document) {

@@ -7,6 +7,7 @@ import { labelFor, LOA_STATUSES, OBJECTION_STATUSES } from "@/lib/constants";
 import { optionalStr, parseDate, parseIntField, str } from "@/lib/format";
 import { removeLoaFile, storeLoaFile } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 import { findSupplyClash } from "@/lib/supply";
 
@@ -82,6 +83,8 @@ export async function saveMeter(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const customerId = str(formData.get("customerId"));
   const fuelType = str(formData.get("fuelType"));
@@ -206,6 +209,8 @@ export async function saveMeterObjection(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { error: "Meter is missing." };
   const meter = await prisma.meter.findUnique({ where: { id } });
@@ -234,6 +239,8 @@ export async function saveMeterLoa(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { error: "Meter is missing." };
   const meter = await prisma.meter.findUnique({ where: { id } });

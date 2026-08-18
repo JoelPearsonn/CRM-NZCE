@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { readLoaFile } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
+import { rejectUnlessStaff } from "@/lib/staff-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ meterId: string }> },
 ) {
+  const denied = rejectUnlessStaff(request);
+  if (denied) return denied;
   const { meterId } = await params;
-  const meter = await prisma.meter.findUnique({ where: { id: meterId } });
+  const meter = await prisma.meter.findUnique({
+    where: { id: meterId },
+    include: { customer: { select: { id: true } } },
+  });
+  if (!meter?.customer) {
+    return NextResponse.json({ error: "No LOA copy on this meter." }, { status: 404 });
+  }
   if (!meter?.loaStoredName || !meter.loaFileName) {
     return NextResponse.json({ error: "No LOA copy on this meter." }, { status: 404 });
   }

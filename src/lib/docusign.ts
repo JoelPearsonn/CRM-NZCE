@@ -1,4 +1,4 @@
-import { createSign } from "node:crypto";
+import { createHmac, createSign, timingSafeEqual } from "node:crypto";
 import { loaTabValues, type LoaDocument } from "@/lib/loa-document";
 
 export type DocusignEnvelopeResult = {
@@ -165,6 +165,44 @@ export function createLiveDocusignClient(env: EnvMap = process.env): DocusignCli
 export function getDocusignClient(env: EnvMap = process.env): DocusignClient | null {
   if (!isDocusignConfigured(env)) return null;
   return createLiveDocusignClient(env);
+}
+
+export function docusignWebhookSecret(env: EnvMap = process.env) {
+  return env.DOCUSIGN_WEBHOOK_SECRET?.trim() || "";
+}
+
+export function docusignSignaturesFrom(headers: Headers) {
+  const found: string[] = [];
+  headers.forEach((value, key) => {
+    if (/^x-docusign-signature-\d+$/i.test(key) && value) found.push(value);
+  });
+  return found;
+}
+
+export function verifyDocusignWebhookSignature(
+  rawBody: string | Buffer,
+  signature: string | null | undefined,
+  secret: string,
+) {
+  if (!secret || !signature) return false;
+  const expected = createHmac("sha256", secret).update(rawBody).digest("base64");
+  const provided = signature.trim();
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+export function verifyDocusignWebhookRequest(
+  rawBody: string | Buffer,
+  headers: Headers,
+  env: EnvMap = process.env,
+) {
+  const secret = docusignWebhookSecret(env);
+  if (!secret) return false;
+  return docusignSignaturesFrom(headers).some((signature) =>
+    verifyDocusignWebhookSignature(rawBody, signature, secret),
+  );
 }
 
 export function parseDocusignWebhook(payload: unknown): { envelopeId: string; status: DocusignStatus } | null {

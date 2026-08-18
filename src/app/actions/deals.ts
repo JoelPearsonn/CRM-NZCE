@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
-import { liveDealOnSupply } from "@/lib/deals";
+import { dealRefsBelongToCustomer, liveDealOnSupply } from "@/lib/deals";
+import { staffActionError } from "@/lib/staff-session";
 import { applyPayouts, applyResidual, parseDealPayments, resolveTpi } from "@/lib/deal-payouts";
 import { rollupPayments } from "@/lib/finance";
 import { gbpExact, optionalStr, parseDate, parseMoney, str } from "@/lib/format";
@@ -16,6 +17,8 @@ export async function saveDeal(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const customerId = str(formData.get("customerId"));
   const supplier = str(formData.get("supplier"));
@@ -31,9 +34,18 @@ export async function saveDeal(
     return { error: "This customer is archived. Restore them before recording a deal." };
   }
 
+  const meterId = optionalStr(formData.get("meterId"));
+  const requestedLeadId = optionalStr(formData.get("leadId"));
+  const refs = await dealRefsBelongToCustomer(prisma, {
+    customerId,
+    meterId,
+    leadId: requestedLeadId,
+  });
+  if (!refs.ok) return { error: refs.error };
+
   const clash = await liveDealOnSupply({
     dealId: id,
-    meterId: optionalStr(formData.get("meterId")),
+    meterId,
     status: str(formData.get("status")) || "LIVE",
   });
   if (clash) {
@@ -47,7 +59,7 @@ export async function saveDeal(
     .getAll("agentIds")
     .map((value) => String(value))
     .filter(Boolean);
-  const leadId = optionalStr(formData.get("leadId"));
+  const leadId = requestedLeadId;
   if (leadId && agentIds.length === 0) {
     const leadAgents = await prisma.leadAllocation.findMany({ where: { leadId } });
     agentIds.push(...leadAgents.map((row) => row.agentId));
@@ -84,7 +96,7 @@ export async function saveDeal(
 
   const data = {
     customerId,
-    meterId: optionalStr(formData.get("meterId")),
+    meterId,
     leadId,
     salespersonId,
     supplier,
@@ -215,6 +227,8 @@ export async function reconcileDeal(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = str(formData.get("id"));
   if (!id) return { error: "Deal is missing." };
 

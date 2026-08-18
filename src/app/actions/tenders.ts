@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
 import { optionalStr, parseDate, parseIntField, parseMoney, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type ActionState = { error?: string };
 
@@ -12,6 +13,8 @@ export async function saveTenderResponse(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const customerId = str(formData.get("customerId"));
   const supplier = str(formData.get("supplier"));
@@ -69,6 +72,7 @@ export async function saveTenderResponse(
 }
 
 export async function markTenderPreferred(formData: FormData) {
+  if (await staffActionError()) return;
   const id = str(formData.get("id"));
   if (!id) return;
 

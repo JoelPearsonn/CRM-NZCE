@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isEmail, optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type ActionState = { error?: string };
 
@@ -11,6 +12,8 @@ export async function saveAgent(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const name = str(formData.get("name"));
   const email = str(formData.get("email"));

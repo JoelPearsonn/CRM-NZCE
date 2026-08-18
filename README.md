@@ -73,7 +73,35 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 - Tender-email generation
 - Monthly report PDFs
 - Hard delete of live customer data
-- Real login / permissions
+- Google / Clerk / OAuth staff login (Joel has not picked a provider — the desk uses a local staff password only)
+
+## Staff lock
+
+This desk is for NZCE staff on a private machine. Do **not** put it on a public URL. Do **not** add a Cloudflare tunnel.
+
+Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until a staff session exists.
+
+Set these on the server, never in git:
+
+```
+CRM_STAFF_PASSWORD=
+CRM_SESSION_SECRET=
+DOCUSIGN_WEBHOOK_SECRET=
+```
+
+If `CRM_STAFF_PASSWORD` is unset, mutating and download routes stay **401**. Sign in at `/login`. The session cookie is httpOnly, Secure, SameSite=Lax, and lasts 12 hours.
+
+DocuSign Connect must send HMAC (`X-DocuSign-Signature-1`). If `DOCUSIGN_WEBHOOK_SECRET` is missing, the webhook is rejected.
+
+Optional customer-portal demo login (local only — rotate anything that used to live in source, and never commit real values):
+
+```
+PORTAL_DEMO_EMAIL=
+PORTAL_DEMO_PASSWORD=
+PORTAL_DEMO_TOKEN=
+```
+
+Do not commit customer names as replacements. Do not commit live database dumps.
 
 ## Demo book
 

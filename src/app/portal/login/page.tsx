@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import { signInPortal, type PortalLoginState } from "@/app/actions/portal";
 import { ErrorBanner, Field } from "@/components/ui";
-import { HARBOUR_PORTAL_EMAIL, HARBOUR_PORTAL_PASSWORD } from "@/lib/portal-constants";
 
 const empty: PortalLoginState = {};
 
@@ -28,7 +27,6 @@ export default function PortalLoginPage() {
             name="email"
             type="email"
             autoComplete="username"
-            defaultValue={HARBOUR_PORTAL_EMAIL}
             required
           />
         </Field>
@@ -38,16 +36,12 @@ export default function PortalLoginPage() {
             name="password"
             type="password"
             autoComplete="current-password"
-            defaultValue={HARBOUR_PORTAL_PASSWORD}
             required
           />
         </Field>
         <button className="btn btn-primary" type="submit" disabled={pending}>
           {pending ? "Signing in…" : "Sign in"}
         </button>
-        <p className="text-[0.7rem] text-muted">
-          Demo: Harbour View · {HARBOUR_PORTAL_EMAIL} / {HARBOUR_PORTAL_PASSWORD}
-        </p>
       </form>
     </div>
   );

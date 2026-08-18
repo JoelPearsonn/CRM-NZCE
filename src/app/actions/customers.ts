@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
 import { isEmail, optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type DuplicateMatch = {
   id: string;
@@ -55,6 +56,8 @@ export async function saveCustomer(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const companyName = str(formData.get("companyName"));
   const contactName = str(formData.get("contactName"));
@@ -125,6 +128,7 @@ export async function saveCustomer(
 }
 
 export async function archiveCustomer(formData: FormData) {
+  if (await staffActionError()) return;
   const id = str(formData.get("id"));
   if (!id) return;
   const customer = await prisma.customer.findUnique({ where: { id } });

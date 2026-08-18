@@ -177,6 +177,15 @@ export default function HelpPage() {
         </Guide>
 
         <Guide
+          title="Staff lock"
+          body="The pages can stay on screen, but exports, imports, recordings, LOA files and writes stay locked until you sign in at /login with the staff password set on the server. There is no Google or Clerk login on this desk. Do not put the CRM on a public URL."
+        >
+          <Link href="/login" className="btn btn-ghost">
+            Staff sign-in
+          </Link>
+        </Guide>
+
+        <Guide
           title="Customer portal"
           body="Customers can sign in at /portal to see only their own contracts, meters and renewal dates. The portal never shows TPI, commission or broker payouts. Wilf’s public site can attach to /api/portal (session, me, contracts, meters, renewals). The staff desk is unchanged."
         >

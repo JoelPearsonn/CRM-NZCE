@@ -11,13 +11,15 @@ export function ShellFrame({
   children,
   agents,
   currentId,
+  staffSignedIn,
 }: {
   children: React.ReactNode;
   agents: Agent[];
   currentId: string | null;
+  staffSignedIn: boolean;
 }) {
   const pathname = usePathname();
-  if (pathname.startsWith("/portal")) {
+  if (pathname.startsWith("/portal") || pathname === "/login") {
     return <>{children}</>;
   }
   if (pathname.includes("/print")) {
@@ -31,7 +33,7 @@ export function ShellFrame({
         <header className="desk-header">
           <MobileNav />
           <MasterSearch />
-          <WorkingAsPicker agents={agents} currentId={currentId} />
+          <WorkingAsPicker agents={agents} currentId={currentId} staffSignedIn={staffSignedIn} />
           <a href="/" className="desk-logo" aria-label="Net Zero Commercial Energy">
             <img src="/brand/logo-lockup-on-dark.png" alt="Net Zero Commercial Energy" />
           </a>

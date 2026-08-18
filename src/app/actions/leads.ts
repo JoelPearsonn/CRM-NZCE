@@ -7,6 +7,7 @@ import { DEFAULT_LEAD_STAGE, LEAD_STAGES, isClosedLeadStage, labelFor } from "@/
 import { optionalStr, str } from "@/lib/format";
 import { persistableLeadStage, resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type ActionState = { error?: string };
 
@@ -21,6 +22,8 @@ export async function saveLead(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const id = optionalStr(formData.get("id"));
   const customerId = str(formData.get("customerId"));
   const title = str(formData.get("title"));
@@ -100,6 +103,7 @@ export async function saveLead(
 }
 
 export async function updateLeadStage(formData: FormData) {
+  if (await staffActionError()) return;
   const id = str(formData.get("id"));
   const requested = str(formData.get("stage"));
   const outcomeReason = optionalStr(formData.get("outcomeReason"));
@@ -130,6 +134,7 @@ export async function updateLeadStage(formData: FormData) {
 }
 
 export async function allocateLeadAgents(formData: FormData) {
+  if (await staffActionError()) return;
   const id = str(formData.get("id"));
   const agentIds = agentIdsFrom(formData);
   if (!id) return;
@@ -150,6 +155,7 @@ export async function allocateLeadAgents(formData: FormData) {
 }
 
 export async function bulkAllocateLeads(formData: FormData) {
+  if (await staffActionError()) return;
   const leadIds = [
     ...new Set(formData.getAll("leadIds").map((value) => String(value)).filter(Boolean)),
   ];
