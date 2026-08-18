@@ -1,19 +1,40 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { readRecordingFile } from "@/lib/recording-files";
+import { rejectUnlessStaff } from "@/lib/staff-auth";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
+export type RecordingLookup = {
+  fileName: string;
+  storedName: string;
+  mimeType: string | null;
+  customer: { id: string } | null;
+};
+
+export async function handleRecordingDownload(
+  request: Request,
+  id: string,
+  deps: {
+    findRecording: (id: string) => Promise<RecordingLookup | null>;
+    readFile: (storedName: string) => Promise<Buffer>;
+  } = {
+    findRecording: (recordingId) =>
+      prisma.callRecording.findUnique({
+        where: { id: recordingId },
+        include: { customer: { select: { id: true } } },
+      }),
+    readFile: readRecordingFile,
+  },
 ) {
-  const { id } = await params;
-  const recording = await prisma.callRecording.findUnique({ where: { id } });
-  if (!recording) {
+  const denied = rejectUnlessStaff(request);
+  if (denied) return denied;
+
+  const recording = await deps.findRecording(id);
+  if (!recording?.customer) {
     return NextResponse.json({ error: "Recording not found." }, { status: 404 });
   }
 
   try {
-    const bytes = await readRecordingFile(recording.storedName);
+    const bytes = await deps.readFile(recording.storedName);
     const lower = recording.fileName.toLowerCase();
     const type =
       recording.mimeType ||
@@ -34,4 +55,12 @@ export async function GET(
   } catch {
     return NextResponse.json({ error: "File is missing from disk." }, { status: 404 });
   }
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  return handleRecordingDownload(request, id);
 }

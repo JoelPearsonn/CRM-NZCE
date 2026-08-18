@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -8,12 +9,13 @@ datasource db {
 }
 
 model Agent {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  role      String   @default("Sales")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  role         String   @default("Sales")
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   meters          Meter[]
   deals            Deal[]
@@ -360,4 +362,16 @@ model DeskReminder {
   dueDate   DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+/** One-time staff signup link. Store the hash only — never the raw token. */
+model StaffVerifyToken {
+  id        String    @id @default(cuid())
+  email     String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
 }

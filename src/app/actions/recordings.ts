@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { logActivity } from "@/lib/activity";
 import { optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 import { storeRecordingFile } from "@/lib/recording-files";
 
 export type ActionState = { error?: string };
@@ -12,6 +13,8 @@ export async function addCallRecording(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const customerId = str(formData.get("customerId"));
   const note = str(formData.get("note"));
   const authorId = optionalStr(formData.get("authorId"));

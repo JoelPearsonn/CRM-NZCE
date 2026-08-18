@@ -1,7 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
+import type { DeskPrisma } from "@/lib/prisma";
 
 export async function findSupplyClash(
-  db: PrismaClient,
+  db: DeskPrisma,
   mpan: string | null,
   mprn: string | null,
   excludeId?: string | null,

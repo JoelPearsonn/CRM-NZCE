@@ -73,7 +73,51 @@ You can also add one customer by hand: **Add customer** → add a meter → give
 - Tender-email generation
 - Monthly report PDFs
 - Hard delete of live customer data
-- Real login / permissions
+- Google / Clerk / OAuth staff login (each desk person uses their own local password)
+
+## Staff lock
+
+This desk is for NZCE staff. Joel approved a **Vercel Hobby** deploy on the same account as the site (new project, e.g. `nzce-crm`). Do **not** add a Cloudflare tunnel. Do **not** commit customer data.
+
+Read-only HTML can still render, but exports, imports, recordings, LOA files, search JSON, and every write stay **closed** until that person has a password and signs in at `/login`.
+
+There is **no shared desk password** and no password in env, chat, or git.
+
+First time: open `/login`, type an `@nzcenergy.co.uk` work email (Joel’s is `joel.pearson@nzcenergy.co.uk`). The desk emails a one-time link to that inbox. **Create password is not shown until the link is opened.** The link is `/login/verify?token=…`, lasts one hour, is stored as a hash, and can be used once. Then they type a password twice; it is hashed and stored. They are signed in.
+
+Later visits: work email + that password only. No verification email that time.
+
+Other domains are rejected. If `RESEND_API_KEY` is missing, the desk fails closed: no email claimed, no account created. Joel adds mail and session keys himself on Vercel. Do not paste those into chat. Do not start a Cloudflare tunnel.
+
+Writes, exports, and downloads stay **closed** until that person has completed verification and create-password. The session cookie is httpOnly, Secure, SameSite=Lax, lasts 12 hours, and is bound to that work email.
+
+DocuSign Connect must send HMAC (`X-DocuSign-Signature-1`). If `DOCUSIGN_WEBHOOK_SECRET` is missing, the webhook is rejected.
+
+Optional customer-portal demo login (local only — rotate anything that used to live in source, and never commit real values):
+
+```
+PORTAL_DEMO_EMAIL=
+PORTAL_DEMO_PASSWORD=
+PORTAL_DEMO_TOKEN=
+```
+
+Do not commit customer names as replacements. Do not commit live database dumps.
+
+## Vercel
+
+New Hobby project (not a tunnel). Production branch can be this PR branch until it merges.
+
+Joel adds these on the Vercel project (empty names only live in `.env.example` — no secrets in git):
+
+| Var | Role |
+|---|---|
+| `RESEND_API_KEY` | Required to send the first-time verification email. Missing ⇒ fail closed. |
+| `CRM_MAIL_FROM` | From-address. Defaults to `info@nzcenergy.co.uk`. |
+| `CRM_PUBLIC_URL` | Set to the Vercel production URL once it exists (used in the verify link). |
+| `CRM_SESSION_SECRET` | Optional cookie-signing key. Not a login password. |
+| `DOCUSIGN_WEBHOOK_SECRET` | Connect HMAC. Missing ⇒ webhook 401. |
+
+`npm run build` runs `prisma generate && next build` (not `prisma db push`). If `DATABASE_URL` is unset at compile time, generate uses a dummy `file:./dev.db` so Vercel Hobby does not need a live database. Local `npm run dev` still pushes the SQLite schema. Do not seed live customer data onto Vercel.
 
 ## Demo book
 

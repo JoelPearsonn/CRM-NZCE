@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import type { PrismaClient } from "@prisma/client";
 import { logActivity } from "@/lib/activity";
 import { DOCX_MIME, fillDocxTemplate, type LoaPlaceholderValues } from "@/lib/docx-fill";
+import type { DeskPrisma } from "@/lib/prisma";
 
 export type TpiLoaKind = "IE" | "JOOSE";
 
@@ -167,7 +167,7 @@ export async function generateTpiLoa(options: {
   customerId: string;
   kind?: string | null;
   leadId?: string | null;
-  db: PrismaClient;
+  db: DeskPrisma;
   now?: Date;
   markRequested?: boolean;
   template?: Buffer | null;

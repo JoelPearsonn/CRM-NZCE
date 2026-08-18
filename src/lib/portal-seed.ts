@@ -1,41 +1,27 @@
-import type { PrismaClient } from "@prisma/client";
 import { hashPassword } from "@/lib/portal-crypto";
-import {
-  HARBOUR_PORTAL_EMAIL,
-  HARBOUR_PORTAL_PASSWORD,
-  HARBOUR_PORTAL_TOKEN,
-} from "@/lib/portal-constants";
-import { prisma } from "@/lib/prisma";
+import { portalDemoCredentials } from "@/lib/portal-constants";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
-export async function ensurePortalAccounts(db: PrismaClient = prisma) {
-  const harbour = await db.customer.findFirst({
-    where: { companyName: "Harbour View Hotels Ltd", archivedAt: null },
-  });
-  if (harbour) {
-    await upsertAccount(db, {
-      customerId: harbour.id,
-      email: HARBOUR_PORTAL_EMAIL,
-      password: HARBOUR_PORTAL_PASSWORD,
-      magicToken: HARBOUR_PORTAL_TOKEN,
-    });
-  }
+export async function ensurePortalAccounts(db: DeskPrisma = prisma) {
+  const demo = portalDemoCredentials();
+  if (!demo.email || !demo.password) return;
 
-  const bakery = await db.customer.findFirst({
-    where: { companyName: "Greenfield Artisan Bakery", archivedAt: null },
+  const customer = await db.customer.findFirst({
+    where: { email: demo.email, archivedAt: null },
   });
-  if (bakery) {
-    await upsertAccount(db, {
-      customerId: bakery.id,
-      email: bakery.email.toLowerCase(),
-      password: "bakery-view",
-      magicToken: "bakery-portal",
-    });
-  }
+  if (!customer) return;
+
+  await upsertAccount(db, {
+    customerId: customer.id,
+    email: demo.email,
+    password: demo.password,
+    magicToken: demo.token || null,
+  });
 }
 
 async function upsertAccount(
-  db: PrismaClient,
-  input: { customerId: string; email: string; password: string; magicToken: string },
+  db: DeskPrisma,
+  input: { customerId: string; email: string; password: string; magicToken: string | null },
 ) {
   const existing = await db.customerAccount.findUnique({ where: { customerId: input.customerId } });
   const passwordHash = existing?.passwordHash || hashPassword(input.password);

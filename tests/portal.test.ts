@@ -12,8 +12,8 @@ import { loadPortalBook } from "../src/lib/portal-book";
 import { withTestDb } from "./helpers/test-db";
 
 test("portal password hash verifies, and a wrong password does not", () => {
-  const stored = hashPassword("harbour-view");
-  assert.equal(verifyPassword("harbour-view", stored), true);
+  const stored = hashPassword("test-password");
+  assert.equal(verifyPassword("test-password", stored), true);
   assert.equal(verifyPassword("wrong", stored), false);
 });
 

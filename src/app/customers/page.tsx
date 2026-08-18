@@ -12,6 +12,7 @@ import { CALL_NOTE_KINDS, LOA_STATUSES, OBJECTION_STATUSES, labelFor } from "@/l
 import { financeTotals } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 import { siteCount } from "@/lib/sites";
 import { sortDir, sortHref } from "@/lib/sort";
@@ -36,7 +37,7 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
       },
       orderBy: { companyName: "asc" },
     }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
     prisma.customer.count({ where: { archivedAt: { not: null } } }),
   ]);
 

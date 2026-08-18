@@ -6,7 +6,10 @@ import { prisma } from "@/lib/prisma";
 
 export default async function EditAgentPage({ params }: IdPageProps) {
   const { id } = await params;
-  const agent = await prisma.agent.findUnique({ where: { id } });
+  const agent = await prisma.agent.findUnique({
+    where: { id },
+    select: { id: true, name: true, email: true, role: true },
+  });
   if (!agent) notFound();
 
   return (

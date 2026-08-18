@@ -16,6 +16,7 @@ import { parseCsvDate } from "@/lib/csv-dates";
 import { liveDealOnSupply } from "@/lib/deals";
 import { optionalStr, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type DealImportState = {
   error?: string;
@@ -151,6 +152,8 @@ export async function runDealImport(
   _prev: DealImportState,
   formData: FormData,
 ): Promise<DealImportState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const intent = str(formData.get("intent")) || "preview";
   const file = formData.get("file");
   const pasted = str(formData.get("csv"));

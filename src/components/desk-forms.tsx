@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Agent } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { addCallNote, addTask, logEmail, type ActionState } from "@/app/actions/desk";
 import { addCallRecording } from "@/app/actions/recordings";
 import { ErrorBanner, Field } from "@/components/ui";
@@ -15,7 +15,7 @@ export function NoteForm({
   workingAsId,
 }: {
   customerId: string;
-  agents: Agent[];
+  agents: PublicAgent[];
   workingAsId?: string | null;
 }) {
   const [state, action, pending] = useActionState(addCallNote, empty);
@@ -69,7 +69,7 @@ export function RecordingForm({
   workingAsId,
 }: {
   customerId: string;
-  agents: Agent[];
+  agents: PublicAgent[];
   workingAsId?: string | null;
 }) {
   const [state, action, pending] = useActionState(addCallRecording, empty);
@@ -151,7 +151,7 @@ export function TaskForm({
   workingAsId,
 }: {
   customerId: string;
-  agents: Agent[];
+  agents: PublicAgent[];
   workingAsId?: string | null;
 }) {
   const [state, action, pending] = useActionState(addTask, empty);

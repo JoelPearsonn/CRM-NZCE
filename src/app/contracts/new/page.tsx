@@ -1,6 +1,7 @@
 import { DealForm } from "@/components/forms";
 import { PageHeader } from "@/components/ui";
 import type { SearchPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 
 export default async function NewDealPage({ searchParams }: SearchPageProps) {
@@ -19,7 +20,7 @@ export default async function NewDealPage({ searchParams }: SearchPageProps) {
       where: customerId ? { customerId } : undefined,
       orderBy: { title: "asc" },
     }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
   ]);
 
   return (

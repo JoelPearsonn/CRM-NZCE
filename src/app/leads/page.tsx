@@ -7,6 +7,7 @@ import { LEAD_STAGES } from "@/lib/constants";
 import { loaBoardFlags } from "@/lib/lead-card";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import type { SearchPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeadsPage({ searchParams }: SearchPageProps) {
@@ -26,7 +27,7 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
       },
       orderBy: { updatedAt: "desc" },
     }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
     prisma.loaEnvelope.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
   const latestLoa = new Map<string, (typeof envelopes)[number]>();

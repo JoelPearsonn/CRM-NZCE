@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { DealForm } from "@/components/forms";
 import { PageHeader } from "@/components/ui";
 import type { IdPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 
 export default async function EditDealPage({ params }: IdPageProps) {
@@ -19,7 +20,7 @@ export default async function EditDealPage({ params }: IdPageProps) {
     }),
     prisma.meter.findMany({ where: { customerId: deal.customerId }, orderBy: { siteName: "asc" } }),
     prisma.lead.findMany({ where: { customerId: deal.customerId }, orderBy: { title: "asc" } }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
   ]);
 
   return (

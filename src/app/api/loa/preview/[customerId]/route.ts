@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { buildLoaDocument } from "@/lib/loa-document";
 import { prisma } from "@/lib/prisma";
+import { rejectUnlessStaff } from "@/lib/staff-auth";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ customerId: string }> },
 ) {
+  const denied = rejectUnlessStaff(request);
+  if (denied) return denied;
   const { customerId } = await params;
   const customer = await prisma.customer.findUnique({
     where: { id: customerId },

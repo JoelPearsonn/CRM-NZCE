@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Agent } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { allocateLeadAgents, updateLeadStage } from "@/app/actions/leads";
 import { isWonLeadStage, LEAD_STAGES, LOST_REASONS, WON_REASONS } from "@/lib/constants";
 
@@ -110,7 +110,7 @@ export function AllocateAgents({
   selectedIds,
 }: {
   leadId: string;
-  agents: Agent[];
+  agents: PublicAgent[];
   selectedIds: string[];
 }) {
   return (
@@ -138,7 +138,7 @@ export function AllocateDisclosure({
   selectedIds,
 }: {
   leadId: string;
-  agents: Agent[];
+  agents: PublicAgent[];
   selectedIds: string[];
 }) {
   return (

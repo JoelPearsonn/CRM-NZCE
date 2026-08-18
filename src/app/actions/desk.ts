@@ -6,6 +6,7 @@ import { CALL_NOTE_KINDS } from "@/lib/constants";
 import { rollQuarterDue } from "@/lib/desk-reminders";
 import { isEmail, optionalStr, parseDate, str } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export type ActionState = { error?: string };
@@ -19,6 +20,8 @@ export async function addCallNote(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const customerId = str(formData.get("customerId"));
   const body = str(formData.get("body"));
   const authorId = optionalStr(formData.get("authorId"));
@@ -43,6 +46,8 @@ export async function logEmail(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const customerId = str(formData.get("customerId"));
   const subject = str(formData.get("subject"));
   const fromAddr = str(formData.get("fromAddr"));
@@ -74,6 +79,8 @@ export async function addTask(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const customerId = str(formData.get("customerId"));
   const title = str(formData.get("title"));
   if (!customerId) return { error: "Customer is missing." };
@@ -93,6 +100,7 @@ export async function addTask(
 }
 
 export async function toggleTask(formData: FormData) {
+  if (await staffActionError()) return;
   const id = str(formData.get("id"));
   if (!id) return;
   const task = await prisma.task.findUnique({ where: { id } });
@@ -107,6 +115,7 @@ export async function toggleTask(formData: FormData) {
 }
 
 export async function completeDeskReminder(formData: FormData) {
+  if (await staffActionError()) return;
   const admin = await getWorkingAsAdmin();
   if (!admin) return;
   const id = str(formData.get("id"));

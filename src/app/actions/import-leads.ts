@@ -7,6 +7,7 @@ import { parseCsv, rowToRecord, validateLeadRow, type LeadPreviewRow } from "@/l
 import { optionalStr, str } from "@/lib/format";
 import { withMondayGroupNote } from "@/lib/lead-board";
 import { prisma } from "@/lib/prisma";
+import { staffActionError } from "@/lib/staff-session";
 
 export type LeadImportState = {
   error?: string;
@@ -101,6 +102,8 @@ export async function runLeadImport(
   _prev: LeadImportState,
   formData: FormData,
 ): Promise<LeadImportState> {
+  const denied = await staffActionError();
+  if (denied) return denied;
   const intent = str(formData.get("intent")) || "preview";
   const file = formData.get("file");
   const pasted = str(formData.get("csv"));

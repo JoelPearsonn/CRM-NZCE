@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
-import type { PrismaClient } from "@prisma/client";
 import { PORTAL_COOKIE } from "@/lib/portal-constants";
 import { newSessionToken, verifyPassword } from "@/lib/portal-crypto";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export { PORTAL_COOKIE } from "@/lib/portal-constants";
 export { hashPassword, newSessionToken, verifyPassword } from "@/lib/portal-crypto";
@@ -41,7 +40,7 @@ export async function authenticatePortal(input: {
   return { ok: true as const, account: signedIn };
 }
 
-export async function getPortalAccount(db: PrismaClient = prisma) {
+export async function getPortalAccount(db: DeskPrisma = prisma) {
   try {
     const store = await cookies();
     const token = store.get(PORTAL_COOKIE)?.value;

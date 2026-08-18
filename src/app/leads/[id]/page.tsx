@@ -9,6 +9,7 @@ import { isDocusignConfigured } from "@/lib/docusign";
 import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
+import { listDeskAgents } from "@/lib/agents";
 import { prisma } from "@/lib/prisma";
 import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
 
@@ -31,7 +32,7 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         tenderResponses: { orderBy: [{ status: "asc" }, { receivedOn: "desc" }] },
       },
     }),
-    prisma.agent.findMany({ orderBy: { name: "asc" } }),
+    listDeskAgents(),
   ]);
   if (!lead) notFound();
   const boardStage = resolveLeadBoardStage(lead);

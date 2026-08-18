@@ -21,6 +21,7 @@ import { ensureLeadBoardStages, persistableLeadStage, resolveLeadBoardStage } fr
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
 import { runLeadImport } from "../src/app/actions/import-leads";
+import { previewMeterImport } from "../src/lib/csv-import-preview";
 import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
 import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
@@ -386,36 +387,20 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
 });
 
 test("import actions return a visible preview from the sample templates", async () => {
-  const empty = new FormData();
-  empty.set("intent", "preview");
-  const missing = await runImport({}, empty);
-  assert.equal(missing.error, "Choose a CSV file.");
-  assert.equal(missing.preview, undefined);
+  const locked = new FormData();
+  locked.set("csv", csvTemplate());
+  locked.set("intent", "preview");
+  assert.equal((await runImport({}, locked)).error, "Staff sign-in required.");
+  assert.equal((await runDealImport({}, locked)).error, "Staff sign-in required.");
+  assert.equal((await runLeadImport({}, locked)).error, "Staff sign-in required.");
 
-  const meters = new FormData();
-  meters.set("csv", csvTemplate());
-  meters.set("intent", "preview");
-  const meterState = await runImport({}, meters);
-  assert.equal(meterState.error, undefined);
-  assert.ok(meterState.preview);
-  assert.ok((meterState.preview?.rows.length ?? 0) >= 1);
-  assert.equal(meterState.committed, undefined);
-
-  const deals = new FormData();
-  deals.set("csv", dealsCsvTemplate());
-  deals.set("intent", "preview");
-  const dealState = await runDealImport({}, deals);
-  assert.equal(dealState.error, undefined);
-  assert.ok(dealState.preview);
-  assert.ok((dealState.preview?.rows.length ?? 0) >= 1);
-
-  const leads = new FormData();
-  leads.set("csv", leadsCsvTemplate());
-  leads.set("intent", "preview");
-  const leadState = await runLeadImport({}, leads);
-  assert.equal(leadState.error, undefined);
-  assert.ok(leadState.preview);
-  assert.ok((leadState.preview?.rows.length ?? 0) >= 1);
+  await withTestDb(async (db) => {
+    const meterState = await previewMeterImport(db, csvTemplate());
+    assert.equal(meterState.error, undefined);
+    assert.ok(meterState.preview);
+    assert.ok((meterState.preview?.rows.length ?? 0) >= 1);
+    assert.equal(meterState.preview?.rows[0]?.action, "CREATE_CUSTOMER");
+  });
 });
 
 test("CSV import source never deletes customers or meters", () => {

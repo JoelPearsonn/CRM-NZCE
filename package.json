@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && prisma db push && next dev --turbopack",
-    "build": "prisma generate && prisma db push && next build",
+    "build": "DATABASE_URL=\"${DATABASE_URL:-file:./dev.db}\" prisma generate && next build",
     "start": "prisma generate && next start",
     "lint": "eslint",
-    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts",
+    "test": "tsx --test tests/finance.test.ts tests/desk-rules.test.ts tests/portal.test.ts tests/loa.test.ts tests/security.test.ts",
+    "staff-hash": "tsx scripts/staff-hash.ts",
     "seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
     "db:seed": "prisma generate && prisma db push && tsx prisma/seed.ts",
     "db:reset": "prisma db push --force-reset && tsx prisma/seed.ts",
