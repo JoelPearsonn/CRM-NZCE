@@ -117,7 +117,7 @@ Joel adds these on the Vercel project (empty names only live in `.env.example` â
 | `CRM_SESSION_SECRET` | Optional cookie-signing key. Not a login password. |
 | `DOCUSIGN_WEBHOOK_SECRET` | Connect HMAC. Missing â‡’ webhook 401. |
 
-`npm run build` is `prisma generate && next build` so Vercel does not need a live database at compile time. Local `npm run dev` still pushes the SQLite schema. Do not seed live customer data onto Vercel.
+`npm run build` runs `prisma generate && next build` (not `prisma db push`). If `DATABASE_URL` is unset at compile time, generate uses a dummy `file:./dev.db` so Vercel Hobby does not need a live database. Local `npm run dev` still pushes the SQLite schema. Do not seed live customer data onto Vercel.
 
 ## Demo book
 
