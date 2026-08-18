@@ -184,6 +184,7 @@ a {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  height: auto;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: auto;
@@ -217,6 +218,8 @@ a {
   gap: 0.75rem;
   width: max-content;
   min-width: calc(var(--lead-col-count, 16) * 260px);
+  height: auto;
+  max-height: calc(70vh + 4rem);
 }
 
 .leads-column,
@@ -225,16 +228,19 @@ a {
   display: flex;
   flex-direction: column;
   flex: 0 0 240px;
+  align-self: flex-start;
   width: 240px;
   min-width: 240px;
   max-width: 240px;
+  max-height: calc(70vh + 3.5rem);
   overflow: hidden;
 }
 
 .leads-column-cards,
 .lead-column-cards {
   min-width: 0;
-  max-height: min(70vh, 42rem);
+  min-height: 0;
+  max-height: min(70vh, 36rem);
   overflow-x: hidden;
   overflow-y: auto;
 }

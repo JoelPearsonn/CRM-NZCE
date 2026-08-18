@@ -345,23 +345,31 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(css.includes("leads-board-rail"), false);
   assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*width:\s*100%/s);
   assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*max-width:\s*100%/s);
+  assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*height:\s*auto/s);
   assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*overflow-x:\s*auto/s);
   assert.match(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*overflow-y:\s*hidden/s);
   assert.match(css, /\.leads-board::-webkit-scrollbar,\s*\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
   assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*display:\s*inline-flex/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*align-items:\s*flex-start/s);
   assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*flex-wrap:\s*nowrap/s);
   assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*height:\s*auto/s);
+  assert.match(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*max-height:\s*calc\(70vh \+ 4rem\)/s);
   assert.match(
     css,
     /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*min-width:\s*calc\(var\(--lead-col-count,\s*16\)\s*\*\s*260px\)/s,
   );
   assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
+  assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*align-self:\s*flex-start/s);
+  assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*max-height:\s*calc\(70vh \+ 3\.5rem\)/s);
   assert.match(css, /\.leads-column,\s*\.lead-column\s*\{[^}]*overflow:\s*hidden/s);
   assert.match(
     css,
-    /\.leads-column-cards,\s*\.lead-column-cards\s*\{[^}]*max-height:\s*min\(70vh,\s*42rem\)/s,
+    /\.leads-column-cards,\s*\.lead-column-cards\s*\{[^}]*max-height:\s*min\(70vh,\s*36rem\)/s,
   );
   assert.match(css, /\.leads-column-cards,\s*\.lead-column-cards\s*\{[^}]*overflow-y:\s*auto/s);
+  assert.doesNotMatch(css, /\.leads-board[^{]*\{[^}]*min-height:/s);
+  assert.doesNotMatch(css, /\.leads-board-row[^{]*\{[^}]*min-height:/s);
   assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*clip/s);
   assert.match(css, /\.desk-pane-main\s*\{[^}]*overflow-x:\s*clip/s);
   assert.match(css, /\.desk-main\s*\{[^}]*overflow-x:\s*clip/s);
@@ -385,6 +393,8 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(kanban.includes("leads-board-rail"), false);
   assert.equal(kanban.includes("Company —"), false);
   assert.equal(kanban.includes("data-testid=\"lead-column-count\""), true);
+  assert.equal(kanban.includes("min-h-16"), false);
+  assert.equal(kanban.includes("min-h-screen"), false);
   assert.match(jump, /<button/);
   assert.equal(jump.includes("href"), false);
   assert.equal(jump.includes("?stage="), false);
