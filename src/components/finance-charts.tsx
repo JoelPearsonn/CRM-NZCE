@@ -1,5 +1,7 @@
+"use client";
+
 import { gbp } from "@/lib/format";
-import type { Bucket } from "@/lib/finance";
+import { cashflowBarCaption, type Bucket } from "@/lib/finance";
 
 export function GroupedBars({
   rows,
@@ -21,7 +23,7 @@ export function GroupedBars({
 
   return (
     <>
-      <div className="hidden px-4 py-4 md:block">
+      <div className="cashflow-chart-panel">
         <div className="mb-3 flex gap-4 text-[0.7rem] text-muted">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 bg-brass" /> {leftLabel}
@@ -30,37 +32,66 @@ export function GroupedBars({
             <span className="inline-block h-2.5 w-2.5 bg-moss" /> {rightLabel}
           </span>
         </div>
-        <div className="flex h-52 items-end gap-5">
-          {rows.map((row) => (
-            <div key={row.key} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-              <div className="flex h-44 w-full items-end justify-center gap-1">
-                <Bar value={row[left]} max={max} tone="brass" label={gbp(row[left])} />
-                <Bar value={row[right]} max={max} tone="moss" label={gbp(row[right])} />
-              </div>
-              <p className="text-center text-[0.7rem] font-medium text-ink">{row.label}</p>
-            </div>
-          ))}
+        <div className="cashflow-chart" data-testid="cashflow-chart">
+          <div className="cashflow-chart-track">
+            {rows.map((row) => {
+              const caption = cashflowBarCaption(row, left);
+              return (
+                <div
+                  key={row.key}
+                  className="cashflow-month"
+                  data-testid="cashflow-month"
+                  data-month={row.key}
+                  tabIndex={0}
+                  aria-label={`${caption.month} ${caption.value}`}
+                >
+                  <div className="cashflow-bar-lift">
+                    <div className="cashflow-bar-pair">
+                      <Bar value={row[left]} max={max} tone="brass" />
+                      <Bar value={row[right]} max={max} tone="moss" />
+                    </div>
+                  </div>
+                  <div className="cashflow-bar-caption" data-testid="cashflow-bar-caption">
+                    <div className="cashflow-bar-caption-text">
+                      <p className="cashflow-bar-caption-month">{caption.month}</p>
+                      <p className="cashflow-bar-caption-value">{caption.value}</p>
+                      {caption.parts.length ? (
+                        <p className="cashflow-bar-caption-parts">{caption.parts.join(" · ")}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <p className="cashflow-month-label">{row.label}</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
-      <ul className="space-y-2 p-4 md:hidden">
-        {rows.map((row) => (
-          <li key={row.key} className="rounded-sm border border-rule bg-paper px-3 py-2.5">
-            <div className="mb-1.5 flex items-baseline justify-between gap-2">
-              <span className="font-medium">{row.label}</span>
-              <span className="text-[0.7rem] text-muted">
-                {leftLabel} {gbp(row[left])} · {rightLabel} {gbp(row[right])}
-              </span>
-            </div>
-            <div className="space-y-1">
-              <div className="h-2 bg-[#ebe4d4]">
-                <div className="h-2 bg-brass" style={{ width: `${(row[left] / max) * 100}%` }} />
+      <ul className="cashflow-chart-list space-y-2 p-4">
+        {rows.map((row) => {
+          const caption = cashflowBarCaption(row, left);
+          return (
+            <li key={row.key} className="rounded-sm border border-rule bg-paper px-3 py-2.5">
+              <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="font-medium">{caption.month}</span>
+                <span className="text-[0.7rem] text-muted">
+                  {leftLabel} {caption.value} · {rightLabel} {gbp(row.paid)}
+                </span>
               </div>
-              <div className="h-2 bg-[#ebe4d4]">
-                <div className="h-2 bg-moss" style={{ width: `${(row[right] / max) * 100}%` }} />
+              {caption.parts.length ? (
+                <p className="mb-2 text-[0.7rem] text-muted">{caption.parts.join(" · ")}</p>
+              ) : null}
+              <div className="space-y-1">
+                <div className="h-2 bg-[#ebe4d4]">
+                  <div className="h-2 bg-brass" style={{ width: `${(row[left] / max) * 100}%` }} />
+                </div>
+                <div className="h-2 bg-[#ebe4d4]">
+                  <div className="h-2 bg-moss" style={{ width: `${(row[right] / max) * 100}%` }} />
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </>
   );
@@ -70,24 +101,13 @@ function Bar({
   value,
   max,
   tone,
-  label,
 }: {
   value: number;
   max: number;
   tone: "brass" | "moss";
-  label: string;
 }) {
-  const height = Math.max(value > 0 ? 8 : 2, Math.round((value / max) * 160));
-  return (
-    <div className="flex w-7 flex-col items-center justify-end">
-      <span className="mb-1 text-[0.62rem] text-muted">{value > 0 ? label : ""}</span>
-      <div
-        className={tone === "brass" ? "w-full bg-brass" : "w-full bg-moss"}
-        style={{ height }}
-        title={label}
-      />
-    </div>
-  );
+  const height = Math.max(value > 0 ? 10 : 3, Math.round((value / max) * 148));
+  return <div className={`cashflow-bar-rect is-${tone}`} style={{ height }} />;
 }
 
 export function HorizonBars({

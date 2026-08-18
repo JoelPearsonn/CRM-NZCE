@@ -241,14 +241,16 @@ export function Section({
   action,
   children,
   id,
+  className,
 }: {
   title: string;
   action?: React.ReactNode;
   children: React.ReactNode;
   id?: string;
+  className?: string;
 }) {
   return (
-    <section id={id} className="card overflow-x-auto">
+    <section id={id} className={`card desk-section ${className ?? ""}`.trim()}>
       <div className="section-head">
         <h2 className="section-title">{title}</h2>
         {action}

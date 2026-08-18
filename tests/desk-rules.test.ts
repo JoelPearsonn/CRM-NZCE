@@ -16,7 +16,8 @@ import {
 } from "../src/lib/constants";
 import { LeadCardFacts } from "../src/components/lead-card-facts";
 import { countLeadsByColumn, leadBoardColumns, loaBoardFlags } from "../src/lib/lead-card";
-import { ensureLeadBoardStages, resolveLeadBoardStage } from "../src/lib/lead-board";
+import { mergeCustomerLoaItems } from "../src/lib/customer-loa";
+import { ensureLeadBoardStages, persistableLeadStage, resolveLeadBoardStage } from "../src/lib/lead-board";
 import { runImport } from "../src/app/actions/import";
 import { runDealImport } from "../src/app/actions/import-deals";
 import { runLeadImport } from "../src/app/actions/import-leads";
@@ -169,6 +170,11 @@ test("lead board columns match Monday Customer Board groups and import mapping",
     resolveLeadBoardStage({ stage: "", notes: "Called.\nMonday group: Hot lead Joel" }),
     "Hot lead Joel",
   );
+  assert.equal(
+    persistableLeadStage("Won", "Monday group: Potential Lead Joel"),
+    "Won",
+  );
+  assert.equal(persistableLeadStage("Harry Accuradata Leads", null), "Harry Accuradata Leads");
 
   const monday = validateLeadRow(
     {
@@ -337,14 +343,36 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadBoardColumns("Won").length, 1);
 
   const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-x:\s*scroll/s);
-  assert.match(css, /\.lead-board\s*\{[^}]*overflow-y:\s*hidden/s);
+  const leadBoard = css.match(/\.lead-board\s*\{[^}]*\}/)?.[0] ?? "";
+  assert.match(leadBoard, /overflow-x:\s*auto/);
+  assert.match(leadBoard, /overflow-y:\s*auto/);
+  assert.match(leadBoard, /flex:\s*1;/);
+  assert.match(leadBoard, /min-height:\s*0/);
+  assert.equal(leadBoard.includes("100dvh"), false);
+  assert.equal(leadBoard.includes("14rem"), false);
+  assert.equal(leadBoard.includes("overflow-y: hidden"), false);
   assert.match(css, /\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
   assert.match(css, /\.lead-board-row\s*\{[^}]*width:\s*max-content/s);
   assert.match(css, /\.lead-column\s*\{[^}]*flex:\s*0 0 240px/s);
-  assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.desk-main:has\(\.lead-board-shell\)\s*\{[^}]*overflow-x:\s*visible/s);
-  assert.match(css, /\.lead-page\s*\{[^}]*overflow-x:\s*visible/s);
+  assert.match(css, /\.lead-board-fill\s*\{[^}]*flex:\s*1/s);
+  assert.match(css, /\.desk-main-slot\s*\{[^}]*flex:\s*1/s);
+  assert.equal(css.includes("overflow: scroll hidden"), false);
+  assert.equal(css.includes("overflow: auto visible"), false);
+  const cashflowChart = css.match(/\.cashflow-chart\s*\{[^}]*\}/)?.[0] ?? "";
+  assert.match(cashflowChart, /overflow-x:\s*auto/);
+  assert.match(cashflowChart, /overflow-y:\s*auto/);
+  assert.equal(cashflowChart.includes("visible"), false);
+  assert.match(css, /\.cashflow-bar-caption\s*\{[^}]*pointer-events:\s*none/s);
+  assert.match(css, /\.cashflow-month:hover\s+\.cashflow-bar-lift/s);
+  assert.match(css, /\.cashflow-chart:hover \.cashflow-month:not\(:hover\)/s);
+  assert.match(css, /\.cashflow-chart-track\s*\{[^}]*align-items:\s*stretch/s);
+  const financeCharts = readFileSync(path.join(import.meta.dirname, "../src/components/finance-charts.tsx"), "utf8");
+  assert.equal(financeCharts.includes("hidden md:block"), false);
+  assert.equal(financeCharts.includes("hoverKey"), false);
+  assert.equal(financeCharts.includes("onMouseEnter"), false);
+  const sectionSource = readFileSync(path.join(import.meta.dirname, "../src/components/ui.tsx"), "utf8");
+  assert.match(sectionSource, /function Section[\s\S]*desk-section/);
+  assert.equal(/function Section[\s\S]*overflow-x-auto/.test(sectionSource), false);
   const kanban = readFileSync(path.join(import.meta.dirname, "../src/components/lead-kanban.tsx"), "utf8");
   assert.equal(kanban.includes("columns.slice"), false);
   assert.equal(kanban.includes("column.length === 0"), true);
@@ -620,6 +648,63 @@ test("renewal reminder tasks skip archived customers", async () => {
     assert.equal(await db.task.count({ where: { customerId: live.id } }), 1);
     assert.equal(await db.task.count({ where: { customerId: archived.id } }), 0);
   });
+});
+
+test("marking a renewal task done does not clone a second open task", async () => {
+  await withTestDb(async (db) => {
+    const customer = await db.customer.create({
+      data: {
+        companyName: "Test Book Ltd",
+        contactName: "Desk User",
+        email: "desk@test-book.example",
+      },
+    });
+    const soon = new Date();
+    soon.setDate(soon.getDate() + 20);
+    await db.meter.create({
+      data: {
+        customerId: customer.id,
+        siteName: "High Street",
+        fuelType: "ELECTRIC",
+        mpan: "1234567890999",
+        renewalDate: soon,
+      },
+    });
+
+    assert.equal(await ensureRenewalReminderTasks(db), 1);
+    const task = await db.task.findFirst({ where: { customerId: customer.id } });
+    assert.ok(task);
+    await db.task.update({ where: { id: task.id }, data: { status: "DONE" } });
+    assert.equal(await ensureRenewalReminderTasks(db), 0);
+    assert.equal(await db.task.count({ where: { customerId: customer.id } }), 1);
+    assert.equal(await db.task.count({ where: { customerId: customer.id, status: "OPEN" } }), 0);
+  });
+});
+
+test("customer LOA list keeps multiple files and still shows a legacy meter copy", () => {
+  const items = mergeCustomerLoaItems({
+    documents: [
+      { id: "d1", fileName: "signed-loa.pdf", source: "UPLOAD", createdAt: new Date("2026-08-01") },
+      { id: "d2", fileName: "second-loa.pdf", source: "UPLOAD", createdAt: new Date("2026-08-02") },
+    ],
+    envelopes: [{ id: "e1", pdfFileName: "filled.pdf", pdfStoredName: "filled.pdf", createdAt: new Date("2026-08-03") }],
+    meters: [
+      {
+        id: "m1",
+        loaFileName: "meter-copy.pdf",
+        loaStoredName: "meter-copy.pdf",
+        siteName: "High Street",
+        mpan: "1234567890123",
+      },
+    ],
+  });
+  assert.equal(items.length, 4);
+  assert.deepEqual(
+    items.map((item) => item.fileName).sort(),
+    ["filled.pdf", "meter-copy.pdf", "second-loa.pdf", "signed-loa.pdf"],
+  );
+  assert.equal(items.find((item) => item.fileName === "meter-copy.pdf")?.source, "METER");
+  assert.equal(items.filter((item) => item.source === "UPLOAD").length, 2);
 });
 
 test("leads board search matches company, contact and MPAN", () => {

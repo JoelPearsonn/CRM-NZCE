@@ -235,17 +235,23 @@ export function MeterForm({
         <Field
           label="Signed LOA copy"
           name="loaFile"
-          hint="Store the signed file here. Use Send LOA on the customer to fill and send the letter."
+          hint="New copies are stored on the customer record so several LOAs can sit together. An older per-meter file can still be opened here."
         >
-          <input id="loaFile" name="loaFile" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.txt" />
           {meter?.loaFileName ? (
             <p className="text-xs text-muted">
               On file:{" "}
-              <a href={`/api/loa/${meter.id}`} className="font-medium text-brass-dark">
+              <a
+                href={`/api/loa/${meter.id}`}
+                className="font-medium text-brass-dark"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 {meter.loaFileName}
               </a>
             </p>
-          ) : null}
+          ) : (
+            <p className="text-xs text-muted">Upload on the customer Letters of Authority panel.</p>
+          )}
         </Field>
       </div>
       <Field label="Objection" name="objectionStatus">

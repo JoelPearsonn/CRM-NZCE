@@ -33,7 +33,7 @@ export function TableLabels({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   return (
-    <div ref={ref} className="contents">
+    <div ref={ref} className="desk-main-slot">
       {children}
     </div>
   );

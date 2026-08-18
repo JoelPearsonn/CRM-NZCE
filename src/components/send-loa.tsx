@@ -63,10 +63,20 @@ export function SendLoaPanel({
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
-            <a href={`/api/loa/preview/${customerId}`} className="btn btn-ghost" target="_blank" rel="noreferrer">
+            <a
+              href={`/api/loa/preview/${customerId}`}
+              className="btn btn-ghost"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Preview filled LOA
             </a>
-            <a href={`/api/loa/pdf/${customerId}`} className="btn btn-ghost" target="_blank" rel="noreferrer">
+            <a
+              href={`/api/loa/pdf/${customerId}`}
+              className="btn btn-ghost"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Download PDF
             </a>
             <form action={action}>
@@ -102,7 +112,17 @@ export function SendLoaPanel({
               </p>
               <div className="mt-2 flex flex-wrap gap-3 text-[0.75rem] font-semibold">
                 {downloadId ? (
-                  <a href={`/api/loa/envelope/${downloadId}`} className="text-brass-dark">
+                  <a
+                    href={`/api/loa/envelope/${downloadId}`}
+                    className="text-brass-dark"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      window.open(`/api/loa/envelope/${downloadId}`, "_blank", "noopener,noreferrer");
+                    }}
+                  >
                     Open filled PDF
                   </a>
                 ) : null}

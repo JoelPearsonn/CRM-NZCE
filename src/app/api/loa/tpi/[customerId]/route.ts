@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { optionalStr, str } from "@/lib/format";
+import { storeGeneratedLoaBytes } from "@/lib/loa-files";
 import { prisma } from "@/lib/prisma";
 import { generateTpiLoa, parseTpiLoaKind } from "@/lib/tpi-loa";
 
@@ -62,6 +63,26 @@ export async function POST(
       status: 400,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
+  }
+  try {
+    const stored = await storeGeneratedLoaBytes(
+      customerId,
+      result.document.fileName,
+      Buffer.from(result.document.docx),
+      "docx",
+    );
+    await prisma.loaDocument.create({
+      data: {
+        customerId,
+        fileName: stored.loaFileName,
+        storedName: stored.loaStoredName,
+        mimeType: result.document.mimeType,
+        source: "GENERATED",
+        note: result.document.templateLabel,
+      },
+    });
+  } catch {
+    // Download still works if the desk cannot keep a copy.
   }
   return letterResponse(result.document, true);
 }

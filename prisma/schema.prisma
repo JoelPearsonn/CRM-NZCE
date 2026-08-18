@@ -52,6 +52,7 @@ model Customer {
   activities      Activity[]
   portalAccount   CustomerAccount?
   loaEnvelopes    LoaEnvelope[]
+  loaDocuments    LoaDocument[]
 }
 
 model CustomerAccount {
@@ -310,6 +311,22 @@ model Activity {
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   actor    Agent?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([customerId, createdAt])
+}
+
+model LoaDocument {
+  id         String   @id @default(cuid())
+  customerId String
+  fileName   String
+  storedName String
+  mimeType   String?
+  source     String   @default("UPLOAD")
+  meterId    String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   @@index([customerId, createdAt])
 }

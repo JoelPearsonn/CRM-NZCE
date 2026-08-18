@@ -46,12 +46,17 @@ export function LeadKanban({
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [stageById, setStageById] = useState<Record<string, string>>({});
   const [, startTransition] = useTransition();
   const columns = leadBoardColumns(stageFilter);
+  const visibleLeads = leads.map((lead) =>
+    stageById[lead.id] ? { ...lead, stage: stageById[lead.id], notes: `Monday group: ${stageById[lead.id]}` } : lead,
+  );
 
   function moveLead(leadId: string, stage: string) {
-    const lead = leads.find((item) => item.id === leadId);
+    const lead = visibleLeads.find((item) => item.id === leadId);
     if (!lead || resolveLeadBoardStage(lead) === stage) return;
+    setStageById((current) => ({ ...current, [leadId]: stage }));
     setPendingId(leadId);
     const formData = new FormData();
     formData.set("id", leadId);
@@ -60,6 +65,10 @@ export function LeadKanban({
       await updateLeadStage(formData);
       setPendingId(null);
     });
+  }
+
+  function readDroppedLeadId(transfer: DataTransfer) {
+    return transfer.getData("text/lead-id") || transfer.getData("text/plain");
   }
 
   function jumpTo(stage: string) {
@@ -91,7 +100,7 @@ export function LeadKanban({
       >
         <div className="lead-board-row">
           {columns.map((item) => {
-            const column = leadsInColumn(leads, item.value);
+            const column = leadsInColumn(visibleLeads, item.value);
             return (
               <section
                 key={item.value}
@@ -106,7 +115,7 @@ export function LeadKanban({
                 }}
                 onDrop={(event) => {
                   event.preventDefault();
-                  const leadId = event.dataTransfer.getData("text/lead-id");
+                  const leadId = readDroppedLeadId(event.dataTransfer);
                   if (leadId) moveLead(leadId, item.value);
                 }}
               >
@@ -127,6 +136,12 @@ export function LeadKanban({
                         data-testid="lead-card"
                         draggable
                         onDragStart={(event) => {
+                          const target = event.target as HTMLElement;
+                          if (target.closest("select, button, input, textarea, summary, label")) {
+                            event.preventDefault();
+                            return;
+                          }
+                          event.dataTransfer.setData("text/plain", lead.id);
                           event.dataTransfer.setData("text/lead-id", lead.id);
                           event.dataTransfer.effectAllowed = "move";
                         }}
@@ -134,7 +149,7 @@ export function LeadKanban({
                         <div className="mb-1 flex items-start justify-between gap-2">
                           <LeadSelect leadId={lead.id} />
                         </div>
-                        <Link href={`/leads/${lead.id}`} className="block">
+                        <Link href={`/leads/${lead.id}`} className="block" draggable={false}>
                           <LeadCardFacts
                             companyName={lead.companyName}
                             contactName={lead.contactName}
@@ -164,6 +179,7 @@ export function LeadKanban({
                             leadId={lead.id}
                             stage={resolveLeadBoardStage(lead)}
                             outcomeReason={lead.outcomeReason}
+                            onMove={moveLead}
                           />
                         </div>
                         <LeadLoaActions customerId={lead.customerId} leadId={lead.id} latest={lead.loa} />

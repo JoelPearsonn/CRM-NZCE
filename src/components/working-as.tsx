@@ -14,7 +14,7 @@ export function WorkingAsPicker({
 
   return (
     <form action={setWorkingAs} className="working-as text-right">
-      <label className="mb-0.5 block text-[0.68rem] font-semibold tracking-[0.12em] text-muted uppercase" htmlFor="working-as">
+      <label className="mb-0.5 block text-[0.68rem] font-semibold tracking-[0.12em] text-gold-soft uppercase" htmlFor="working-as">
         Working as
       </label>
       <select
@@ -23,7 +23,7 @@ export function WorkingAsPicker({
         name="agentId"
         defaultValue={currentId ?? ""}
         onChange={(event) => event.currentTarget.form?.requestSubmit()}
-        className="h-11 max-w-[12rem] border border-rule bg-paper-2 px-2 text-base text-ink md:h-auto md:py-1 md:text-sm"
+        className="h-11 max-w-[12rem] border border-gold/40 bg-card px-2 text-base text-ink md:h-auto md:py-1 md:text-sm"
       >
         <option value="">Desk — no actor</option>
         {agents.map((agent) => (
@@ -32,7 +32,7 @@ export function WorkingAsPicker({
           </option>
         ))}
       </select>
-      <p className="working-as-hint mt-0.5 text-[0.7rem] text-muted">
+      <p className="working-as-hint mt-0.5 text-[0.7rem] text-gold-soft/80">
         {current ? `${current.name} · ${current.role}` : "Notes and activity stay unattributed"}
       </p>
     </form>

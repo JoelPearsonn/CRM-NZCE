@@ -57,6 +57,14 @@ export function resolveLeadBoardStage(lead: {
   return DEFAULT_LEAD_STAGE;
 }
 
+/** Persist the group the desk asked for — do not keep the old Monday note if the request is a known column. */
+export function persistableLeadStage(
+  requested: string | null | undefined,
+  notes?: string | null,
+): LeadStage {
+  return resolveLeadBoardStage({ stage: requested, notes: matchLeadStage(requested ?? "") ? null : notes });
+}
+
 export function isKnownLeadStageInput(raw: string | null | undefined, notes?: string | null) {
   const stage = raw?.trim() ?? "";
   if (!stage) return Boolean(parseMondayGroupNote(notes));

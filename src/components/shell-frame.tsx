@@ -25,13 +25,16 @@ export function ShellFrame({
   }
 
   return (
-    <div className="flex min-h-screen bg-paper">
+    <div className="desk-shell">
       <Sidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="desk-column">
         <header className="desk-header">
           <MobileNav />
           <MasterSearch />
           <WorkingAsPicker agents={agents} currentId={currentId} />
+          <a href="/" className="desk-logo" aria-label="Net Zero Commercial Energy">
+            <img src="/brand/logo-lockup-on-dark.png" alt="Net Zero Commercial Energy" />
+          </a>
         </header>
         <main className="desk-main">
           <TableLabels>{children}</TableLabels>

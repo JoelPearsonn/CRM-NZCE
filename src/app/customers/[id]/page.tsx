@@ -4,7 +4,8 @@ import { CustomerFinanceLedger, FinanceSnapshot } from "@/components/customer-fi
 import { CustomerTenderBook } from "@/components/customer-tenders";
 import { EmailForm, NoteForm, RecordingForm, TaskForm } from "@/components/desk-forms";
 import { GenerateLoaButton, GenerateLoaPanel } from "@/components/generate-loa";
-import { MeterLoaForm } from "@/components/meter-loa";
+import { CustomerLoaPanel } from "@/components/customer-loa";
+import { LoaOpenLink } from "@/components/loa-open-link";
 import { SendLoaPanel } from "@/components/send-loa";
 import { MeterObjectionForm } from "@/components/meter-objection";
 import { TenderCompare } from "@/components/tender-compare";
@@ -28,6 +29,7 @@ import { formatDate, formatDateTime, formatMpan, kwh } from "@/lib/format";
 import { groupMetersBySite } from "@/lib/sites";
 import type { IdPageProps, SearchPageProps } from "@/lib/page-props";
 import { prisma } from "@/lib/prisma";
+import { mergeCustomerLoaItems } from "@/lib/customer-loa";
 import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
 import { getWorkingAsId } from "@/lib/working-as";
 
@@ -59,7 +61,8 @@ export default async function CustomerDetailPage({
         emails: { orderBy: { loggedAt: "desc" } },
         tasks: { include: { assignee: true }, orderBy: [{ status: "asc" }, { dueDate: "asc" }] },
         activities: { include: { actor: true }, orderBy: { createdAt: "desc" } },
-        loaEnvelopes: { orderBy: { createdAt: "desc" }, take: 1 },
+        loaEnvelopes: { orderBy: { createdAt: "desc" } },
+        loaDocuments: { orderBy: { createdAt: "desc" } },
       },
     }),
     prisma.agent.findMany({ orderBy: { name: "asc" } }),
@@ -70,6 +73,11 @@ export default async function CustomerDetailPage({
 
   const finance = financeTotals(customer.deals);
   const loaKind = tpiLoaKindFromDeals(customer.deals);
+  const loaItems = mergeCustomerLoaItems({
+    documents: customer.loaDocuments,
+    envelopes: customer.loaEnvelopes,
+    meters: customer.meters,
+  });
 
   return (
     <div>
@@ -205,9 +213,12 @@ export default async function CustomerDetailPage({
                         </div>
                       ) : null}
                       {meter.loaFileName ? (
-                        <a href={`/api/loa/${meter.id}`} className="mt-1 block text-[0.7rem] font-semibold text-brass-dark">
+                        <LoaOpenLink
+                          href={`/api/loa/${meter.id}`}
+                          className="mt-1 block text-[0.7rem] font-semibold text-brass-dark"
+                        >
                           {meter.loaFileName}
-                        </a>
+                        </LoaOpenLink>
                       ) : null}
                     </td>
                     <td>
@@ -227,37 +238,26 @@ export default async function CustomerDetailPage({
             ))
           )}
           {customer.meters.length > 0 ? (
-            <>
-              <div className="border-t border-rule px-4 py-4">
-                <SendLoaPanel
-                  customerId={customer.id}
-                  companyName={customer.companyName}
-                  meterCount={customer.meters.length}
-                  configured={isDocusignConfigured()}
-                  latest={customer.loaEnvelopes[0] ?? null}
-                />
-              </div>
-              <div className="border-t border-rule">
-                <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
-                  Signed LOA
-                </p>
-                <p className="px-4 pt-1 text-xs text-muted">
-                  After a send, mark signed and store the copy here. DocuSign completion sets received
-                  and keeps these fields.
-                </p>
-                {customer.meters.map((meter) => (
-                  <MeterLoaForm key={meter.id} meter={meter} />
-                ))}
-              </div>
-              <div className="border-t border-rule">
-                <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
-                  Set or clear objection
-                </p>
-                {customer.meters.map((meter) => (
-                  <MeterObjectionForm key={meter.id} meter={meter} />
-                ))}
-              </div>
-            </>
+            <div className="border-t border-rule px-4 py-4">
+              <SendLoaPanel
+                customerId={customer.id}
+                companyName={customer.companyName}
+                meterCount={customer.meters.length}
+                configured={isDocusignConfigured()}
+                latest={customer.loaEnvelopes[0] ?? null}
+              />
+            </div>
+          ) : null}
+          <CustomerLoaPanel customerId={customer.id} items={loaItems} />
+          {customer.meters.length > 0 ? (
+            <div className="border-t border-rule">
+              <p className="px-4 pt-3 text-[0.72rem] font-semibold tracking-[0.08em] text-muted uppercase">
+                Set or clear objection
+              </p>
+              {customer.meters.map((meter) => (
+                <MeterObjectionForm key={meter.id} meter={meter} />
+              ))}
+            </div>
           ) : null}
         </Section>
 

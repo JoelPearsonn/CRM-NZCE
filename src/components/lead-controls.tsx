@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Agent } from "@prisma/client";
 import { allocateLeadAgents, updateLeadStage } from "@/app/actions/leads";
 import { isWonLeadStage, LEAD_STAGES, LOST_REASONS, WON_REASONS } from "@/lib/constants";
@@ -51,15 +51,37 @@ export function OutcomeReasonField({
 export function StageSelect({
   leadId,
   stage,
+  onMove,
 }: {
   leadId: string;
   stage: string;
   outcomeReason?: string | null;
+  onMove?: (leadId: string, stage: string) => void;
 }) {
   const [next, setNext] = useState(stage);
 
+  useEffect(() => {
+    setNext(stage);
+  }, [stage]);
+
+  function persistStage(value: string) {
+    setNext(value);
+    if (onMove) {
+      onMove(leadId, value);
+      return;
+    }
+    const formData = new FormData();
+    formData.set("id", leadId);
+    formData.set("stage", value);
+    void updateLeadStage(formData);
+  }
+
   return (
-    <form action={updateLeadStage} className="grid gap-1.5">
+    <form
+      action={onMove ? undefined : updateLeadStage}
+      onSubmit={onMove ? (event) => event.preventDefault() : undefined}
+      className="grid gap-1.5"
+    >
       <input type="hidden" name="id" value={leadId} />
       <label className="sr-only" htmlFor={`stage-${leadId}`}>
         Stage
@@ -68,10 +90,8 @@ export function StageSelect({
         id={`stage-${leadId}`}
         name="stage"
         value={next}
-        onChange={(event) => {
-          setNext(event.target.value);
-          event.currentTarget.form?.requestSubmit();
-        }}
+        draggable={false}
+        onChange={(event) => persistStage(event.target.value)}
         className="w-full border border-rule bg-card px-2 py-1 text-xs"
       >
         {LEAD_STAGES.map((item) => (

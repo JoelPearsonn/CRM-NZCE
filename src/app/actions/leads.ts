@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { logActivity } from "@/lib/activity";
 import { DEFAULT_LEAD_STAGE, LEAD_STAGES, isClosedLeadStage, labelFor } from "@/lib/constants";
 import { optionalStr, str } from "@/lib/format";
-import { resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
+import { persistableLeadStage, resolveLeadBoardStage, withMondayGroupNote } from "@/lib/lead-board";
 import { prisma } from "@/lib/prisma";
 
 export type ActionState = { error?: string };
@@ -106,7 +106,7 @@ export async function updateLeadStage(formData: FormData) {
   if (!id) return;
   const existing = await prisma.lead.findUnique({ where: { id } });
   if (!existing) return;
-  const stage = resolveLeadBoardStage({ stage: requested, notes: existing.notes });
+  const stage = persistableLeadStage(requested, existing.notes);
   if (!LEAD_STAGES.some((item) => item.value === stage)) return;
 
   const lead = await prisma.lead.update({

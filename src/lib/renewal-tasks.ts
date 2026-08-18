@@ -24,8 +24,8 @@ export async function ensureRenewalReminderTasks(db = prisma) {
   if (dueMeters.length === 0) return 0;
 
   const customerIds = [...new Set(dueMeters.map((meter) => meter.customerId))];
-  const openTasks = await db.task.findMany({
-    where: { customerId: { in: customerIds }, status: "OPEN" },
+  const existingTasks = await db.task.findMany({
+    where: { customerId: { in: customerIds } },
   });
 
   const groups = new Map<
@@ -61,7 +61,7 @@ export async function ensureRenewalReminderTasks(db = prisma) {
 
   let created = 0;
   for (const group of groups.values()) {
-    const already = openTasks.some((task) => {
+    const already = existingTasks.some((task) => {
       const title = task.title.toLowerCase();
       if (task.customerId !== group.customerId) return false;
       if (!title.includes("renewal")) return false;
