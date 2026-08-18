@@ -1,9 +1,8 @@
-import type { PrismaClient } from "@prisma/client";
 import { hashPassword } from "@/lib/portal-crypto";
 import { portalDemoCredentials } from "@/lib/portal-constants";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
-export async function ensurePortalAccounts(db: PrismaClient = prisma) {
+export async function ensurePortalAccounts(db: DeskPrisma = prisma) {
   const demo = portalDemoCredentials();
   if (!demo.email || !demo.password) return;
 
@@ -21,7 +20,7 @@ export async function ensurePortalAccounts(db: PrismaClient = prisma) {
 }
 
 async function upsertAccount(
-  db: PrismaClient,
+  db: DeskPrisma,
   input: { customerId: string; email: string; password: string; magicToken: string | null },
 ) {
   const existing = await db.customerAccount.findUnique({ where: { customerId: input.customerId } });

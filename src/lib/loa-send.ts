@@ -1,9 +1,8 @@
-import type { PrismaClient } from "@prisma/client";
 import { logActivity } from "@/lib/activity";
 import { getDocusignClient, isDocusignConfigured, type DocusignClient, type DocusignStatus } from "@/lib/docusign";
 import { buildLoaDocument } from "@/lib/loa-document";
 import { storeGeneratedLoaPdf } from "@/lib/loa-files";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export type SendLoaResult = {
   error?: string;
@@ -16,7 +15,7 @@ export type SendLoaResult = {
   connected?: boolean;
 };
 
-async function loadCustomer(customerId: string, db: PrismaClient) {
+async function loadCustomer(customerId: string, db: DeskPrisma) {
   return db.customer.findUnique({
     where: { id: customerId },
     include: { meters: { orderBy: [{ siteName: "asc" }, { fuelType: "asc" }] } },
@@ -26,7 +25,7 @@ async function loadCustomer(customerId: string, db: PrismaClient) {
 export async function sendCustomerLoa(options: {
   customerId: string;
   leadId?: string | null;
-  db?: PrismaClient;
+  db?: DeskPrisma;
   docusign?: DocusignClient | null;
   env?: Record<string, string | undefined>;
 }): Promise<SendLoaResult> {
@@ -116,7 +115,7 @@ export async function sendCustomerLoa(options: {
   };
 }
 
-async function markMetersRequested(db: PrismaClient, customerId: string) {
+async function markMetersRequested(db: DeskPrisma, customerId: string) {
   await db.meter.updateMany({
     where: { customerId, loaStatus: { notIn: ["SIGNED", "RECEIVED"] } },
     data: { loaStatus: "REQUESTED" },
@@ -126,7 +125,7 @@ async function markMetersRequested(db: PrismaClient, customerId: string) {
 export async function completeLoaEnvelope(
   envelopeId: string,
   status: DocusignStatus,
-  db: PrismaClient = prisma,
+  db: DeskPrisma = prisma,
 ) {
   const record = await db.loaEnvelope.findFirst({
     where: { envelopeId },
@@ -173,7 +172,7 @@ export async function completeLoaEnvelope(
 }
 
 export async function syncOpenLoaEnvelopes(options?: {
-  db?: PrismaClient;
+  db?: DeskPrisma;
   docusign?: DocusignClient | null;
   env?: Record<string, string | undefined>;
 }) {

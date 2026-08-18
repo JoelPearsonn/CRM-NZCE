@@ -1,10 +1,10 @@
-import type { PrismaClient } from "@prisma/client";
 import {
   parseCsv,
   rowToRecord,
   validateImportRow,
   type ImportPreviewRow,
 } from "@/lib/csv-import";
+import type { DeskPrisma } from "@/lib/prisma";
 
 export type MeterImportPreview = {
   error?: string;
@@ -21,7 +21,7 @@ function headerMap(cells: string[]) {
   return cells.map((cell) => cell.replace(/^\uFEFF/, "").trim());
 }
 
-export async function previewMeterImport(db: PrismaClient, text: string): Promise<MeterImportPreview> {
+export async function previewMeterImport(db: DeskPrisma, text: string): Promise<MeterImportPreview> {
   const table = parseCsv(text);
   if (table.length < 2) return { error: "The CSV needs a header row and at least one data row." };
   const header = headerMap(table[0]);

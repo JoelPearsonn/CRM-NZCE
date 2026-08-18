@@ -102,6 +102,7 @@ export async function createVerifiedStaffPassword(
   });
   if ("error" in result) return { error: result.error };
   await finishStaffSession(result.agent);
+  return {};
 }
 
 export async function signOutStaff() {

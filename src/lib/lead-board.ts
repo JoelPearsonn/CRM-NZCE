@@ -1,10 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
 import {
   DEFAULT_LEAD_STAGE,
   LEAD_STAGES,
   type LeadStage,
 } from "@/lib/constants";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export const LEGACY_LEAD_STAGE_MAP: Record<string, LeadStage> = {
   NEW: "Potential Lead Joel",
@@ -71,7 +70,7 @@ export function isKnownLeadStageInput(raw: string | null | undefined, notes?: st
   return Boolean(matchLeadStage(stage) || LEGACY_LEAD_STAGE_MAP[stage.toUpperCase()] || parseMondayGroupNote(notes));
 }
 
-export async function ensureLeadBoardStages(db: PrismaClient = prisma) {
+export async function ensureLeadBoardStages(db: DeskPrisma = prisma) {
   const leads = await db.lead.findMany({ select: { id: true, stage: true, notes: true } });
   let updated = 0;
   for (const lead of leads) {

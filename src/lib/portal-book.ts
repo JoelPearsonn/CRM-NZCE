@@ -1,4 +1,3 @@
-import type { PrismaClient } from "@prisma/client";
 import {
   portalContractOf,
   portalCustomerOf,
@@ -9,7 +8,7 @@ import {
   type PortalMeter,
   type PortalRenewal,
 } from "@/lib/portal-data";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export type PortalBook = {
   customer: PortalCustomer;
@@ -18,7 +17,7 @@ export type PortalBook = {
   renewals: PortalRenewal[];
 };
 
-export async function loadPortalBook(customerId: string, db: PrismaClient = prisma): Promise<PortalBook | null> {
+export async function loadPortalBook(customerId: string, db: DeskPrisma = prisma): Promise<PortalBook | null> {
   const customer = await db.customer.findFirst({
     where: { id: customerId, archivedAt: null },
     include: {
