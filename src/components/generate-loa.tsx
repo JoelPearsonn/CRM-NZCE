@@ -72,8 +72,9 @@ export function GenerateLoaPanel({
       <div className="mb-3">
         <h2 className="section-title">Generate LOA</h2>
         <p className="mt-1 text-sm text-muted">
-          Fills IE LOA or SOFT_LOA from {companyName} — company, contact, address and job title.
-          Downloads the Word letter. DocuSign is not required.
+          Fills IE LOA or SOFT_LOA from {companyName}
+          {leadId ? " and this lead" : ""} — company, contact, address, town, postcode and job title.
+          Blank letter fields stay blank. Downloads the Word letter. DocuSign is not required.
         </p>
       </div>
       {suggestedKind ? (

@@ -115,6 +115,10 @@ model Lead {
   stage      String   @default("Potential Lead Joel")
   source         String?
   jobTitle       String?
+  addressLine1   String?
+  town           String?
+  postcode       String?
+  country        String?
   notes          String?
   outcomeReason  String?
   createdAt      DateTime @default(now())

@@ -10,6 +10,7 @@ import {
   CSV_DEAL_HEADERS,
   CSV_IMPORT_HEADERS,
   CSV_LEAD_HEADERS,
+  CSV_LEAD_LETTER_FIELDS,
   isClosedLeadStage,
   LEAD_STAGES,
   OPEN_LEAD_STAGES,
@@ -23,7 +24,7 @@ import { runLeadImport } from "../src/app/actions/import-leads";
 import { applyExistingDealToPreview, dealsCsvTemplate, validateDealRow } from "../src/lib/csv-deals";
 import { commitImportRows } from "../src/lib/csv-import-commit";
 import { csvTemplate, parseCsv, rowToRecord, validateImportRow } from "../src/lib/csv-import";
-import { leadsCsvTemplate, validateLeadRow } from "../src/lib/csv-leads";
+import { leadLetterFieldsFromCsv, leadsCsvTemplate, validateLeadRow } from "../src/lib/csv-leads";
 import { ensureRenewalReminderTasks } from "../src/lib/renewal-tasks";
 import { liveDealOnSupply } from "../src/lib/deals";
 import { findSupplyClash } from "../src/lib/supply";
@@ -116,11 +117,61 @@ test("import templates download with columns the importer accepts", () => {
 
   const leads = parseCsv(leadsCsvTemplate());
   assert.deepEqual(leads[0], [...CSV_LEAD_HEADERS]);
+  assert.ok(CSV_LEAD_HEADERS.includes("jobTitle"));
+  assert.ok(CSV_LEAD_HEADERS.includes("addressLine1"));
+  assert.ok(CSV_LEAD_HEADERS.includes("town"));
+  assert.ok(CSV_LEAD_HEADERS.includes("postcode"));
+  assert.ok(CSV_LEAD_HEADERS.includes("country"));
   const leadRow = validateLeadRow(rowToRecord(leads[0], leads[1]), 2);
   assert.deepEqual(leadRow.errors, []);
   assert.equal(leadRow.stage, "Sent For Tender");
+  assert.equal(leadRow.values.jobTitle, "");
+  assert.equal(leadRow.values.addressLine1, "");
+  assert.equal(leadRow.values.town, "");
   assert.ok(CSV_IMPORT_HEADERS.includes("renewalDate"));
   assert.ok(CSV_IMPORT_HEADERS.includes("objectionStatus"));
+});
+
+test("lead CSV letter columns only apply when present so Monday imports do not wipe them", () => {
+  assert.deepEqual([...CSV_LEAD_LETTER_FIELDS], [
+    "jobTitle",
+    "addressLine1",
+    "town",
+    "postcode",
+    "country",
+  ]);
+  assert.deepEqual(leadLetterFieldsFromCsv({ title: "Electric renewal" }), {});
+  assert.deepEqual(
+    leadLetterFieldsFromCsv({
+      jobTitle: "Buyer",
+      addressLine1: "12 Baker Street",
+      town: "Bath",
+      postcode: "BA1 1AA",
+      country: "",
+    }),
+    {
+      jobTitle: "Buyer",
+      addressLine1: "12 Baker Street",
+      town: "Bath",
+      postcode: "BA1 1AA",
+      country: null,
+    },
+  );
+
+  const form = readFileSync(path.join(import.meta.dirname, "../src/components/forms.tsx"), "utf8");
+  assert.match(form, /label="Job title"/);
+  assert.match(form, /label="Address"/);
+  assert.match(form, /label="Town \/ city"/);
+  assert.match(form, /label="Postcode"/);
+  assert.match(form, /name="addressLine1"/);
+  assert.match(form, /name="town"/);
+  assert.match(form, /name="postcode"/);
+
+  const detail = readFileSync(path.join(import.meta.dirname, "../src/app/leads/[id]/page.tsx"), "utf8");
+  assert.match(detail, /lead-letter-fields/);
+  assert.match(detail, /lead\.addressLine1/);
+  assert.match(detail, /lead\.town/);
+  assert.match(detail, /lead\.postcode/);
 });
 
 test("lead board columns match Monday Customer Board groups and import mapping", async () => {

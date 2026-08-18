@@ -14,6 +14,7 @@ export type TpiLoaCustomer = {
   phone?: string | null;
   addressLine1?: string | null;
   city?: string | null;
+  town?: string | null;
   postcode?: string | null;
   companyNumber?: string | null;
   country?: string | null;
@@ -117,7 +118,7 @@ export function buildTpiLoaFields(
     companyName: customer.companyName.trim(),
     tradingName: customer.tradingName?.trim() || "",
     addressLine1: customer.addressLine1?.trim() || "",
-    town: customer.city?.trim() || "",
+    town: (customer.town ?? customer.city)?.trim() || "",
     country: customer.country?.trim() || "",
     postcode: customer.postcode?.trim() || "",
     companyNumber: customer.companyNumber?.trim() || "",
@@ -201,10 +202,20 @@ export async function generateTpiLoa(options: {
   }
 
   const document = buildTpiLoaDocument(
-    {
-      ...customer,
-      position: lead?.jobTitle ?? "",
-    },
+    lead
+      ? {
+          ...customer,
+          addressLine1: lead.addressLine1 ?? "",
+          city: lead.town ?? "",
+          town: lead.town ?? "",
+          postcode: lead.postcode ?? "",
+          country: lead.country ?? "",
+          position: lead.jobTitle ?? "",
+        }
+      : {
+          ...customer,
+          position: "",
+        },
     kind,
     template,
     options.now,

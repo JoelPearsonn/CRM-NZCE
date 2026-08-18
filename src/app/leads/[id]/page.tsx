@@ -69,6 +69,42 @@ export default async function LeadDetailPage({ params }: IdPageProps) {
         <span className="text-xs text-muted">Updated {formatDateTime(lead.updatedAt)}</span>
       </div>
 
+      <section className="card mb-4 p-4" data-testid="lead-letter-fields">
+        <h2 className="section-title mb-3">Letter details</h2>
+        <dl className="grid gap-3 text-sm md:grid-cols-2">
+          <div>
+            <dt className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+              Job title
+            </dt>
+            <dd>{lead.jobTitle || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+              Address
+            </dt>
+            <dd>{lead.addressLine1 || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+              Town / city
+            </dt>
+            <dd>{lead.town || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+              Postcode
+            </dt>
+            <dd>{lead.postcode || "—"}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
+              Country
+            </dt>
+            <dd>{lead.country || "—"}</dd>
+          </div>
+        </dl>
+      </section>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Section title="Move stage">
           <div className="p-4">

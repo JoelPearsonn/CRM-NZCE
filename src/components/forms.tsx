@@ -407,6 +407,30 @@ export function LeadForm({
       >
         <input id="jobTitle" name="jobTitle" defaultValue={lead?.jobTitle ?? ""} />
       </Field>
+      <Field
+        label="Address"
+        name="addressLine1"
+        hint="Optional. Fills addressLine1 on IE LOA / SOFT_LOA."
+      >
+        <input id="addressLine1" name="addressLine1" defaultValue={lead?.addressLine1 ?? ""} />
+      </Field>
+      <Field
+        label="Town / city"
+        name="town"
+        hint="Optional. Fills town on IE LOA / SOFT_LOA. Leave blank if you do not have it."
+      >
+        <input id="town" name="town" defaultValue={lead?.town ?? ""} />
+      </Field>
+      <Field label="Postcode" name="postcode" hint="Optional. Fills postcode on IE LOA / SOFT_LOA.">
+        <input id="postcode" name="postcode" defaultValue={lead?.postcode ?? ""} />
+      </Field>
+      <Field
+        label="Country"
+        name="country"
+        hint="Optional. Fills country on the letter. Leave blank — do not invent United Kingdom."
+      >
+        <input id="country" name="country" defaultValue={lead?.country ?? ""} />
+      </Field>
       <div className="field">
         <span className="text-[0.72rem] font-semibold tracking-[0.06em] text-muted uppercase">
           Allocate agents
