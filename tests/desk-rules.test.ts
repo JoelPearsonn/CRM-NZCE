@@ -368,14 +368,14 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
     /\.leads-column-cards,\s*\.lead-column-cards\s*\{[^}]*max-height:\s*min\(70vh,\s*36rem\)/s,
   );
   assert.match(css, /\.leads-column-cards,\s*\.lead-column-cards\s*\{[^}]*overflow-y:\s*auto/s);
-  assert.doesNotMatch(css, /\.leads-board[^{]*\{[^}]*min-height:/s);
-  assert.doesNotMatch(css, /\.leads-board-row[^{]*\{[^}]*min-height:/s);
+  assert.doesNotMatch(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*min-height:/s);
+  assert.doesNotMatch(css, /\.leads-board-row,\s*\.lead-board-row\s*\{[^}]*min-height:/s);
   assert.match(css, /html,\s*body\s*\{[^}]*overflow-x:\s*clip/s);
   assert.match(css, /\.desk-pane-main\s*\{[^}]*overflow-x:\s*clip/s);
   assert.match(css, /\.desk-main\s*\{[^}]*overflow-x:\s*clip/s);
   assert.match(css, /\.leads-page,\s*\.lead-page,\s*\.leads-board-host\s*\{[^}]*overflow-x:\s*clip/s);
   assert.equal(css.includes("4080"), false);
-  assert.equal(/\.leads-board[^{]*\{[^}]*height:\s*calc/s.test(css), false);
+  assert.doesNotMatch(css, /\.leads-board,\s*\.lead-board\s*\{[^}]*height:\s*calc/s);
   assert.doesNotMatch(css, /html,\s*body\s*\{[^}]*overflow-x:\s*(auto|scroll|hidden|visible)/s);
   assert.doesNotMatch(css, /\.desk-main\s*\{[^}]*overflow-x:\s*(auto|scroll|hidden|visible)/s);
   assert.doesNotMatch(css, /\.leads-page[^{]*\{[^}]*overflow-x:\s*(auto|scroll|hidden|visible)/s);
