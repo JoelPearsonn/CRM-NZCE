@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import path from "path";
 import { test } from "node:test";
 import { GET as exportCustomers } from "../src/app/api/export/customers/route";
-import { POST as docusignWebhook } from "../src/app/api/docusign/webhook/route";
+import { handleDocusignWebhook } from "../src/app/api/docusign/webhook/route";
 import { handleLoaDocumentDownload } from "../src/app/api/loa/documents/[id]/route";
 import { handleRecordingDownload } from "../src/app/api/recordings/[id]/route";
 import { csvTemplate } from "../src/lib/csv-import";
@@ -147,35 +147,40 @@ test("LOA document download requires a staff session and a known customer", asyn
 test("DocuSign webhook rejects a missing secret and a forged signature", async () => {
   const previous = process.env.DOCUSIGN_WEBHOOK_SECRET;
   const body = JSON.stringify({ envelopeId: "env-test", status: "completed" });
+  const complete = async () => ({ envelopeRecordId: "ok" });
   delete process.env.DOCUSIGN_WEBHOOK_SECRET;
-  const closed = await docusignWebhook(
+  const closed = await handleDocusignWebhook(
     new Request("http://localhost/api/docusign/webhook", {
       method: "POST",
       headers: { "content-type": "application/json", "x-docusign-signature-1": "anything" },
       body,
     }),
+    complete,
   );
   assert.equal(closed.status, 401);
 
   process.env.DOCUSIGN_WEBHOOK_SECRET = "connect-hmac-test";
-  const forged = await docusignWebhook(
+  const forged = await handleDocusignWebhook(
     new Request("http://localhost/api/docusign/webhook", {
       method: "POST",
       headers: { "content-type": "application/json", "x-docusign-signature-1": "forged-signature" },
       body,
     }),
+    complete,
   );
   assert.equal(forged.status, 401);
 
   const signature = createHmac("sha256", "connect-hmac-test").update(body).digest("base64");
-  const valid = await docusignWebhook(
+  const valid = await handleDocusignWebhook(
     new Request("http://localhost/api/docusign/webhook", {
       method: "POST",
       headers: { "content-type": "application/json", "x-docusign-signature-1": signature },
       body,
     }),
+    complete,
   );
-  assert.notEqual(valid.status, 401);
+  assert.equal(valid.status, 200);
+  assert.deepEqual(await valid.json(), { envelopeRecordId: "ok" });
 
   if (previous === undefined) delete process.env.DOCUSIGN_WEBHOOK_SECRET;
   else process.env.DOCUSIGN_WEBHOOK_SECRET = previous;
