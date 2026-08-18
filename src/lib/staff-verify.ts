@@ -111,7 +111,14 @@ export async function startStaffEmailVerification(
   }
 
   const issued = await issueStaffVerifyToken(email, db, deps.now ?? Date.now());
-  if ("error" in issued) return issued;
+  if (!("raw" in issued) || !issued.raw) {
+    return {
+      error:
+        "error" in issued && issued.error
+          ? issued.error
+          : "Use your @nzcenergy.co.uk work email.",
+    };
+  }
 
   const verifyUrl = `${origin}/login/verify?token=${encodeURIComponent(issued.raw)}`;
   const send = deps.send ?? sendStaffVerificationEmail;

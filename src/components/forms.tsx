@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import type { Agent, Customer, Deal, DealPayment, Lead, Meter, TenderResponse } from "@prisma/client";
+import type { Customer, Deal, DealPayment, Lead, Meter, TenderResponse } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { ContractDateFields, DealPayoutFields } from "@/components/deal-payouts";
 import { saveAgent, type ActionState as AgentState } from "@/app/actions/agents";
 import { saveCustomer, type ActionState as CustomerState } from "@/app/actions/customers";
@@ -122,7 +123,7 @@ export function MeterForm({
 }: {
   customerId: string;
   meter?: Meter;
-  agents: Agent[];
+  agents: PublicAgent[];
 }) {
   const [state, action, pending] = useActionState(saveMeter, empty as MeterState);
   const draft = state.draft;
@@ -339,7 +340,7 @@ export function LeadForm({
 }: {
   lead?: Lead;
   customers: Customer[];
-  agents: Agent[];
+  agents: PublicAgent[];
   selectedAgentIds?: string[];
   presetCustomerId?: string;
 }) {
@@ -466,7 +467,7 @@ export function DealForm({
   customers: Customer[];
   meters: Meter[];
   leads: Lead[];
-  agents: Agent[];
+  agents: PublicAgent[];
   presetCustomerId?: string;
   returnTo?: "customer" | "contract";
   lockCustomer?: boolean;
@@ -737,7 +738,7 @@ export function TenderForm({
 export function AgentForm({
   agent,
 }: {
-  agent?: Pick<Agent, "id" | "name" | "email" | "role">;
+  agent?: PublicAgent;
 }) {
   const [state, action, pending] = useActionState(saveAgent, empty as AgentState);
   return (

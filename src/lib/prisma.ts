@@ -6,7 +6,7 @@ function createPrisma() {
   });
 }
 
-type DeskPrisma = ReturnType<typeof createPrisma>;
+export type DeskPrisma = ReturnType<typeof createPrisma>;
 
 const globalForPrisma = globalThis as unknown as { prisma?: DeskPrisma };
 

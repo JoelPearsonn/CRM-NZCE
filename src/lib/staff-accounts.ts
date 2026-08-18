@@ -28,6 +28,9 @@ type StaffWriteDb = {
   staffVerifyToken: {
     findUnique: typeof prisma.staffVerifyToken.findUnique;
     update: typeof prisma.staffVerifyToken.update;
+    create: typeof prisma.staffVerifyToken.create;
+    delete: typeof prisma.staffVerifyToken.delete;
+    deleteMany: typeof prisma.staffVerifyToken.deleteMany;
   };
 };
 

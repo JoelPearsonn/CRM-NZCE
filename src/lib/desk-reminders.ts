@@ -1,10 +1,9 @@
-import type { PrismaClient } from "@prisma/client";
 import {
   DESK_ADMIN_EMAIL,
   QUARTERLY_MARKET_UPDATE_KEY,
   QUARTERLY_MARKET_UPDATE_TITLE,
 } from "@/lib/constants";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export function isDeskAdmin(agent: { role: string; email: string } | null | undefined) {
   if (!agent) return false;
@@ -39,7 +38,7 @@ export function rollQuarterDue(currentDue: Date, today: Date) {
   return nextQuarterDue(nextDay);
 }
 
-export async function ensureQuarterlyMarketReminder(db: PrismaClient = prisma) {
+export async function ensureQuarterlyMarketReminder(db: DeskPrisma = prisma) {
   const existing = await db.deskReminder.findUnique({
     where: { key: QUARTERLY_MARKET_UPDATE_KEY },
   });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
-import type { Agent } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
 import { LeadCardFacts } from "@/components/lead-card-facts";
@@ -41,7 +41,7 @@ export function LeadKanban({
   stageFilter,
 }: {
   leads: LeadCardData[];
-  agents: Agent[];
+  agents: PublicAgent[];
   stageFilter: string;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);

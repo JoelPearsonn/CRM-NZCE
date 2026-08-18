@@ -1,7 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
 import type { ImportPreviewRow } from "@/lib/csv-import";
 import { parseCsvDate } from "@/lib/csv-dates";
 import { optionalStr, parseIntField } from "@/lib/format";
+import type { DeskPrisma } from "@/lib/prisma";
 
 export type ImportCommitCounts = {
   createCustomers: number;
@@ -10,7 +10,7 @@ export type ImportCommitCounts = {
 };
 
 export async function commitImportRows(
-  db: PrismaClient,
+  db: DeskPrisma,
   rows: ImportPreviewRow[],
   log?: (customerId: string, type: string, summary: string) => Promise<void>,
 ): Promise<ImportCommitCounts> {

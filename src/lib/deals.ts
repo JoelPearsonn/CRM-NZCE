@@ -1,5 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 
 export async function liveDealOnSupply(
   opts: {
@@ -7,7 +6,7 @@ export async function liveDealOnSupply(
     meterId?: string | null;
     status: string;
   },
-  db: PrismaClient = prisma,
+  db: DeskPrisma = prisma,
 ) {
   if (opts.status !== "LIVE" || !opts.meterId) return null;
 
@@ -31,7 +30,7 @@ export async function liveDealOnSupply(
 }
 
 export async function dealRefsBelongToCustomer(
-  db: PrismaClient,
+  db: DeskPrisma,
   input: { customerId: string; meterId?: string | null; leadId?: string | null },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (input.meterId) {

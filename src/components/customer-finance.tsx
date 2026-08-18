@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import type { Agent, Deal, DealPayment, Lead, Meter } from "@prisma/client";
+import type { Deal, DealPayment, Lead, Meter } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { reconcileDeal, type ActionState } from "@/app/actions/deals";
 import { DealForm } from "@/components/forms";
 import { DealStatusPill, ErrorBanner, FuelPill, RenewalCell } from "@/components/ui";
@@ -197,7 +198,7 @@ export function CustomerFinanceLedger({
   deals: DealRow[];
   meters: Meter[];
   leads: Lead[];
-  agents: Agent[];
+  agents: PublicAgent[];
 }) {
   return (
     <div>

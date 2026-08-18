@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState } from "react";
-import type { Agent } from "@prisma/client";
+import type { PublicAgent } from "@/lib/staff-auth";
 import { bulkAllocateLeads } from "@/app/actions/leads";
 
 const BulkSelectContext = createContext<{
@@ -13,7 +13,7 @@ export function BulkAllocate({
   agents,
   children,
 }: {
-  agents: Agent[];
+  agents: PublicAgent[];
   children: React.ReactNode;
 }) {
   const [selected, setSelected] = useState<string[]>([]);

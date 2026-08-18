@@ -1,5 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DeskPrisma } from "@/lib/prisma";
 import { getWorkingAsId } from "@/lib/working-as";
 
 export async function logActivity(
@@ -7,7 +6,7 @@ export async function logActivity(
   type: string,
   summary: string,
   actorId?: string | null,
-  db: PrismaClient = prisma,
+  db: DeskPrisma = prisma,
 ) {
   const resolved = actorId || (await getWorkingAsId());
   await db.activity.create({
