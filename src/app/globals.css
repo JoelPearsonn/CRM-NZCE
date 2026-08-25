@@ -169,8 +169,22 @@ a {
 }
 
 .desk-main:has(.lead-board-shell) .desk-main-slot {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
   overflow-x: hidden;
   overflow-y: hidden;
+}
+
+.desk-main:has(.lead-board-shell) .desk-main-slot > * {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  flex-direction: column;
 }
 
 .lead-page {
@@ -178,6 +192,8 @@ a {
   min-width: 0;
   min-height: 0;
   max-width: 100%;
+  height: 100%;
+  max-height: 100%;
   flex: 1;
   flex-direction: column;
 }
@@ -190,7 +206,7 @@ a {
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 0;
   flex-direction: column;
 }
 
@@ -202,14 +218,14 @@ a {
   display: flex;
   min-width: 0;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 0;
   flex-direction: column;
 }
 
 .lead-board-shell {
   box-sizing: border-box;
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   min-height: 0;
   width: 100%;
@@ -247,13 +263,16 @@ a {
 
 .lead-board {
   box-sizing: border-box;
-  flex: 1;
+  display: flex;
+  flex: 1 1 0;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   min-height: 0;
+  flex-direction: column;
   overflow-x: auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: auto;
   scrollbar-color: var(--color-gold) var(--color-secondary);
   padding: 0.75rem 0 0.15rem;
@@ -277,11 +296,13 @@ a {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
+  align-items: stretch;
   gap: 0.75rem;
+  box-sizing: border-box;
   width: max-content;
   min-width: max-content;
   min-height: 100%;
-  height: 100%;
+  height: max-content;
 }
 
 .lead-column {
@@ -289,17 +310,18 @@ a {
   display: flex;
   flex-direction: column;
   flex: 0 0 240px;
+  align-self: stretch;
   width: 240px;
   min-width: 240px;
   max-width: 240px;
-  height: 100%;
+  min-height: 100%;
+  height: auto;
 }
 
 .lead-column-cards {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: visible;
 }
 
 .nav-toggle {
@@ -776,6 +798,9 @@ a {
   }
 
   .desk-main:has(.lead-board-shell) .desk-main-slot {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    height: 100%;
     overflow-x: hidden;
     overflow-y: hidden;
   }
