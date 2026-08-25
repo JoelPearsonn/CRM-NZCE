@@ -280,9 +280,9 @@ a {
   flex-direction: column;
   overflow-x: auto;
   overflow-y: visible;
-  scrollbar-width: auto;
+  scrollbar-width: none;
   scrollbar-color: var(--color-gold) var(--color-secondary);
-  padding: 0.75rem 0 0.15rem;
+  padding: 0.75rem 0 12px;
 }
 
 .lead-board::-webkit-scrollbar {
@@ -297,6 +297,48 @@ a {
 .lead-board::-webkit-scrollbar-thumb {
   background: var(--color-gold);
   border-radius: 6px;
+}
+
+/* Native x-bar sits at the bottom of a tall height:auto board. Hide it; the fixed rail is the first-view control. */
+.lead-board-has-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.lead-board-hrail {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 12;
+  box-sizing: border-box;
+  height: 12px;
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-gold) var(--color-gold);
+  background: var(--color-gold);
+  box-shadow: 0 -1px 0 var(--color-brass-dark);
+}
+
+.lead-board-hrail[hidden] {
+  display: none;
+}
+
+.lead-board-hrail::-webkit-scrollbar {
+  height: 12px;
+}
+
+.lead-board-hrail::-webkit-scrollbar-track {
+  background: var(--color-gold);
+}
+
+.lead-board-hrail::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 6px;
+}
+
+.lead-board-hrail-sizer {
+  height: 1px;
 }
 
 .lead-board-row {
@@ -955,7 +997,8 @@ a {
 @media print {
   aside,
   header,
-  .no-print {
+  .no-print,
+  .lead-board-hrail {
     display: none !important;
   }
 

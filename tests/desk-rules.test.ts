@@ -377,6 +377,17 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadBoard.includes("overflow-y: auto"), false);
   assert.equal(leadBoard.includes("flex: 1 1 0"), false);
   assert.match(css, /\.lead-board::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
+  const leadBoardRail = css.match(/\.lead-board-hrail\s*\{[^}]*\}/)?.[0] ?? "";
+  assert.match(leadBoardRail, /position:\s*fixed/);
+  assert.match(leadBoardRail, /bottom:\s*0/);
+  assert.match(leadBoardRail, /overflow-x:\s*scroll/);
+  assert.match(leadBoardRail, /overflow-y:\s*hidden/);
+  assert.match(leadBoardRail, /scrollbar-color:\s*var\(--color-gold\)/);
+  assert.match(leadBoardRail, /background:\s*var\(--color-gold\)/);
+  assert.match(leadBoardRail, /height:\s*12px/);
+  assert.match(css, /\.lead-board-hrail::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
+  assert.match(css, /\.lead-board-hrail::-webkit-scrollbar-thumb\s*\{[^}]*background:\s*var\(--color-gold\)/s);
+  assert.match(css, /\.lead-board-hrail::-webkit-scrollbar-track\s*\{[^}]*background:\s*var\(--color-gold\)/s);
   assert.match(leadBoardRow, /width:\s*max-content/);
   assert.match(leadBoardRow, /height:\s*auto/);
   assert.match(leadBoardRow, /flex-shrink:\s*0/);
@@ -432,6 +443,11 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(kanban.includes("max-h-[min(28rem,70vh)]"), false);
   assert.equal(kanban.includes("28rem"), false);
   assert.equal(kanban.includes("70vh"), false);
+  assert.match(kanban, /lead-board-hrail/);
+  assert.match(kanban, /function bindLeadBoardSideRail/);
+  assert.match(kanban, /rail\.scrollLeft = board\.scrollLeft/);
+  assert.match(kanban, /board\.scrollLeft = rail\.scrollLeft/);
+  assert.match(kanban, /event\.shiftKey/);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {

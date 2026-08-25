@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { PublicAgent } from "@/lib/staff-auth";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
@@ -35,6 +35,67 @@ export function leadColumnDomId(stage: string) {
   return `lead-col-${stage.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
+/** Keep a viewport-fixed gold x-rail in sync with the tall overflow-x board. */
+export function bindLeadBoardSideRail(
+  board: HTMLDivElement,
+  rail: HTMLDivElement,
+  sizer: HTMLDivElement,
+) {
+  let syncing = false;
+
+  const fromBoard = () => {
+    if (syncing) return;
+    syncing = true;
+    rail.scrollLeft = board.scrollLeft;
+    syncing = false;
+  };
+
+  const fromRail = () => {
+    if (syncing) return;
+    syncing = true;
+    board.scrollLeft = rail.scrollLeft;
+    syncing = false;
+  };
+
+  const layout = () => {
+    sizer.style.width = `${board.scrollWidth}px`;
+    const rect = board.getBoundingClientRect();
+    rail.style.left = `${Math.max(0, rect.left)}px`;
+    rail.style.width = `${rect.width}px`;
+    rail.hidden = board.scrollWidth <= board.clientWidth + 1;
+    fromBoard();
+  };
+
+  const onWheel = (event: WheelEvent) => {
+    if (board.scrollWidth <= board.clientWidth) return;
+    const sideways = event.shiftKey || Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    if (!sideways) return;
+    const delta = event.shiftKey ? event.deltaY + event.deltaX : event.deltaX;
+    if (!delta) return;
+    event.preventDefault();
+    board.scrollLeft += delta;
+    fromBoard();
+  };
+
+  layout();
+  board.addEventListener("scroll", fromBoard, { passive: true });
+  rail.addEventListener("scroll", fromRail, { passive: true });
+  board.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("resize", layout);
+  const observer = new ResizeObserver(layout);
+  observer.observe(board);
+  const row = board.firstElementChild;
+  if (row instanceof HTMLElement) observer.observe(row);
+
+  return () => {
+    board.removeEventListener("scroll", fromBoard);
+    rail.removeEventListener("scroll", fromRail);
+    board.removeEventListener("wheel", onWheel);
+    window.removeEventListener("resize", layout);
+    observer.disconnect();
+  };
+}
+
 export function LeadKanban({
   leads,
   agents,
@@ -45,6 +106,8 @@ export function LeadKanban({
   stageFilter: string;
 }) {
   const boardRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLDivElement>(null);
+  const sizerRef = useRef<HTMLDivElement>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [stageById, setStageById] = useState<Record<string, string>>({});
   const [, startTransition] = useTransition();
@@ -76,6 +139,14 @@ export function LeadKanban({
     column?.scrollIntoView({ inline: "start", block: "nearest", behavior: "smooth" });
   }
 
+  useEffect(() => {
+    const board = boardRef.current;
+    const rail = railRef.current;
+    const sizer = sizerRef.current;
+    if (!board || !rail || !sizer) return;
+    return bindLeadBoardSideRail(board, rail, sizer);
+  }, [columns.length, visibleLeads.length]);
+
   return (
     <div className="lead-board-shell" data-testid="lead-board-shell">
       <nav className="lead-jump" data-testid="lead-jump" aria-label="Lead groups">
@@ -94,7 +165,7 @@ export function LeadKanban({
       </nav>
       <div
         ref={boardRef}
-        className="lead-board"
+        className="lead-board lead-board-has-rail"
         data-testid="lead-board"
         data-column-count={columns.length}
       >
@@ -196,6 +267,15 @@ export function LeadKanban({
             );
           })}
         </div>
+      </div>
+      <div
+        ref={railRef}
+        className="lead-board-hrail"
+        data-testid="lead-board-hrail"
+        hidden
+        aria-label="Scroll lead columns sideways"
+      >
+        <div ref={sizerRef} className="lead-board-hrail-sizer" />
       </div>
     </div>
   );
