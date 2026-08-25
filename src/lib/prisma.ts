@@ -3,10 +3,11 @@ import {
   DESK_DATABASE_MISSING,
   deskDatabaseUrl,
   isDeskDatabaseConfigured,
+  withServerlessPool,
 } from "@/lib/desk-database";
 
 function createPrisma() {
-  const url = deskDatabaseUrl();
+  const url = withServerlessPool(deskDatabaseUrl());
   return new PrismaClient({
     datasources: { db: { url } },
     omit: { agent: { passwordHash: true } },

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeskLink } from "@/components/desk-link";
 import { DealStatusPill, EmptyState, FuelPill, PageHeader, RenewalCell, SortLink } from "@/components/ui";
 import { dealRemaining } from "@/lib/finance";
 import { formatDate, gbp } from "@/lib/format";
@@ -94,9 +95,9 @@ export default async function ContractsPage({ searchParams }: SearchPageProps) {
               {sorted.map((deal) => (
                 <tr key={deal.id}>
                   <td>
-                    <Link href={`/customers/${deal.customerId}`} className="font-medium">
+                    <DeskLink href={`/customers/${deal.customerId}`} className="font-medium">
                       {deal.customer.companyName}
-                    </Link>
+                    </DeskLink>
                     <div>
                       <Link href={`/contracts/${deal.id}`} className="text-[0.7rem] text-muted">
                         Deal record

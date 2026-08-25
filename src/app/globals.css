@@ -994,6 +994,56 @@ a {
   }
 }
 
+.nav-link-pending {
+  cursor: progress;
+}
+
+.desk-pending {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.desk-pending-line {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-rule) 70%, var(--color-paper));
+}
+
+.desk-pending-kicker {
+  width: 6.5rem;
+  height: 0.7rem;
+}
+
+.desk-pending-title {
+  width: min(22rem, 70%);
+  height: 2rem;
+}
+
+.desk-pending-copy {
+  width: min(36rem, 90%);
+  height: 0.85rem;
+}
+
+.desk-pending-cards {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .desk-pending-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.desk-pending-card {
+  min-height: 5.5rem;
+}
+
+.desk-pending-sheet {
+  min-height: 14rem;
+}
+
 @media print {
   aside,
   header,

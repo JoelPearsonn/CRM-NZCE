@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeskLink } from "@/components/desk-link";
 import { GroupedBars, HorizonBars } from "@/components/finance-charts";
 import { EmptyState, PageHeader, Section } from "@/components/ui";
 import {
@@ -354,9 +355,9 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
                 {byCustomer.map((row) => (
                   <tr key={row.customerId}>
                     <td>
-                      <Link href={`/customers/${row.customerId}`} className="font-medium">
+                      <DeskLink href={`/customers/${row.customerId}`} className="font-medium">
                         {row.label}
-                      </Link>
+                      </DeskLink>
                     </td>
                     <td>{gbp(row.due)}</td>
                     <td>{gbp(row.paid)}</td>
@@ -394,9 +395,9 @@ export default async function FinancePage({ searchParams }: SearchPageProps) {
                   return (
                     <tr key={deal.id}>
                       <td>
-                        <Link href={`/customers/${deal.customerId}`} className="font-medium">
+                        <DeskLink href={`/customers/${deal.customerId}`} className="font-medium">
                           {deal.customerName}
-                        </Link>
+                        </DeskLink>
                         <div>
                           <Link href={`/contracts/${contractId}`} className="text-[0.7rem] text-muted">
                             Deal record

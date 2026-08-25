@@ -6,6 +6,7 @@ import {
   isDeskDatabaseConfigured,
   isPostgresDatabaseUrl,
   isSqliteFileUrl,
+  withServerlessPool,
 } from "../src/lib/desk-database";
 
 test("desk database is off when DATABASE_URL is missing", () => {
@@ -39,5 +40,17 @@ test("Postgres URLs are accepted for Neon / Vercel Postgres", () => {
   assert.equal(
     isDeskDatabaseConfigured({ DATABASE_URL: "postgres://127.0.0.1/crm", VERCEL: "1" }),
     true,
+  );
+});
+
+test("serverless Prisma URLs keep a single warm connection", () => {
+  const pooled = withServerlessPool("postgresql://db.prisma.io:5432/crm");
+  assert.match(pooled, /connection_limit=1/);
+  assert.match(pooled, /pool_timeout=20/);
+  assert.match(pooled, /connect_timeout=10/);
+  assert.equal(withServerlessPool("file:./dev.db"), "file:./dev.db");
+  assert.equal(
+    withServerlessPool("postgresql://db.prisma.io:5432/crm?connection_limit=5"),
+    "postgresql://db.prisma.io:5432/crm?connection_limit=5",
   );
 });

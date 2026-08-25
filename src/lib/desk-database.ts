@@ -7,6 +7,26 @@ export function deskDatabaseUrl(env: NodeJS.ProcessEnv = process.env) {
   return env.DATABASE_URL?.trim() ?? "";
 }
 
+/** One pooled connection per warm function — avoids reconnecting a pool on every request. */
+export function withServerlessPool(url: string) {
+  if (!url || !isPostgresDatabaseUrl(url)) return url;
+  try {
+    const parsed = new URL(url);
+    if (!parsed.searchParams.has("connection_limit")) {
+      parsed.searchParams.set("connection_limit", "1");
+    }
+    if (!parsed.searchParams.has("pool_timeout")) {
+      parsed.searchParams.set("pool_timeout", "20");
+    }
+    if (!parsed.searchParams.has("connect_timeout")) {
+      parsed.searchParams.set("connect_timeout", "10");
+    }
+    return parsed.href;
+  } catch {
+    return url;
+  }
+}
+
 export function isPostgresDatabaseUrl(url: string) {
   return /^postgres(ql)?:\/\//i.test(url);
 }

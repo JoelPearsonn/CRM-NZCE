@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeskLink } from "@/components/desk-link";
 import {
   EmptyState,
   FuelPill,
@@ -11,13 +12,13 @@ import {
 import { financeTotals } from "@/lib/finance";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import type { SearchPageProps } from "@/lib/page-props";
+import { scheduleRenewalReminderSync } from "@/lib/desk-after";
 import { prisma } from "@/lib/prisma";
-import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 
 const WINDOWS = [30, 60, 90] as const;
 
 export default async function RenewalsPage({ searchParams }: SearchPageProps) {
-  await ensureRenewalReminderTasks();
+  scheduleRenewalReminderSync();
   const query = await searchParams;
   const raw = Number(typeof query.days === "string" ? query.days : 90);
   const days = WINDOWS.includes(raw as (typeof WINDOWS)[number]) ? raw : 90;
@@ -107,9 +108,9 @@ export default async function RenewalsPage({ searchParams }: SearchPageProps) {
                 return (
                   <tr key={meter.id}>
                     <td>
-                      <Link href={`/customers/${meter.customerId}`} className="font-medium">
+                      <DeskLink href={`/customers/${meter.customerId}`} className="font-medium">
                         {meter.customer.companyName}
-                      </Link>
+                      </DeskLink>
                       <div className="text-[0.7rem] text-muted">{meter.siteName}</div>
                     </td>
                     <td className="meter-id">

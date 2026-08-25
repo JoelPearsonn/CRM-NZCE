@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { PublicAgent } from "@/lib/staff-auth";
 import { updateLeadStage } from "@/app/actions/leads";
 import { LeadSelect } from "@/components/bulk-allocate";
+import { DeskLink } from "@/components/desk-link";
 import { LeadCardFacts } from "@/components/lead-card-facts";
 import { AllocateDisclosure, StageSelect } from "@/components/lead-controls";
 import { LeadLoaActions } from "@/components/send-loa";
@@ -220,7 +220,7 @@ export function LeadKanban({
                         <div className="mb-1 flex items-start justify-between gap-2">
                           <LeadSelect leadId={lead.id} />
                         </div>
-                        <Link href={`/leads/${lead.id}`} className="block" draggable={false}>
+                        <DeskLink href={`/leads/${lead.id}`} className="block" draggable={false}>
                           <LeadCardFacts
                             companyName={lead.companyName}
                             contactName={lead.contactName}
@@ -231,19 +231,19 @@ export function LeadKanban({
                             loaReceived={lead.loaReceived}
                             owners={lead.ownerNames}
                           />
-                        </Link>
+                        </DeskLink>
                         {lead.outcomeReason && isClosedLeadStage(lead.stage) ? (
                           <p className="mt-1 text-[0.7rem] text-ink">
                             {isWonLeadStage(lead.stage) ? "Won" : "Lost"}: {lead.outcomeReason}
                           </p>
                         ) : null}
                         {isTenderLeadStage(lead.stage) ? (
-                          <Link
+                          <DeskLink
                             href={`/customers/${lead.customerId}?leadId=${lead.id}#tenders`}
                             className="mt-2 inline-block text-[0.7rem] font-semibold text-brass-dark"
                           >
                             Add tender response
-                          </Link>
+                          </DeskLink>
                         ) : null}
                         <div className="mt-2">
                           <StageSelect

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeskLink } from "@/components/desk-link";
 import { StartBook } from "@/components/start-book";
 import {
   EmptyState,
@@ -13,12 +14,12 @@ import { QuarterlyMarketReminder } from "@/components/desk-reminder";
 import { isClosedLeadStage, LEAD_STAGES } from "@/lib/constants";
 import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
 import { countLeadsByColumn } from "@/lib/lead-card";
-import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatMpan, gbp } from "@/lib/format";
 import { DatabaseSetup } from "@/components/database-setup";
+import { scheduleLeadBoardStageSync, scheduleRenewalReminderSync } from "@/lib/desk-after";
 import { isDeskDatabaseConfigured } from "@/lib/desk-database";
 import { prisma } from "@/lib/prisma";
-import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export default async function DashboardPage() {
@@ -36,8 +37,8 @@ export default async function DashboardPage() {
     return <StartBook />;
   }
 
-  await ensureRenewalReminderTasks();
-  await ensureLeadBoardStages();
+  scheduleRenewalReminderSync();
+  scheduleLeadBoardStageSync();
   const admin = await getWorkingAsAdmin();
   const quarterlyReminder = admin ? await ensureQuarterlyMarketReminder() : null;
   const horizon = new Date();
@@ -136,9 +137,9 @@ export default async function DashboardPage() {
                 {renewals.map((meter) => (
                   <tr key={meter.id}>
                     <td>
-                      <Link href={`/customers/${meter.customerId}`} className="font-medium">
+                      <DeskLink href={`/customers/${meter.customerId}`} className="font-medium">
                         {meter.customer.companyName}
-                      </Link>
+                      </DeskLink>
                       <div className="text-[0.7rem] text-muted">{meter.siteName}</div>
                     </td>
                     <td className="meter-id">
@@ -214,9 +215,9 @@ export default async function DashboardPage() {
                 {objections.map((meter) => (
                   <tr key={meter.id}>
                     <td>
-                      <Link href={`/customers/${meter.customerId}`} className="font-medium">
+                      <DeskLink href={`/customers/${meter.customerId}`} className="font-medium">
                         {meter.customer.companyName}
-                      </Link>
+                      </DeskLink>
                       <div className="text-[0.7rem] text-muted">{meter.siteName}</div>
                     </td>
                     <td className="meter-id">
