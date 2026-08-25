@@ -370,6 +370,10 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.match(leadColumnCards, /overflow:\s*visible/);
   assert.equal(leadColumnCards.includes("overflow-y: auto"), false);
   assert.equal(leadColumnCards.includes("overflow-x: hidden"), false);
+  assert.equal(leadColumn.includes("28rem"), false);
+  assert.equal(leadColumn.includes("70vh"), false);
+  assert.equal(leadColumnCards.includes("28rem"), false);
+  assert.equal(leadColumnCards.includes("70vh"), false);
   assert.match(css, /\.lead-board-fill\s*\{[^}]*flex:\s*1/s);
   assert.match(css, /\.desk-main-slot\s*\{[^}]*flex:\s*1/s);
   assert.match(leadSlot, /minmax\(0,\s*1fr\)/);
@@ -400,6 +404,9 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   const jumpCount = (kanban.match(/lead-jump-item/g) ?? []).length;
   assert.ok(jumpCount >= 1);
   assert.equal(kanban.includes("data-testid=\"lead-column-count\""), true);
+  assert.equal(kanban.includes("max-h-[min(28rem,70vh)]"), false);
+  assert.equal(kanban.includes("28rem"), false);
+  assert.equal(kanban.includes("70vh"), false);
 });
 
 test("import actions return a visible preview from the sample templates", async () => {
