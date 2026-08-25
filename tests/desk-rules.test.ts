@@ -365,7 +365,7 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.equal(leadSlot.includes("minmax"), false);
   assert.match(leadDeskShell, /height:\s*auto/);
   assert.match(leadDeskShell, /min-height:\s*100dvh/);
-  assert.equal(leadDeskShell.includes("height: 100dvh"), false);
+  assert.equal(/^\s*height:\s*100dvh/m.test(leadDeskShell), false);
   assert.match(leadBoard, /overflow-x:\s*auto/);
   assert.match(leadBoard, /overflow-y:\s*visible/);
   assert.match(leadBoard, /flex:\s*0 0 auto/);
