@@ -821,3 +821,55 @@ test("header search Enter opens the best match, or the results page", () => {
   };
   assert.deepEqual(pickEnterDestination(oak, "Oak", "/"), { resultsPage: true });
 });
+
+test("desk clicks get a loading shell, pending nav, and do not wait on book sync", () => {
+  const loading = readFileSync(path.join(import.meta.dirname, "../src/app/loading.tsx"), "utf8");
+  assert.match(loading, /desk-pending/);
+  assert.equal(loading.includes("prisma"), false);
+  assert.equal(loading.includes("lead-board-shell"), false);
+
+  const layout = readFileSync(path.join(import.meta.dirname, "../src/app/layout.tsx"), "utf8");
+  assert.match(layout, /preferredRegion\s*=\s*"cdg1"/);
+  assert.match(layout, /dynamic\s*=\s*"force-dynamic"/);
+
+  const nextConfig = readFileSync(path.join(import.meta.dirname, "../next.config.ts"), "utf8");
+  assert.match(nextConfig, /staleTimes/);
+  assert.match(nextConfig, /dynamic:\s*20/);
+
+  const vercel = readFileSync(path.join(import.meta.dirname, "../vercel.json"), "utf8");
+  assert.match(vercel, /"regions":\s*\[\s*"cdg1"\s*\]/);
+
+  const sidebar = readFileSync(path.join(import.meta.dirname, "../src/components/sidebar.tsx"), "utf8");
+  assert.match(sidebar, /pendingHref/);
+  assert.match(sidebar, /setPendingHref/);
+  assert.match(sidebar, /nav-link-pending/);
+  assert.match(sidebar, /DeskLink/);
+  assert.match(sidebar, /intentDelayMs=\{0\}/);
+
+  const deskLink = readFileSync(path.join(import.meta.dirname, "../src/components/desk-link.tsx"), "utf8");
+  assert.match(deskLink, /router\.prefetch/);
+  assert.match(deskLink, /intentDelayMs/);
+
+  const after = readFileSync(path.join(import.meta.dirname, "../src/lib/desk-after.ts"), "utf8");
+  assert.match(after, /from "next\/server"/);
+  assert.match(after, /scheduleLeadBoardStageSync/);
+  assert.match(after, /scheduleRenewalReminderSync/);
+
+  for (const file of ["page.tsx", "leads/page.tsx", "leads/[id]/page.tsx"]) {
+    const source = readFileSync(path.join(import.meta.dirname, "../src/app", file), "utf8");
+    assert.match(source, /scheduleLeadBoardStageSync\(\)/);
+    assert.equal(source.includes("await ensureLeadBoardStages()"), false);
+  }
+  for (const file of ["page.tsx", "tasks/page.tsx", "renewals/page.tsx"]) {
+    const source = readFileSync(path.join(import.meta.dirname, "../src/app", file), "utf8");
+    assert.match(source, /scheduleRenewalReminderSync\(\)/);
+    assert.equal(source.includes("await ensureRenewalReminderTasks()"), false);
+  }
+
+  const css = readFileSync(path.join(import.meta.dirname, "../src/app/globals.css"), "utf8");
+  assert.match(css, /\.desk-pending\s*\{/);
+  assert.match(css, /\.nav-link-pending\s*\{/);
+  const leadBoardRail = css.match(/\.lead-board-hrail\s*\{[^}]*\}/)?.[0] ?? "";
+  assert.match(leadBoardRail, /background:\s*var\(--color-gold\)/);
+  assert.match(leadBoardRail, /position:\s*fixed/);
+});

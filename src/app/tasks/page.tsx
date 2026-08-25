@@ -1,15 +1,15 @@
-import Link from "next/link";
 import { toggleTask } from "@/app/actions/desk";
+import { DeskLink } from "@/components/desk-link";
 import { QuarterlyMarketReminder } from "@/components/desk-reminder";
 import { EmptyState, PageHeader, Section } from "@/components/ui";
 import { ensureQuarterlyMarketReminder } from "@/lib/desk-reminders";
 import { formatDate } from "@/lib/format";
+import { scheduleRenewalReminderSync } from "@/lib/desk-after";
 import { prisma } from "@/lib/prisma";
-import { ensureRenewalReminderTasks } from "@/lib/renewal-tasks";
 import { getWorkingAsAdmin } from "@/lib/working-as";
 
 export default async function TasksInboxPage() {
-  await ensureRenewalReminderTasks();
+  scheduleRenewalReminderSync();
   const admin = await getWorkingAsAdmin();
   const quarterlyReminder = admin ? await ensureQuarterlyMarketReminder() : null;
   const tasks = await prisma.task.findMany({
@@ -71,7 +71,7 @@ export default async function TasksInboxPage() {
                       {task.title}
                     </td>
                     <td>
-                      <Link href={`/customers/${task.customerId}`}>{task.customer.companyName}</Link>
+                      <DeskLink href={`/customers/${task.customerId}`}>{task.customer.companyName}</DeskLink>
                     </td>
                     <td className="col-extra">{task.assignee?.name ?? "Unassigned"}</td>
                     <td className={isOverdue ? "font-semibold text-danger" : undefined}>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeskLink } from "@/components/desk-link";
 import { LoadDemoButton } from "@/components/load-demo-button";
 import { EmptyState, LoaPill, ObjectionPill, PageHeader, RenewalCell, SortLink, StagePill } from "@/components/ui";
 import {
@@ -105,13 +106,13 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
           const current = params.toString() ? `/customers?${params}` : "/customers";
           const active = view.href === current;
           return (
-            <Link
+            <DeskLink
               key={view.href}
               href={view.href}
               className={`btn text-[0.75rem] ${active ? "btn-brass" : "btn-ghost"}`}
             >
               {view.label}
-            </Link>
+            </DeskLink>
           );
         })}
       </div>
@@ -247,9 +248,9 @@ export default async function CustomersPage({ searchParams }: SearchPageProps) {
                 return (
                   <tr key={customer.id}>
                     <td>
-                      <Link href={`/customers/${customer.id}`} className="font-medium">
+                      <DeskLink href={`/customers/${customer.id}`} className="font-medium">
                         {customer.companyName}
-                      </Link>
+                      </DeskLink>
                       {customer.archivedAt ? (
                         <div className="text-[0.7rem] text-warn">Archived</div>
                       ) : null}

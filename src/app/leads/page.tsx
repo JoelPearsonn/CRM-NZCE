@@ -1,34 +1,46 @@
 import Link from "next/link";
 import { BulkAllocate } from "@/components/bulk-allocate";
+import { DeskLink } from "@/components/desk-link";
 import { LeadKanban } from "@/components/lead-kanban";
 import { PageHeader } from "@/components/ui";
 import { exportHref, leadFilterParams, leadMatchesSearch, parseLeadFilters } from "@/lib/book-filters";
 import { LEAD_STAGES } from "@/lib/constants";
 import { loaBoardFlags } from "@/lib/lead-card";
-import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 import type { SearchPageProps } from "@/lib/page-props";
 import { listDeskAgents } from "@/lib/agents";
+import { scheduleLeadBoardStageSync } from "@/lib/desk-after";
 import { prisma } from "@/lib/prisma";
 
 export default async function LeadsPage({ searchParams }: SearchPageProps) {
   const query = await searchParams;
   const filters = parseLeadFilters(query);
   const { stage, agent, q } = filters;
-  await ensureLeadBoardStages();
+  scheduleLeadBoardStageSync();
 
   const [leads, agents, envelopes] = await Promise.all([
     prisma.lead.findMany({
       where: { customer: { archivedAt: null } },
       include: {
         customer: {
-          include: { meters: { select: { mpan: true, mprn: true, siteName: true, loaStatus: true } } },
+          select: {
+            companyName: true,
+            tradingName: true,
+            contactName: true,
+            phone: true,
+            email: true,
+            meters: { select: { mpan: true, mprn: true, siteName: true, loaStatus: true } },
+          },
         },
-        allocations: { include: { agent: true } },
+        allocations: { select: { agentId: true, agent: { select: { name: true } } } },
       },
       orderBy: { updatedAt: "desc" },
     }),
     listDeskAgents(),
-    prisma.loaEnvelope.findMany({ orderBy: { createdAt: "desc" } }),
+    prisma.loaEnvelope.findMany({
+      orderBy: { createdAt: "desc" },
+      select: { customerId: true, sigLink: true, status: true, channel: true },
+    }),
   ]);
   const latestLoa = new Map<string, (typeof envelopes)[number]>();
   for (const item of envelopes) {
@@ -73,13 +85,13 @@ export default async function LeadsPage({ searchParams }: SearchPageProps) {
           const href = exportHref("/leads", leadFilterParams({ ...filters, stage: view.stage, agent: "" }));
           const active = !agent && stage === view.stage;
           return (
-            <Link
+            <DeskLink
               key={view.label}
               href={href}
               className={`btn text-[0.75rem] ${active ? "btn-brass" : "btn-ghost"}`}
             >
               {view.label}
-            </Link>
+            </DeskLink>
           );
         })}
       </div>

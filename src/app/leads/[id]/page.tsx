@@ -6,16 +6,17 @@ import { SendLoaPanel } from "@/components/send-loa";
 import { FuelPill, PageHeader, Section, StagePill, TenderStatusPill } from "@/components/ui";
 import { isClosedLeadStage, isTenderLeadStage, isWonLeadStage } from "@/lib/constants";
 import { isDocusignConfigured } from "@/lib/docusign";
-import { ensureLeadBoardStages, resolveLeadBoardStage } from "@/lib/lead-board";
+import { resolveLeadBoardStage } from "@/lib/lead-board";
 import { formatDate, formatDateTime, gbp } from "@/lib/format";
 import type { IdPageProps } from "@/lib/page-props";
 import { listDeskAgents } from "@/lib/agents";
+import { scheduleLeadBoardStageSync } from "@/lib/desk-after";
 import { prisma } from "@/lib/prisma";
 import { tpiLoaKindFromDeals } from "@/lib/tpi-loa";
 
 export default async function LeadDetailPage({ params }: IdPageProps) {
   const { id } = await params;
-  await ensureLeadBoardStages();
+  scheduleLeadBoardStageSync();
   const [lead, agents] = await Promise.all([
     prisma.lead.findUnique({
       where: { id },

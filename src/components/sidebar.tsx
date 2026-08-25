@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { DeskLink } from "@/components/desk-link";
 
 const links = [
   { href: "/", label: "Desk", hint: "Today on the book" },
@@ -18,25 +18,36 @@ const links = [
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   return (
     <>
       {links.map((link) => {
-        const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
+        const shown = pendingHref ?? pathname;
+        const active = link.href === "/" ? shown === "/" : shown.startsWith(link.href);
+        const pending = pendingHref === link.href;
         return (
-          <Link
+          <DeskLink
             key={link.href}
             href={link.href}
-            onClick={onNavigate}
+            intentDelayMs={0}
+            onClick={() => {
+              if (link.href !== pathname) setPendingHref(link.href);
+              onNavigate?.();
+            }}
             className={`flex min-h-11 flex-col justify-center rounded-sm px-3 py-2.5 ${
               active
                 ? "bg-ink-3 text-gold-soft shadow-[inset_3px_0_0_#c9a46a]"
                 : "text-[#d8d2c4] hover:bg-white/5 hover:text-gold-soft"
-            }`}
+            } ${pending ? "nav-link-pending" : ""}`}
           >
             <div className="text-sm font-semibold">{link.label}</div>
             <div className="text-[0.7rem] text-[#8f9a93]">{link.hint}</div>
-          </Link>
+          </DeskLink>
         );
       })}
     </>

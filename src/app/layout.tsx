@@ -29,6 +29,7 @@ export const viewport = {
 };
 
 export const dynamic = "force-dynamic";
+export const preferredRegion = "cdg1";
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
