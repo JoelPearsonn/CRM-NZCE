@@ -49,8 +49,8 @@ test("serverless Prisma URLs keep a single warm connection", () => {
   assert.match(pooled, /pool_timeout=20/);
   assert.match(pooled, /connect_timeout=10/);
   assert.equal(withServerlessPool("file:./dev.db"), "file:./dev.db");
-  assert.equal(
-    withServerlessPool("postgresql://db.prisma.io:5432/crm?connection_limit=5"),
-    "postgresql://db.prisma.io:5432/crm?connection_limit=5",
-  );
+  const existing = withServerlessPool("postgresql://db.prisma.io:5432/crm?connection_limit=5");
+  assert.match(existing, /connection_limit=5/);
+  assert.equal(existing.includes("connection_limit=1"), false);
+  assert.match(existing, /pool_timeout=20/);
 });
