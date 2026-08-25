@@ -312,11 +312,12 @@ a {
   z-index: 12;
   box-sizing: border-box;
   height: 12px;
-  overflow-x: auto;
+  overflow-x: scroll;
   overflow-y: hidden;
   scrollbar-width: auto;
-  scrollbar-color: var(--color-gold) var(--color-secondary);
-  background: var(--color-secondary);
+  scrollbar-color: var(--color-gold) var(--color-gold);
+  background: var(--color-gold);
+  box-shadow: 0 -1px 0 var(--color-brass-dark);
 }
 
 .lead-board-hrail[hidden] {
@@ -328,7 +329,7 @@ a {
 }
 
 .lead-board-hrail::-webkit-scrollbar-track {
-  background: var(--color-secondary);
+  background: var(--color-gold);
 }
 
 .lead-board-hrail::-webkit-scrollbar-thumb {

@@ -380,12 +380,14 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   const leadBoardRail = css.match(/\.lead-board-hrail\s*\{[^}]*\}/)?.[0] ?? "";
   assert.match(leadBoardRail, /position:\s*fixed/);
   assert.match(leadBoardRail, /bottom:\s*0/);
-  assert.match(leadBoardRail, /overflow-x:\s*auto/);
+  assert.match(leadBoardRail, /overflow-x:\s*scroll/);
   assert.match(leadBoardRail, /overflow-y:\s*hidden/);
   assert.match(leadBoardRail, /scrollbar-color:\s*var\(--color-gold\)/);
+  assert.match(leadBoardRail, /background:\s*var\(--color-gold\)/);
   assert.match(leadBoardRail, /height:\s*12px/);
   assert.match(css, /\.lead-board-hrail::-webkit-scrollbar\s*\{[^}]*height:\s*12px/s);
   assert.match(css, /\.lead-board-hrail::-webkit-scrollbar-thumb\s*\{[^}]*background:\s*var\(--color-gold\)/s);
+  assert.match(css, /\.lead-board-hrail::-webkit-scrollbar-track\s*\{[^}]*background:\s*var\(--color-gold\)/s);
   assert.match(leadBoardRow, /width:\s*max-content/);
   assert.match(leadBoardRow, /height:\s*auto/);
   assert.match(leadBoardRow, /flex-shrink:\s*0/);
