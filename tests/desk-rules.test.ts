@@ -360,8 +360,10 @@ test("lead board keeps all 16 Monday columns including empty Tender Received", (
   assert.match(leadBoardRow, /width:\s*max-content/);
   assert.match(leadBoardRow, /min-height:\s*100%/);
   assert.match(leadBoardRow, /height:\s*max-content/);
+  assert.match(leadBoardRow, /flex-shrink:\s*0/);
   assert.equal(/^\s*height:\s*100%/m.test(leadBoardRow), false);
   assert.match(leadColumn, /flex:\s*0 0 240px/);
+  assert.match(leadColumn, /flex-shrink:\s*0/);
   assert.match(leadColumn, /min-height:\s*100%/);
   assert.match(leadColumn, /height:\s*auto/);
   assert.equal(/^\s*height:\s*100%/m.test(leadColumn), false);
